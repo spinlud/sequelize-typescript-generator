@@ -1,0 +1,134 @@
+import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
+import {Sequelize, DataType, getSequelizeTypeByDesignType} from 'sequelize-typescript';
+import { Dialect, IMetadataOptions, ITableMetadata, IColumnMetadata } from './Dialect';
+
+interface IColumnMetadataMySQL {
+    TABLE_CATALOG: string;
+    TABLE_SCHEMA: string;
+    TABLE_NAME: string;
+    COLUMN_NAME: string;
+    ORDINAL_POSITION?: number;
+    COLUMN_DEFAULT?: string;
+    IS_NULLABLE: string;
+    DATA_TYPE: string;
+    CHARACTER_MAXIMUM_LENGTH?: string;
+    CHARACTER_OCTET_LENGTH?: string;
+    NUMERIC_PRECISION?: number;
+    NUMERIC_SCALE?: number;
+    DATETIME_PRECISION?: string;
+    CHARACTER_SET_NAME?: string;
+    COLLATION_NAME?: string;
+    COLUMN_TYPE: string;
+    COLUMN_KEY: string;
+    EXTRA: string;
+    PRIVILEGES: string;
+    COLUMN_COMMENT: string;
+    GENERATION_EXPRESSION: string;
+}
+
+const dataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
+    bigint: DataType.BIGINT,
+    smallint: DataType.SMALLINT,
+    mediumint: DataType.MEDIUMINT,
+    tinyint: DataType.TINYINT,
+    decimal: DataType.DECIMAL,
+    varchar: DataType.STRING,
+    char: DataType.CHAR,
+    date: DataType.DATEONLY,
+    datetime: DataType.DATE,
+    time: DataType.TIME,
+    timestamp: DataType.DATE,
+    float: DataType.FLOAT,
+    double: DataType.DOUBLE,
+    bit: DataType.BOOLEAN,
+    enum: DataType.ENUM,
+    binary: DataType.STRING,
+    blob: DataType.BLOB,
+    geometry: DataType.GEOMETRY,
+    // geometrycollection: DataType.,
+    // point: DataType.,
+    // multipoint: DataType.,
+    multilinestring: DataType.STRING,
+    // multipolygon: DataType.,
+    int: DataType.INTEGER,
+    json: DataType.JSON,
+    linestring: DataType.STRING,
+    mediumtext: DataType.STRING,
+    longblob: DataType.BLOB,
+    longtext: DataType.STRING,
+    // set: DataType.,
+    tinyblob: DataType.BLOB,
+    tinytext: DataType.STRING,
+    year: DataType.STRING,
+}
+
+// const mapDataType = (type: string): AbstractDataTypeConstructor | null => {
+//     const mappedType = dataTypesMap[type];
+//
+//     if (!mappedType) return null;
+//
+//     if (mappedType instanceof DataType.STRING) {
+//
+//     }
+// }
+
+export class DialectMySQL extends Dialect {
+    constructor(connection: Sequelize) {
+        super(connection);
+    }
+
+    async getMetadata(options: IMetadataOptions): Promise<ITableMetadata[]> {
+        const { schemaName } = options;
+        const tablesMetadata: ITableMetadata[] = [];
+
+        const tableNamesQuery = `
+            SELECT table_name FROM information_schema.tables
+            WHERE table_schema = '${schemaName}';
+        `;
+
+        const tableNames: string[] = (await this.connection.query(
+            tableNamesQuery,
+            {
+                type: QueryTypes.SELECT,
+                raw: true,
+            }
+        )).map(row => row['table_name' as keyof typeof row] as string);
+
+        for (const tableName of tableNames) {
+            const tableMetadataQuery = `
+                SELECT *
+                FROM information_schema.columns
+                WHERE (table_schema='${schemaName}' and table_name = '${tableName}')
+                order by ordinal_position;
+            `;
+
+            const columnsMetadata = await this.connection.query(
+                tableMetadataQuery,
+                {
+                    type: QueryTypes.SELECT,
+                    raw: true,
+                }
+            ) as IColumnMetadataMySQL[];
+
+            const tableMetadata: ITableMetadata = {
+                name: tableName,
+                columns: [],
+            };
+
+            for (const columnMetadata of columnsMetadata) {
+                tableMetadata.columns.push({
+                    name: columnMetadata.COLUMN_NAME,
+                    type: columnMetadata.DATA_TYPE,
+                    typeExt: columnMetadata.COLUMN_TYPE,
+                    nullable: columnMetadata.IS_NULLABLE === 'YES',
+                    primaryKey: columnMetadata.COLUMN_KEY === 'PRI',
+                    autoIncrement: columnMetadata.EXTRA === 'auto_increment',
+                })
+            }
+
+            tablesMetadata.push(tableMetadata);
+        }
+
+        return tablesMetadata;
+    }
+}
