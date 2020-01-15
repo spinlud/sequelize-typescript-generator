@@ -26,7 +26,7 @@ interface IColumnMetadataMySQL {
     GENERATION_EXPRESSION: string;
 }
 
-const dataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
+export const dataTypesSequelizeMap: { [key: string]: AbstractDataTypeConstructor } = {
     bigint: DataType.BIGINT,
     smallint: DataType.SMALLINT,
     mediumint: DataType.MEDIUMINT,
@@ -62,6 +62,42 @@ const dataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
     year: DataType.STRING,
 }
 
+export const dataTypesJsMap: { [key: string]: string } = {
+    bigint: 'bigint',
+    smallint: 'number',
+    mediumint: 'number',
+    tinyint: 'number',
+    decimal: 'number',
+    varchar: 'string',
+    char: 'string',
+    date: 'string',
+    datetime: 'string',
+    time: 'string',
+    timestamp: 'string',
+    float: 'number',
+    double: 'number',
+    bit: 'boolean',
+    enum: 'enum',
+    binary: 'string',
+    blob: 'Buffer',
+    geometry: 'object',
+    geometrycollection: 'object',
+    point: 'object',
+    multipoint: 'object',
+    multilinestring: 'string',
+    multipolygon: 'object',
+    int: 'number',
+    json: 'object',
+    linestring: 'string',
+    mediumtext: 'string',
+    longblob: 'Buffer',
+    longtext: 'string',
+    set: 'Set<string>',
+    tinyblob: 'Buffer',
+    tinytext: 'string',
+    year: 'string',
+}
+
 // const mapDataType = (type: string): AbstractDataTypeConstructor | null => {
 //     const mappedType = dataTypesMap[type];
 //
@@ -72,6 +108,10 @@ const dataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
 //     }
 // }
 
+/**
+ * Dialect for MySQL
+ * @class DialectMySQL
+ */
 export class DialectMySQL extends Dialect {
     constructor(connection: Sequelize) {
         super(connection);
@@ -120,7 +160,7 @@ export class DialectMySQL extends Dialect {
                     name: columnMetadata.COLUMN_NAME,
                     type: columnMetadata.DATA_TYPE,
                     typeExt: columnMetadata.COLUMN_TYPE,
-                    nullable: columnMetadata.IS_NULLABLE === 'YES',
+                    allowNull: columnMetadata.IS_NULLABLE === 'YES',
                     primaryKey: columnMetadata.COLUMN_KEY === 'PRI',
                     autoIncrement: columnMetadata.EXTRA === 'auto_increment',
                 })

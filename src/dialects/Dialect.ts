@@ -18,7 +18,7 @@ export interface IColumnMetadata {
     // dataType: DataType;
     primaryKey: boolean;
     // foreignKey: boolean;
-    nullable: boolean;
+    allowNull: boolean;
     // unique: boolean;
     autoIncrement: boolean;
     default?: DataType;

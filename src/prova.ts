@@ -1,5 +1,6 @@
 import { createSequelize } from './connection';
 import { DialectMySQL } from './dialects/DialectMySQL';
+import { generateNamedImports, generateModel } from './generators';
 
 (async () => {
 
@@ -14,9 +15,12 @@ import { DialectMySQL } from './dialects/DialectMySQL';
 
     const dialectMySQL = new DialectMySQL(connection);
 
-    const res = await dialectMySQL.getMetadata({
+    const tablesMetadata = await dialectMySQL.getMetadata({
         schemaName: 'administration',
     });
+
+    const tableMetadata = tablesMetadata.find(t => t.name === 'tutti');
+    console.log(generateModel(tableMetadata!));
 
     connection.close();
 
