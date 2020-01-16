@@ -1,6 +1,7 @@
 import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
-import {Sequelize, DataType, getSequelizeTypeByDesignType} from 'sequelize-typescript';
-import { Dialect, IMetadataOptions, ITableMetadata, IColumnMetadata } from './Dialect';
+import { Sequelize, DataType, getSequelizeTypeByDesignType } from 'sequelize-typescript';
+import { Dialect, IDialectOptions } from './Dialect';
+import { ITableMetadata } from './metadata';
 
 interface IColumnMetadataMySQL {
     TABLE_CATALOG: string;
@@ -26,99 +27,90 @@ interface IColumnMetadataMySQL {
     GENERATION_EXPRESSION: string;
 }
 
-export const dataTypesSequelizeMap: { [key: string]: AbstractDataTypeConstructor } = {
-    bigint: DataType.BIGINT,
-    smallint: DataType.SMALLINT,
-    mediumint: DataType.MEDIUMINT,
-    tinyint: DataType.TINYINT,
-    decimal: DataType.DECIMAL,
-    varchar: DataType.STRING,
-    char: DataType.CHAR,
-    date: DataType.DATEONLY,
-    datetime: DataType.DATE,
-    time: DataType.TIME,
-    timestamp: DataType.DATE,
-    float: DataType.FLOAT,
-    double: DataType.DOUBLE,
-    bit: DataType.BOOLEAN,
-    enum: DataType.ENUM,
-    binary: DataType.STRING,
-    blob: DataType.BLOB,
-    geometry: DataType.GEOMETRY,
-    // geometrycollection: DataType.,
-    // point: DataType.,
-    // multipoint: DataType.,
-    multilinestring: DataType.STRING,
-    // multipolygon: DataType.,
-    int: DataType.INTEGER,
-    json: DataType.JSON,
-    linestring: DataType.STRING,
-    mediumtext: DataType.STRING,
-    longblob: DataType.BLOB,
-    longtext: DataType.STRING,
-    // set: DataType.,
-    tinyblob: DataType.BLOB,
-    tinytext: DataType.STRING,
-    year: DataType.STRING,
-}
-
-export const dataTypesJsMap: { [key: string]: string } = {
-    bigint: 'bigint',
-    smallint: 'number',
-    mediumint: 'number',
-    tinyint: 'number',
-    decimal: 'number',
-    varchar: 'string',
-    char: 'string',
-    date: 'string',
-    datetime: 'string',
-    time: 'string',
-    timestamp: 'string',
-    float: 'number',
-    double: 'number',
-    bit: 'boolean',
-    enum: 'enum',
-    binary: 'string',
-    blob: 'Buffer',
-    geometry: 'object',
-    geometrycollection: 'object',
-    point: 'object',
-    multipoint: 'object',
-    multilinestring: 'string',
-    multipolygon: 'object',
-    int: 'number',
-    json: 'object',
-    linestring: 'string',
-    mediumtext: 'string',
-    longblob: 'Buffer',
-    longtext: 'string',
-    set: 'Set<string>',
-    tinyblob: 'Buffer',
-    tinytext: 'string',
-    year: 'string',
-}
-
-// const mapDataType = (type: string): AbstractDataTypeConstructor | null => {
-//     const mappedType = dataTypesMap[type];
-//
-//     if (!mappedType) return null;
-//
-//     if (mappedType instanceof DataType.STRING) {
-//
-//     }
-// }
-
 /**
  * Dialect for MySQL
  * @class DialectMySQL
  */
 export class DialectMySQL extends Dialect {
-    constructor(connection: Sequelize) {
-        super(connection);
+
+    constructor(connection: Sequelize, options: IDialectOptions) {
+        super(connection, options);
     }
 
-    async getMetadata(options: IMetadataOptions): Promise<ITableMetadata[]> {
-        const { schemaName } = options;
+    public readonly sequelizeDataTypesMap = {
+        bigint: DataType.BIGINT,
+        smallint: DataType.SMALLINT,
+        mediumint: DataType.MEDIUMINT,
+        tinyint: DataType.TINYINT,
+        decimal: DataType.DECIMAL,
+        varchar: DataType.STRING,
+        char: DataType.CHAR,
+        date: DataType.DATEONLY,
+        datetime: DataType.DATE,
+        time: DataType.TIME,
+        timestamp: DataType.DATE,
+        float: DataType.FLOAT,
+        double: DataType.DOUBLE,
+        bit: DataType.BOOLEAN,
+        enum: DataType.ENUM,
+        binary: DataType.STRING,
+        blob: DataType.BLOB,
+        geometry: DataType.GEOMETRY,
+        // geometrycollection: DataType.,
+        // point: DataType.,
+        // multipoint: DataType.,
+        multilinestring: DataType.STRING,
+        // multipolygon: DataType.,
+        int: DataType.INTEGER,
+        json: DataType.JSON,
+        linestring: DataType.STRING,
+        mediumtext: DataType.STRING,
+        longblob: DataType.BLOB,
+        longtext: DataType.STRING,
+        // set: DataType.,
+        tinyblob: DataType.BLOB,
+        tinytext: DataType.STRING,
+        year: DataType.STRING,
+    };
+
+    public readonly jsDataTypesMap = {
+        bigint: 'bigint',
+        smallint: 'number',
+        mediumint: 'number',
+        tinyint: 'number',
+        decimal: 'number',
+        varchar: 'string',
+        char: 'string',
+        date: 'string',
+        datetime: 'string',
+        time: 'string',
+        timestamp: 'string',
+        float: 'number',
+        double: 'number',
+        bit: 'boolean',
+        enum: 'enum',
+        binary: 'string',
+        blob: 'Buffer',
+        geometry: 'object',
+        geometrycollection: 'object',
+        point: 'object',
+        multipoint: 'object',
+        multilinestring: 'string',
+        multipolygon: 'object',
+        int: 'number',
+        json: 'object',
+        linestring: 'string',
+        mediumtext: 'string',
+        longblob: 'Buffer',
+        longtext: 'string',
+        set: 'Set<string>',
+        tinyblob: 'Buffer',
+        tinytext: 'string',
+        year: 'string',
+    }
+
+    async getMetadata(): Promise<ITableMetadata[]> {
+        const { schemaName } = this.options;
         const tablesMetadata: ITableMetadata[] = [];
 
         const tableNamesQuery = `
@@ -171,4 +163,5 @@ export class DialectMySQL extends Dialect {
 
         return tablesMetadata;
     }
+
 }
