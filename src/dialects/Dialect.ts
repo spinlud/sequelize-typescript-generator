@@ -1,24 +1,26 @@
 import { Sequelize } from 'sequelize-typescript';
 import { AbstractDataTypeConstructor } from 'sequelize';
-import { ITableMetadata } from './';
+import { IConfig } from '../config';
 
-export interface IDialectOptions {
-    schemaName: string; // Database schema from which to retrieve tables
-    tables?: string[]; // List of tables to import
-    skipTables?: string[]; // List of tables to skip
-    underscored?: boolean;
-    camelCased?: boolean;
+export interface ITableMetadata {
+    name: string;
+    columns: IColumnMetadata[];
+}
+
+export interface IColumnMetadata {
+    name: string;
+    type: string;
+    typeExt: string;
+    // dataType: DataType;
+    primaryKey: boolean;
+    // foreignKey: boolean;
+    allowNull: boolean;
+    // unique: boolean;
+    autoIncrement: boolean;
+    // default?: ;
 }
 
 export abstract class Dialect {
-    protected connection: Sequelize;
-    protected options: IDialectOptions;
-
-    protected constructor(connection: Sequelize, options: IDialectOptions) {
-        this.connection = connection;
-        this.options = options;
-    }
-
     /**
      * Maps dialect data type to sequelize data type
      */
@@ -31,7 +33,8 @@ export abstract class Dialect {
 
     /**
      * Extract tables metadata for the specific dialect and schema
+     * @param {IConfig} config
      * @returns {Promise<ITableMetadata[]>}
      */
-    public abstract async getMetadata(): Promise<ITableMetadata[]>
+    public abstract async fetchMetadata(config: IConfig): Promise<ITableMetadata[]>
 }

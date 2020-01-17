@@ -1,4 +1,4 @@
-import { generateNamedImports } from '../generators';
+import { generateNamedImports } from '../builders';
 
 describe('Generators', () => {
 

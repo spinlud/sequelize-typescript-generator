@@ -1,7 +1,8 @@
 import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
-import { Sequelize, DataType, getSequelizeTypeByDesignType } from 'sequelize-typescript';
-import { Dialect, IDialectOptions } from './Dialect';
-import { ITableMetadata } from './metadata';
+import { Sequelize, DataType } from 'sequelize-typescript';
+import { createConnection } from '../connection';
+import { IConfig } from '../config';
+import { ITableMetadata, Dialect } from './';
 
 interface IColumnMetadataMySQL {
     TABLE_CATALOG: string;
@@ -32,10 +33,6 @@ interface IColumnMetadataMySQL {
  * @class DialectMySQL
  */
 export class DialectMySQL extends Dialect {
-
-    constructor(connection: Sequelize, options: IDialectOptions) {
-        super(connection, options);
-    }
 
     public readonly sequelizeDataTypesMap = {
         bigint: DataType.BIGINT,
@@ -88,7 +85,7 @@ export class DialectMySQL extends Dialect {
         float: 'number',
         double: 'number',
         bit: 'boolean',
-        enum: 'enum',
+        enum: 'string',
         binary: 'string',
         blob: 'Buffer',
         geometry: 'object',
@@ -109,56 +106,77 @@ export class DialectMySQL extends Dialect {
         year: 'string',
     }
 
-    async getMetadata(): Promise<ITableMetadata[]> {
-        const { schemaName } = this.options;
+    /**
+     * Fetch tables metadata from the database
+     * @param {IConfig} config
+     * @returns {Promise<ITableMetadata[]>}
+     */
+    async fetchMetadata(config: IConfig): Promise<ITableMetadata[]> {
+
+        let connection: Sequelize | undefined;
         const tablesMetadata: ITableMetadata[] = [];
 
-        const tableNamesQuery = `
-            SELECT table_name FROM information_schema.tables
-            WHERE table_schema = '${schemaName}';
-        `;
+        try {
+            connection = createConnection(config.connection);
 
-        const tableNames: string[] = (await this.connection.query(
-            tableNamesQuery,
-            {
-                type: QueryTypes.SELECT,
-                raw: true,
-            }
-        )).map(row => row['table_name' as keyof typeof row] as string);
+            await connection.authenticate();
 
-        for (const tableName of tableNames) {
-            const tableMetadataQuery = `
-                SELECT *
-                FROM information_schema.columns
-                WHERE (table_schema='${schemaName}' and table_name = '${tableName}')
-                order by ordinal_position;
+            const { database } = config.connection;
+
+            const tableNamesQuery = `
+                SELECT table_name FROM information_schema.tables
+                WHERE table_schema = '${database}';
             `;
 
-            const columnsMetadata = await this.connection.query(
-                tableMetadataQuery,
+            const tableNames: string[] = (await connection.query(
+                tableNamesQuery,
                 {
                     type: QueryTypes.SELECT,
                     raw: true,
                 }
-            ) as IColumnMetadataMySQL[];
+            )).map(row => row['table_name' as keyof typeof row] as string);
 
-            const tableMetadata: ITableMetadata = {
-                name: tableName,
-                columns: [],
-            };
+            for (const tableName of tableNames) {
+                const tableMetadataQuery = `
+                SELECT *
+                FROM information_schema.columns
+                WHERE (table_schema='${database}' and table_name = '${tableName}')
+                order by ordinal_position;
+            `;
 
-            for (const columnMetadata of columnsMetadata) {
-                tableMetadata.columns.push({
-                    name: columnMetadata.COLUMN_NAME,
-                    type: columnMetadata.DATA_TYPE,
-                    typeExt: columnMetadata.COLUMN_TYPE,
-                    allowNull: columnMetadata.IS_NULLABLE === 'YES',
-                    primaryKey: columnMetadata.COLUMN_KEY === 'PRI',
-                    autoIncrement: columnMetadata.EXTRA === 'auto_increment',
-                })
+                const columnsMetadata = await connection.query(
+                    tableMetadataQuery,
+                    {
+                        type: QueryTypes.SELECT,
+                        raw: true,
+                    }
+                ) as IColumnMetadataMySQL[];
+
+                const tableMetadata: ITableMetadata = {
+                    name: tableName,
+                    columns: [],
+                };
+
+                for (const columnMetadata of columnsMetadata) {
+                    tableMetadata.columns.push({
+                        name: columnMetadata.COLUMN_NAME,
+                        type: columnMetadata.DATA_TYPE,
+                        typeExt: columnMetadata.COLUMN_TYPE,
+                        allowNull: columnMetadata.IS_NULLABLE === 'YES',
+                        primaryKey: columnMetadata.COLUMN_KEY === 'PRI',
+                        autoIncrement: columnMetadata.EXTRA === 'auto_increment',
+                    })
+                }
+
+                tablesMetadata.push(tableMetadata);
             }
-
-            tablesMetadata.push(tableMetadata);
+        }
+        catch(err) {
+            console.error(err);
+            process.exit(1);
+        }
+        finally {
+            connection && await connection.close();
         }
 
         return tablesMetadata;
