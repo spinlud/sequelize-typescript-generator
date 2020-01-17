@@ -8,6 +8,7 @@ export interface IConfig {
         camelCased?: boolean,
         underscored?: boolean,
         capitalized?: boolean,
+        timestamps?: boolean,
     },
     output: {
         clean?: boolean, // clean output dir before build

@@ -1,22 +1,24 @@
-import { generateNamedImports } from '../builders';
+import { nodeToString, generateNamedImports } from '../../builders';
 
-describe('Generators', () => {
+describe('Builder utils', () => {
 
     describe('named imports', () => {
         it('should generate single import statement', () => {
             const importsSpecifier = 'Token1';
             const moduleSpecifier = `some-module`;
             const expected = `import { ${importsSpecifier} } from "${moduleSpecifier}";`;
+            const generated = nodeToString(generateNamedImports([importsSpecifier], moduleSpecifier));
 
-            expect(generateNamedImports([importsSpecifier], moduleSpecifier)).toBe(expected);
+            expect(generated).toBe(expected);
         });
 
         it('should generate multiple named imports statement', () => {
             const importsSpecifiers = ['Token1', 'Token2', 'Token3'];
             const moduleSpecifier = `some-module`;
             const expected = `import { ${importsSpecifiers.join(`, `)} } from "${moduleSpecifier}";`;
+            const generated = nodeToString(generateNamedImports(importsSpecifiers, moduleSpecifier));
 
-            expect(generateNamedImports(importsSpecifiers, moduleSpecifier)).toBe(expected);
+            expect(generated).toBe(expected);
         });
     });
 

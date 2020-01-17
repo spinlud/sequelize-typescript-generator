@@ -4,6 +4,7 @@ import { IConfig } from '../config';
 
 export interface ITableMetadata {
     name: string;
+    timestamps?: boolean;
     columns: IColumnMetadata[];
 }
 

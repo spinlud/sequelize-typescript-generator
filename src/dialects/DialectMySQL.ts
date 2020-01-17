@@ -154,6 +154,7 @@ export class DialectMySQL extends Dialect {
 
                 const tableMetadata: ITableMetadata = {
                     name: tableName,
+                    timestamps: config.metadata?.timestamps ?? false,
                     columns: [],
                 };
 

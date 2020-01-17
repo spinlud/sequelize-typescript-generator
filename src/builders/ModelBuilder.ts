@@ -22,7 +22,7 @@ export class ModelBuilder extends Builder {
         super(config, dialect);
     }
 
-    private createColumnPropertyDecl(col: IColumnMetadata, dataTypeMap: { [key: string]: string }): ts.PropertyDeclaration {
+    private buildColumnPropertyDecl(col: IColumnMetadata, dataTypeMap: { [key: string]: string }): ts.PropertyDeclaration {
         const props: Partial<ModelAttributeColumnOptions> = {
             ...col.primaryKey && { primaryKey: col.primaryKey },
             ...col.autoIncrement && { autoIncrement: col.autoIncrement },
@@ -55,7 +55,7 @@ export class ModelBuilder extends Builder {
                 // @Table decorator
                 generateObjectLiteralDecorator('Table', {
                     tableName: tableName,
-                    timestamps: false,
+                    timestamps: tableMetadata.timestamps,
                 })
             ],
             [
@@ -75,7 +75,7 @@ export class ModelBuilder extends Builder {
 
                 )
             ],
-            columns.map(col => this.createColumnPropertyDecl(col, this.dialect.jsDataTypesMap))
+            columns.map(col => this.buildColumnPropertyDecl(col, this.dialect.jsDataTypesMap))
         );
 
         let generatedCode = '';
