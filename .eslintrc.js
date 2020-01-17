@@ -18,5 +18,13 @@ module.exports =  {
         'padded-blocks': ['error', { blocks: 'always', classes: 'always', switches: 'always' }],
         'lines-between-class-members': ['error', 'always' ],
         'import/newline-after-import': ['error', { 'count': 2 }],
+        'object-curly-newline': ['error', {
+            'ObjectExpression': 'always',
+            'ObjectPattern': { 'multiline': true },
+            'ImportDeclaration': { 'multiline': true, 'minProperties': 3 },
+            'ExportDeclaration': { 'multiline': true, 'minProperties': 3 },
+        }],
+        'object-property-newline': ['error'],
+        'indent': ['error', 'tab'],
     },
 };
