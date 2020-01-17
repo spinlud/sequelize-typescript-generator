@@ -9,7 +9,6 @@ module.exports =  {
         'eslint-plugin-import',
     ],
     extends:  [
-        'prettier/@typescript-eslint',
         // 'plugin:import/errors',
         'plugin:import/warnings',
         'plugin:import/typescript',

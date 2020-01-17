@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import * as ts from 'typescript';
+import { lintFiles } from '../lint';
 import { ModelAttributeColumnOptions } from 'sequelize';
 import { IConfig } from '../config';
 import { IColumnMetadata, ITableMetadata, Dialect } from '../dialects';
@@ -127,6 +128,7 @@ export class ModelBuilder extends Builder {
             }
         }
 
+        // Build files
         for (const tableMetadata of tablesMetadata) {
             const tableClassDecl = this.buildTableClassDeclaration(tableMetadata);
 
@@ -144,5 +146,8 @@ export class ModelBuilder extends Builder {
         }
 
         await Promise.all(writePromises);
+
+        // Lint files
+        lintFiles([path.join(outDir, '*.ts')]);
     }
 }
