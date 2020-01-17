@@ -1,8 +1,8 @@
 import { CLIEngine } from 'eslint';
-import path from 'path';
+import { eslintConfig } from './eslint.config';
 
 const cli = new CLIEngine({
-    configFile: path.join(__dirname, 'eslint.config.js'),
+    baseConfig: eslintConfig,
     fix: true,
 });
 

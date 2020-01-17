@@ -1,4 +1,4 @@
-module.exports =  {
+export const eslintConfig = {
     parser:  '@typescript-eslint/parser',
     parserOptions:  {
         ecmaVersion:  2018,

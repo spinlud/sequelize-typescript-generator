@@ -2,11 +2,14 @@
   "name": "sequelize-typescript-auto",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
   "scripts": {
+    "clean": "rm -fr build",
     "lint": "eslint --fix --ext .ts output/*.ts",
     "test": "jest",
-    "prova": "ts-node-dev prova.ts"
+    "copy-assets": "cp src/lint/eslint.config.json build/lint/",
+    "build": "npm run clean && tsc"
   },
   "keywords": [],
   "author": "Ludovico Fabbri",
@@ -24,6 +27,7 @@
     "@types/eslint": "^6.1.3",
     "@types/jest": "^24.9.0",
     "@types/validator": "^12.0.1",
+    "@types/yargs": "^15.0.0",
     "jest": "^24.9.0",
     "mysql2": "^2.1.0",
     "reflect-metadata": "^0.1.13",
@@ -38,6 +42,7 @@
     "@typescript-eslint/eslint-plugin": "^2.16.0",
     "@typescript-eslint/parser": "^2.16.0",
     "eslint": "^6.8.0",
-    "eslint-plugin-import": "^2.20.0"
+    "eslint-plugin-import": "^2.20.0",
+    "yargs": "^15.1.0"
   }
 }
