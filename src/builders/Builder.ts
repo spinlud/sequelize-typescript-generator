@@ -1,5 +1,5 @@
 import { IConfig } from '../config';
-import { ITableMetadata, Dialect } from '../dialects';
+import { Dialect } from '../dialects/Dialect';
 
 /**
  * @class Builder

@@ -4,13 +4,9 @@ import * as ts from 'typescript';
 import { lintFiles } from '../lint';
 import { ModelAttributeColumnOptions } from 'sequelize';
 import { IConfig } from '../config';
-import { IColumnMetadata, ITableMetadata, Dialect } from '../dialects';
-import {
-    Builder,
-    generateNamedImports,
-    generateObjectLiteralDecorator,
-    nodeToString,
-} from './';
+import { IColumnMetadata, ITableMetadata, Dialect } from '../dialects/Dialect';
+import { generateNamedImports, generateObjectLiteralDecorator, nodeToString } from './builderUtils';
+import { Builder } from './Builder';
 
 /**
  * @class ModelGenerator

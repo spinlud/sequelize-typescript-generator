@@ -1,3 +1,1 @@
-export * from './builderUtils';
-export * from './Builder';
-export * from './ModelBuilder';
+export { ModelBuilder } from './ModelBuilder';

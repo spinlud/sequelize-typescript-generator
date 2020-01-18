@@ -1,5 +1,6 @@
 **/src
 **/output
+**/*.tgz
 /prova.ts
 
 # Created by https://www.gitignore.io/api/node,macos

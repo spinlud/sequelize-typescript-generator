@@ -4,12 +4,15 @@
   "description": "",
   "main": "build/index.js",
   "types": "build/index.d.ts",
+  "bin": {
+    "sta": "build/bin/cli.js"
+  },
   "scripts": {
     "clean": "rm -fr build",
     "lint": "eslint --fix --ext .ts output/*.ts",
     "test": "jest",
-    "copy-assets": "cp src/lint/eslint.config.json build/lint/",
-    "build": "npm run clean && tsc"
+    "build": "npm run clean && tsc",
+    "dev": "ts-node-dev src/bin/cli.ts -h localhost -d dbtest --dialect mysql -u root -x mysql"
   },
   "keywords": [],
   "author": "Ludovico Fabbri",

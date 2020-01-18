@@ -2,7 +2,7 @@ import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize, DataType } from 'sequelize-typescript';
 import { createConnection } from '../connection';
 import { IConfig } from '../config';
-import { ITableMetadata, Dialect } from './';
+import { ITableMetadata, Dialect } from './Dialect';
 
 interface IColumnMetadataMySQL {
     TABLE_CATALOG: string;

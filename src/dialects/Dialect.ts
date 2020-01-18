@@ -22,6 +22,18 @@ export interface IColumnMetadata {
 }
 
 export abstract class Dialect {
+
+    /**
+     * Accepted dialects
+     */
+    public static dialects: Set<string> = new Set([
+        'postgres',
+        'mysql',
+        'mariadb',
+        'sqlite',
+        'mssql',
+    ]);
+
     /**
      * Maps dialect data type to sequelize data type
      */

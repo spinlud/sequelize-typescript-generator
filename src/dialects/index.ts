@@ -1,2 +1,1 @@
-export * from './Dialect';
-export * from './DialectMySQL';
+export { DialectMySQL } from './DialectMySQL';
