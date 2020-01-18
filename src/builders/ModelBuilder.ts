@@ -100,8 +100,13 @@ export class ModelBuilder extends Builder {
      */
     async build(): Promise<void> {
         const { clean, outDir } = this.config.output;
-        const tablesMetadata = await this.dialect.fetchMetadata(this.config);
         const writePromises: Promise<void>[] = [];
+        const tablesMetadata = await this.dialect.fetchMetadata(this.config);
+
+        if (tablesMetadata.length === 0) {
+            console.error(`Couldn't find any table for database ${this.config.connection.database}`);
+            process.exit(1);
+        }
 
         // Check if output dir exists
         try {
@@ -109,7 +114,7 @@ export class ModelBuilder extends Builder {
         }
         catch(err) {
             if (err.code && err.code === 'ENOENT') {
-                await fs.mkdir(outDir);
+                await fs.mkdir(outDir, { recursive: true });
             }
             else {
                 console.error(err);

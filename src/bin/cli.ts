@@ -9,12 +9,12 @@ import { Dialect } from '../dialects/Dialect';
 import { DialectMySQL } from '../dialects';
 import { ModelBuilder } from '../builders';
 
-(async () => {
-    const defaultOutDir = 'output-models';
+const defaultOutDir = 'output-models';
 
+(async () => {
     const { argv } = yargs
-        .usage(`Usage: sta -h <host> -d <database> -D <dialect> -u <username> -x [password] -o [out-dir] -s [schema] -t [tables] -T [skip-tables] -c [camel] -n [underscore]`)
-        .demand(['host', 'database', 'username', 'dialect'])
+        .usage(`Usage: sta -d <database> -D <dialect> -u <username> -x [password] -h [host] -p [port] -o [out-dir] -s [schema] -t [tables] -T [skip-tables] -c [camel] -n [underscore]`)
+        .demand(['database', 'username', 'dialect'])
         .option('h', {
             alias: aliasesMap.HOST,
             string: true,
@@ -86,10 +86,10 @@ import { ModelBuilder } from '../builders';
             describe: `Use underscore case to name files, models and fields.`,
         });
 
-// Args validation
+    // Args validation
     validateArgs(argv);
 
-// Create dialect
+    // Create dialect
     let dialect: Dialect;
 
     switch(argv[aliasesMap.DIALECT]) {
@@ -112,11 +112,11 @@ import { ModelBuilder } from '../builders';
             error(`Unknown dialect ${argv[aliasesMap.DIALECT]}`);
     }
 
-// Config
+    // Config
     const config: IConfig = {
         connection: {
             dialect: argv[aliasesMap.DIALECT] as DialectType,
-            host: argv[aliasesMap.HOST] as string,
+            ...argv[aliasesMap.HOST] && { host: argv[aliasesMap.HOST] as string },
             ...argv[aliasesMap.PORT] && { port: argv[aliasesMap.PORT] as number },
             database: argv[aliasesMap.DATABASE] as string,
             username: argv[aliasesMap.USERNAME] as string,

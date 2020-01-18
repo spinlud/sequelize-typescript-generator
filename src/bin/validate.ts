@@ -39,8 +39,8 @@ export const validateArgs = (argv: { [key: string]: any }): void => {
     }
 
     // Validate port if any
-    if (argv[aliasesMap.PORT] && (!Number.isInteger(argv[aliasesMap.PORT]) && argv[aliasesMap.PORT] <= 0)) {
-        error(`Argument -p [port] must be a positive integer`);
+    if (argv[aliasesMap.PORT] && (!Number.isInteger(argv[aliasesMap.PORT]) || argv[aliasesMap.PORT] <= 0)) {
+        error(`Argument -p [port] must be a positive integer (${argv[aliasesMap.PORT]})`);
     }
 
     // TODO Validate schema if dialect is postgres ?
