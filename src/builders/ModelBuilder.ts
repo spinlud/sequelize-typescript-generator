@@ -105,8 +105,8 @@ export class ModelBuilder extends Builder {
         const tablesMetadata = await this.dialect.fetchMetadata(this.config);
 
         if (tablesMetadata.length === 0) {
-            console.error(`Couldn't find any table for database ${this.config.connection.database}`);
-            process.exit(1);
+            console.warn(`Couldn't find any table for database ${this.config.connection.database}`);
+            return;
         }
 
         // Check if output dir exists

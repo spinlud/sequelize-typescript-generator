@@ -3,4 +3,8 @@ module.exports = {
     transform: {
         '^.+\\.tsx?$': 'ts-jest'
     },
+    testPathIgnorePatterns: [
+        'environment.ts',
+    ],
+    verbose: true,
 };
