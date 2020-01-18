@@ -1,4 +1,3 @@
-import { Sequelize } from 'sequelize-typescript';
 import { AbstractDataTypeConstructor } from 'sequelize';
 import { IConfig } from '../config';
 
@@ -6,13 +5,14 @@ export interface ITableMetadata {
     name: string;
     timestamps?: boolean;
     columns: IColumnMetadata[];
+    comment?: string;
 }
 
 export interface IColumnMetadata {
     name: string;
     type: string;
     typeExt: string;
-    // dataType: DataType;
+    dataType: string;
     primaryKey: boolean;
     // foreignKey: boolean;
     allowNull: boolean;

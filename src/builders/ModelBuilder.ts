@@ -5,7 +5,7 @@ import { lintFiles } from '../lint';
 import { ModelAttributeColumnOptions } from 'sequelize';
 import { IConfig } from '../config';
 import { IColumnMetadata, ITableMetadata, Dialect } from '../dialects/Dialect';
-import { generateNamedImports, generateObjectLiteralDecorator, nodeToString } from './builderUtils';
+import { generateNamedImports, generateObjectLiteralDecorator, nodeToString } from './utils';
 import { Builder } from './Builder';
 
 /**
@@ -23,7 +23,7 @@ export class ModelBuilder extends Builder {
             ...col.primaryKey && { primaryKey: col.primaryKey },
             ...col.autoIncrement && { autoIncrement: col.autoIncrement },
             ...col.allowNull && { allowNull: col.allowNull },
-            type: col.type,
+            type: col.dataType,
         };
 
         return ts.createProperty(
@@ -52,6 +52,7 @@ export class ModelBuilder extends Builder {
                 generateObjectLiteralDecorator('Table', {
                     tableName: tableName,
                     timestamps: tableMetadata.timestamps,
+                    comment: tableMetadata.comment,
                 })
             ],
             [
@@ -71,6 +72,7 @@ export class ModelBuilder extends Builder {
 
                 )
             ],
+            // Columns members
             columns.map(col => this.buildColumnPropertyDecl(col, this.dialect.jsDataTypesMap))
         );
 
@@ -81,7 +83,6 @@ export class ModelBuilder extends Builder {
                 'Model',
                 'Table',
                 'Column',
-                'PrimaryKey',
                 'DataType'
             ],
             'sequelize-typescript'

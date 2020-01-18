@@ -1,4 +1,5 @@
 import * as ts from 'typescript';
+import { AbstractDataTypeConstructor } from 'sequelize';
 
 const printer = ts.createPrinter({newLine: ts.NewLineKind.LineFeed});
 
@@ -58,7 +59,9 @@ export const generateObjectLiteralDecorator = (
                 ts.createObjectLiteral(
                     [
                         ...Object.entries(props)
-                            .map(e => ts.createPropertyAssignment(e[0], ts.createLiteral(e[1])))
+                            .map(e => ts.createPropertyAssignment(e[0],
+                                typeof e[1] === 'string' && e[1].startsWith('DataType.') ?
+                                    ts.createIdentifier(e[1]) : ts.createLiteral(e[1])))
                     ]
                 )
             ]

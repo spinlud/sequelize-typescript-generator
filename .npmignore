@@ -1,6 +1,7 @@
 **/src
 **/output
 **/*.tgz
+/jest.config.js
 /prova.ts
 /output-models
 

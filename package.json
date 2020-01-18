@@ -12,7 +12,7 @@
     "lint": "eslint --fix --ext .ts output/*.ts",
     "test": "jest",
     "build": "npm run clean && tsc",
-    "dev": "ts-node-dev src/bin/cli.ts -d dbtest --dialect mysql -u root -x mysql -p -23"
+    "dev": "ts-node-dev src/bin/cli.ts -d 'administration' --dialect mysql -u root -x mysql -p 3306 --clean"
   },
   "keywords": [],
   "author": "Ludovico Fabbri",

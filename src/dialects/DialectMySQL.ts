@@ -2,7 +2,7 @@ import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize, DataType } from 'sequelize-typescript';
 import { createConnection } from '../connection';
 import { IConfig } from '../config';
-import { ITableMetadata, Dialect } from './Dialect';
+import { ITableMetadata, IColumnMetadata, Dialect } from './Dialect';
 
 interface IColumnMetadataMySQL {
     TABLE_CATALOG: string;
@@ -34,7 +34,7 @@ interface IColumnMetadataMySQL {
  */
 export class DialectMySQL extends Dialect {
 
-    public readonly sequelizeDataTypesMap = {
+    public readonly sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
         bigint: DataType.BIGINT,
         smallint: DataType.SMALLINT,
         mediumint: DataType.MEDIUMINT,
@@ -53,18 +53,19 @@ export class DialectMySQL extends Dialect {
         binary: DataType.STRING,
         blob: DataType.BLOB,
         geometry: DataType.GEOMETRY,
-        // geometrycollection: DataType.,
-        // point: DataType.,
-        // multipoint: DataType.,
+        geometrycollection: DataType.GEOMETRY,
+        point: DataType.GEOMETRY,
+        multipoint: DataType.GEOMETRY,
         multilinestring: DataType.STRING,
-        // multipolygon: DataType.,
+        multipolygon: DataType.GEOMETRY,
         int: DataType.INTEGER,
         json: DataType.JSON,
         linestring: DataType.STRING,
         mediumtext: DataType.STRING,
         longblob: DataType.BLOB,
         longtext: DataType.STRING,
-        // set: DataType.,
+        text: DataType.STRING,
+        set: DataType.STRING,
         tinyblob: DataType.BLOB,
         tinytext: DataType.STRING,
         year: DataType.STRING,
@@ -100,6 +101,7 @@ export class DialectMySQL extends Dialect {
         mediumtext: 'string',
         longblob: 'Buffer',
         longtext: 'string',
+        text: 'string',
         set: 'Set<string>',
         tinyblob: 'Buffer',
         tinytext: 'string',
@@ -144,7 +146,7 @@ export class DialectMySQL extends Dialect {
                 order by ordinal_position;
             `;
 
-                const columnsMetadata = await connection.query(
+                const columnsMetadataMySQL = await connection.query(
                     tableMetadataQuery,
                     {
                         type: QueryTypes.SELECT,
@@ -158,15 +160,30 @@ export class DialectMySQL extends Dialect {
                     columns: [],
                 };
 
-                for (const columnMetadata of columnsMetadata) {
-                    tableMetadata.columns.push({
-                        name: columnMetadata.COLUMN_NAME,
-                        type: columnMetadata.DATA_TYPE,
-                        typeExt: columnMetadata.COLUMN_TYPE,
-                        allowNull: columnMetadata.IS_NULLABLE === 'YES',
-                        primaryKey: columnMetadata.COLUMN_KEY === 'PRI',
-                        autoIncrement: columnMetadata.EXTRA === 'auto_increment',
-                    })
+                for (const columnMetadataMySQL of columnsMetadataMySQL) {
+                    tableMetadata.comment = columnMetadataMySQL.COLUMN_COMMENT;
+
+                    if (!this.sequelizeDataTypesMap[columnMetadataMySQL.DATA_TYPE]) {
+                        console.warn(`[Warning]`,
+                            `Unknown data type mapping for '${columnMetadataMySQL.DATA_TYPE}'`);
+                        console.warn(`[Warning]`,
+                            `Skipping column`, columnMetadataMySQL);
+                        continue;
+                    }
+
+                    const columnMetadata: IColumnMetadata = {
+                        name: columnMetadataMySQL.COLUMN_NAME,
+                        type: columnMetadataMySQL.DATA_TYPE,
+                        typeExt: columnMetadataMySQL.COLUMN_TYPE,
+                        dataType: 'DataType.' +
+                            this.sequelizeDataTypesMap[columnMetadataMySQL.DATA_TYPE].key
+                                .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
+                        allowNull: columnMetadataMySQL.IS_NULLABLE === 'YES',
+                        primaryKey: columnMetadataMySQL.COLUMN_KEY === 'PRI',
+                        autoIncrement: columnMetadataMySQL.EXTRA === 'auto_increment',
+                    };
+
+                    tableMetadata.columns.push(columnMetadata);
                 }
 
                 tablesMetadata.push(tableMetadata);
