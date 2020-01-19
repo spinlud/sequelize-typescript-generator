@@ -3,30 +3,7 @@ import { Sequelize, DataType } from 'sequelize-typescript';
 import { createConnection } from '../connection';
 import { IConfig } from '../config';
 import { ITableMetadata, IColumnMetadata, Dialect } from './Dialect';
-
-interface IColumnMetadataMySQL {
-    TABLE_CATALOG: string;
-    TABLE_SCHEMA: string;
-    TABLE_NAME: string;
-    COLUMN_NAME: string;
-    ORDINAL_POSITION?: number;
-    COLUMN_DEFAULT?: string;
-    IS_NULLABLE: string;
-    DATA_TYPE: string;
-    CHARACTER_MAXIMUM_LENGTH?: string;
-    CHARACTER_OCTET_LENGTH?: string;
-    NUMERIC_PRECISION?: number;
-    NUMERIC_SCALE?: number;
-    DATETIME_PRECISION?: string;
-    CHARACTER_SET_NAME?: string;
-    COLLATION_NAME?: string;
-    COLUMN_TYPE: string;
-    COLUMN_KEY: string;
-    EXTRA: string;
-    PRIVILEGES: string;
-    COLUMN_COMMENT: string;
-    GENERATION_EXPRESSION: string;
-}
+import { IColumnMetadataMySQL, numericPrecisionScale } from './utils';
 
 /**
  * Dialect for MySQL
@@ -36,39 +13,45 @@ export class DialectMySQL extends Dialect {
 
     public readonly sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
         bigint: DataType.BIGINT,
+        int: DataType.INTEGER,
         smallint: DataType.SMALLINT,
         mediumint: DataType.MEDIUMINT,
         tinyint: DataType.TINYINT,
         decimal: DataType.DECIMAL,
+        float: DataType.FLOAT,
+        double: DataType.DOUBLE,
+        bit: DataType.INTEGER,
+
         varchar: DataType.STRING,
         char: DataType.CHAR,
+        text: DataType.STRING,
+        tinytext: DataType.STRING,
+        mediumtext: DataType.STRING,
+        longtext: DataType.STRING,
+
         date: DataType.DATEONLY,
         datetime: DataType.DATE,
         time: DataType.TIME,
         timestamp: DataType.DATE,
-        float: DataType.FLOAT,
-        double: DataType.DOUBLE,
-        bit: DataType.BOOLEAN,
+        year: DataType.STRING,
+
         enum: DataType.ENUM,
+        set: DataType.STRING,
+
         binary: DataType.STRING,
         blob: DataType.BLOB,
+        longblob: DataType.BLOB,
+        tinyblob: DataType.BLOB,
+
         geometry: DataType.GEOMETRY,
         geometrycollection: DataType.GEOMETRY,
         point: DataType.GEOMETRY,
         multipoint: DataType.GEOMETRY,
-        multilinestring: DataType.STRING,
+        multilinestring: DataType.GEOMETRY,
+        linestring: DataType.GEOMETRY,
         multipolygon: DataType.GEOMETRY,
-        int: DataType.INTEGER,
+
         json: DataType.JSON,
-        linestring: DataType.STRING,
-        mediumtext: DataType.STRING,
-        longblob: DataType.BLOB,
-        longtext: DataType.STRING,
-        text: DataType.STRING,
-        set: DataType.STRING,
-        tinyblob: DataType.BLOB,
-        tinytext: DataType.STRING,
-        year: DataType.STRING,
     };
 
     public readonly jsDataTypesMap = {
@@ -80,6 +63,7 @@ export class DialectMySQL extends Dialect {
         float: 'number',
         double: 'number',
         int: 'number',
+        bit: 'number',
 
         varchar: 'string',
         char: 'string',
@@ -87,16 +71,12 @@ export class DialectMySQL extends Dialect {
         tinytext: 'string',
         longtext: 'string',
         text: 'string',
-        linestring: 'string',
-        multilinestring: 'string',
 
         date: 'string',
         datetime: 'string',
         time: 'string',
         timestamp: 'string',
         year: 'string',
-
-        bit: 'boolean',
 
         enum: 'string',
         set: 'any',
@@ -111,6 +91,8 @@ export class DialectMySQL extends Dialect {
         point: 'object',
         multipoint: 'object',
         multipolygon: 'object',
+        linestring: 'object',
+        multilinestring: 'object',
 
         json: 'object',
     }
@@ -190,18 +172,14 @@ export class DialectMySQL extends Dialect {
                         autoIncrement: columnMetadataMySQL.EXTRA === 'auto_increment',
                     };
 
-                    // FLOAT: add numeric precision/scale to data type -> DataType.FLOAT(7,4)
-                    if (columnMetadataMySQL.DATA_TYPE === 'float') {
-                        columnMetadata.dataType += `(${columnMetadataMySQL.NUMERIC_PRECISION}`;
-                        columnMetadata.dataType +=  columnMetadataMySQL.NUMERIC_SCALE ?
-                            `, ${columnMetadataMySQL.NUMERIC_SCALE})` : `)`;
-                    }
-
-                    // DOUBLE: add numeric precision/scale to data type -> DataType.DOUBLE(10,4)
-                    if (columnMetadataMySQL.DATA_TYPE === 'double') {
-                        columnMetadata.dataType += `(${columnMetadataMySQL.NUMERIC_PRECISION}`;
-                        columnMetadata.dataType +=  columnMetadataMySQL.NUMERIC_SCALE ?
-                            `, ${columnMetadataMySQL.NUMERIC_SCALE})` : `)`;
+                    // Add numeric precision/scale for data types DECIMAL, NUMERIC, FLOAT, DOUBLE
+                    switch (columnMetadataMySQL.DATA_TYPE) {
+                        case 'decimal':
+                        case 'numeric':
+                        case 'float':
+                        case 'double':
+                            columnMetadata.dataType += numericPrecisionScale(columnMetadataMySQL);
+                            break;
                     }
 
                     // ENUM: add values to data type -> DataType.ENUM('v1', 'v2')

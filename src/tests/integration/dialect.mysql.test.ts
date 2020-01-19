@@ -23,6 +23,30 @@ const initTestTables = async (connection: Sequelize): Promise<void> => {
     await connection.query(dataTypesTableCREATE);
 };
 
+const numericTests: [string, number][] = [
+    ['bigint', 100000000000000000],
+    ['smallint', 32767],
+    ['mediumint', 8388607],
+    ['tinyint', 127],
+    ['decimal', 99.999],
+    ['float', 66.78],
+    ['double', 11.2345],
+    ['int', 2147483647],
+];
+
+const stringTests: [string, string][] = [
+    ['varchar', 'Hello world'],
+    ['char', 'a'],
+    ['tinytext', 'xyz'],
+    ['mediumtext', 'Voodoo Lady'],
+    ['longtext', 'Supercalifragilisticexpialidocious'],
+    ['text', 'Access denied'],
+];
+
+const binaryTests: [string, Buffer][] = [
+    // ['bit', 1],
+];
+
 describe('MySQL', () => {
     const outDir = path.join(process.cwd(), 'output-models');
     let connection: Sequelize | undefined;
@@ -61,69 +85,25 @@ describe('MySQL', () => {
     });
 
     describe('Data Types', () => {
-        beforeEach(async () => {
+        beforeAll(async () => {
             await initTestTables(connection!);
         });
 
-        it('bigint', async () => {
-            const DataTypes = connection!.model(dataTypesTableName);
-            const res = await DataTypes.upsert({ f_bigint: 100000000000000000 });
+        // Numeric and string tests
+        for (const [testName, testValue] of [...numericTests, ...stringTests]) {
+            it(testName, async () => {
+                const DataTypes = connection!.model(dataTypesTableName);
+                const field = `f_${testName}`;
+                const res = await DataTypes.upsert({ [field]: testValue });
 
-            expect(res).toBe(true);
+                expect(res).toBe(true);
 
-            const row = await DataTypes.findOne();
-            expect(row).toBeDefined();
-        });
+                const rows = await DataTypes.findAll({ order: [['id', 'DESC']], limit: 1, raw: true });
+                expect(rows.length).toBe(1);
+                expect(rows[0]).toHaveProperty(field, testValue);
+            });
+        }
 
-        it('smallint', async () => {
-            const DataTypes = connection!.model(dataTypesTableName);
-            const res = await DataTypes.upsert({ f_smallint: 32767 });
-
-            expect(res).toBe(true);
-
-            const row = await DataTypes.findOne();
-            expect(row).toBeDefined();
-        });
-
-        it('mediumint', async () => {
-            const DataTypes = connection!.model(dataTypesTableName);
-            const res = await DataTypes.upsert({ f_mediumint: 8388607 });
-
-            expect(res).toBe(true);
-
-            const row = await DataTypes.findOne();
-            expect(row).toBeDefined();
-        });
-
-        it('int', async () => {
-            const DataTypes = connection!.model(dataTypesTableName);
-            const res = await DataTypes.upsert({ f_int: 2147483647 });
-
-            expect(res).toBe(true);
-
-            const row = await DataTypes.findOne();
-            expect(row).toBeDefined();
-        });
-
-        it('float', async () => {
-            const DataTypes = connection!.model(dataTypesTableName);
-            const res = await DataTypes.upsert({ f_float: 11.22 });
-
-            expect(res).toBe(true);
-
-            const row = await DataTypes.findOne();
-            expect(row).toBeDefined();
-        });
-
-        it('double', async () => {
-            const DataTypes = connection!.model(dataTypesTableName);
-            const res = await DataTypes.upsert({ f_double: 33.44 });
-
-            expect(res).toBe(true);
-
-            const row = await DataTypes.findOne();
-            expect(row).toBeDefined();
-        });
     });
 
     afterAll(async () => {
