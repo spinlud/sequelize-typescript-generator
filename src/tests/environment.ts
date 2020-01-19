@@ -6,31 +6,18 @@ import { Options, Dialect as DialectType } from 'sequelize';
  * @returns {Options}
  */
 export const buildSequelizeOptions = (dialect: DialectType): Options => {
-    let sequelizeOptions: Options = {};
-
-    sequelizeOptions.dialect = dialect;
-
-    sequelizeOptions.logging = false;
-
-    if (process.env.TEST_DB_HOST) {
-        sequelizeOptions.host = process.env.TEST_DB_HOST;
-    }
-
-    if (process.env.TEST_DB_PORT) {
-        sequelizeOptions.port = parseInt(process.env.TEST_DB_PORT);
-    }
-
-    if (process.env.TEST_DB_DATABASE) {
-        sequelizeOptions.database = process.env.TEST_DB_DATABASE;
-    }
-
-    if (process.env.TEST_DB_USERNAME) {
-        sequelizeOptions.username = process.env.TEST_DB_USERNAME;
-    }
-
-    if (process.env.TEST_DB_PASSWORD) {
-        sequelizeOptions.password = process.env.TEST_DB_PASSWORD;
-    }
+    let sequelizeOptions: Options = {
+        dialect: dialect,
+        ...process.env.TEST_DB_HOST && { host: process.env.TEST_DB_HOST },
+        ...process.env.TEST_DB_PORT && { port: parseInt(process.env.TEST_DB_PORT) },
+        ...process.env.TEST_DB_DATABASE && { database: process.env.TEST_DB_DATABASE },
+        ...process.env.TEST_DB_USERNAME && { username: process.env.TEST_DB_USERNAME },
+        ...process.env.TEST_DB_PASSWORD && { password: process.env.TEST_DB_PASSWORD },
+        dialectOptions: {
+            decimalNumbers: true,
+        },
+        logging: false,
+    };
 
     return sequelizeOptions;
 };

@@ -13,6 +13,7 @@ export interface IColumnMetadata {
     type: string;
     typeExt: string;
     dataType: string;
+    // enumValues?: string[],
     primaryKey: boolean;
     // foreignKey: boolean;
     allowNull: boolean;

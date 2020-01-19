@@ -77,35 +77,42 @@ export class DialectMySQL extends Dialect {
         mediumint: 'number',
         tinyint: 'number',
         decimal: 'number',
+        float: 'number',
+        double: 'number',
+        int: 'number',
+
         varchar: 'string',
         char: 'string',
+        mediumtext: 'string',
+        tinytext: 'string',
+        longtext: 'string',
+        text: 'string',
+        linestring: 'string',
+        multilinestring: 'string',
+
         date: 'string',
         datetime: 'string',
         time: 'string',
         timestamp: 'string',
-        float: 'number',
-        double: 'number',
+        year: 'string',
+
         bit: 'boolean',
+
         enum: 'string',
-        binary: 'string',
+        set: 'any',
+
+        binary: 'Buffer',
         blob: 'Buffer',
+        longblob: 'Buffer',
+        tinyblob: 'Buffer',
+
         geometry: 'object',
         geometrycollection: 'object',
         point: 'object',
         multipoint: 'object',
-        multilinestring: 'string',
         multipolygon: 'object',
-        int: 'number',
+
         json: 'object',
-        linestring: 'string',
-        mediumtext: 'string',
-        longblob: 'Buffer',
-        longtext: 'string',
-        text: 'string',
-        set: 'Set<string>',
-        tinyblob: 'Buffer',
-        tinytext: 'string',
-        year: 'string',
     }
 
     /**
@@ -182,6 +189,25 @@ export class DialectMySQL extends Dialect {
                         primaryKey: columnMetadataMySQL.COLUMN_KEY === 'PRI',
                         autoIncrement: columnMetadataMySQL.EXTRA === 'auto_increment',
                     };
+
+                    // FLOAT: add numeric precision/scale to data type -> DataType.FLOAT(7,4)
+                    if (columnMetadataMySQL.DATA_TYPE === 'float') {
+                        columnMetadata.dataType += `(${columnMetadataMySQL.NUMERIC_PRECISION}`;
+                        columnMetadata.dataType +=  columnMetadataMySQL.NUMERIC_SCALE ?
+                            `, ${columnMetadataMySQL.NUMERIC_SCALE})` : `)`;
+                    }
+
+                    // DOUBLE: add numeric precision/scale to data type -> DataType.DOUBLE(10,4)
+                    if (columnMetadataMySQL.DATA_TYPE === 'double') {
+                        columnMetadata.dataType += `(${columnMetadataMySQL.NUMERIC_PRECISION}`;
+                        columnMetadata.dataType +=  columnMetadataMySQL.NUMERIC_SCALE ?
+                            `, ${columnMetadataMySQL.NUMERIC_SCALE})` : `)`;
+                    }
+
+                    // ENUM: add values to data type -> DataType.ENUM('v1', 'v2')
+                    if (columnMetadataMySQL.DATA_TYPE === 'enum') {
+                        columnMetadata.dataType += columnMetadata.typeExt.match(/\(.*\)/)![0];
+                    }
 
                     tableMetadata.columns.push(columnMetadata);
                 }
