@@ -45,13 +45,14 @@ export class DialectMySQL extends Dialect {
         mediumblob: DataType.BLOB,
         longblob: DataType.BLOB,
 
-        geometry: DataType.GEOMETRY,
-        geometrycollection: DataType.GEOMETRY,
         point: DataType.GEOMETRY,
         multipoint: DataType.GEOMETRY,
-        multilinestring: DataType.GEOMETRY,
         linestring: DataType.GEOMETRY,
+        multilinestring: DataType.GEOMETRY,
+        polygon: DataType.GEOMETRY,
         multipolygon: DataType.GEOMETRY,
+        geometry: DataType.GEOMETRY,
+        geometrycollection: DataType.GEOMETRY,
 
         json: DataType.JSON,
     };
@@ -90,13 +91,14 @@ export class DialectMySQL extends Dialect {
         mediumblob: 'Buffer',
         longblob: 'Buffer',
 
-        geometry: 'object',
-        geometrycollection: 'object',
         point: 'object',
         multipoint: 'object',
-        multipolygon: 'object',
         linestring: 'object',
         multilinestring: 'object',
+        polygon: 'object',
+        multipolygon: 'object',
+        geometry: 'object',
+        geometrycollection: 'object',
 
         json: 'object',
     }

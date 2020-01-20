@@ -1,14 +1,15 @@
 import path from 'path';
-import { promises as fs } from 'fs';
 import { Sequelize } from 'sequelize-typescript';
-import { createConnection } from '../../connection';
-import { buildSequelizeOptions } from '../environment';
-import { IConfig, DialectMySQL, ModelBuilder } from '../../index';
+import { createConnection } from '../../../connection';
+import { buildSequelizeOptions } from '../../environment';
+import { IConfig, DialectMySQL, ModelBuilder } from '../../../index';
+import * as geometries from './geometries';
 import {
     dataTypesTableName,
     dataTypesTableDROP,
     dataTypesTableCREATE,
-} from '../queries';
+} from './queries';
+
 
 /**
  * Initialize test tables
@@ -56,12 +57,27 @@ const collectionsTests: [string, string][] = [
     ['set', 'X'],
 ];
 
-const binaryStringsTests: [string, Buffer | number | string][] = [
+const binaryStringsTests: [string, Buffer][] = [
     ['binary', Buffer.from('A')],
     ['blob', Buffer.from('Not authorized')],
     ['tinyblob', Buffer.from('xyz')],
     ['mediumblob', Buffer.from('Voodoo Lady')],
     ['longblob', Buffer.from('Supercalifragilisticexpialidocious')],
+];
+
+const geometriesTests: [string, Object][] = [
+    ['point', geometries.Point],
+    ['multipoint', geometries.MultiPoint],
+    ['linestring', geometries.LineString],
+    ['multilinestring', geometries.MultiLineString],
+    ['polygon', geometries.Polygon],
+    ['multipolygon', geometries.MultiPolygon],
+    ['geometry', geometries.Geometry],
+    ['geometrycollection', geometries.GeometryCollection],
+];
+
+const jsonTests: [string, Object][] = [
+    ['json', JSON.parse('{"key1": "value1", "key2": "value2"}')],
 ];
 
 describe('MySQL', () => {
@@ -106,12 +122,34 @@ describe('MySQL', () => {
             await initTestTables(connection!);
         });
 
+        // BIT (mysql2 driver returns bit field as a Uint8Array)
+        it('bit', async () => {
+            const DataTypes = connection!.model(dataTypesTableName);
+            const testField = `f_bit`;
+            const testValue = 127;
+            const res = await DataTypes.upsert({ [testField]: testValue });
+
+            expect(res).toBe(true);
+
+            const rows = await DataTypes.findAll({ order: [['id', 'DESC']], limit: 1, /* raw: true */ });
+            expect(rows.length).toBe(1);
+
+            // @ts-ignore-start
+            const receivedValue: Uint8Array = rows[0][testField];
+            expect(receivedValue).toBeDefined();
+            const bufferToNumber: number = Buffer.from(receivedValue).readUIntBE(0, receivedValue.length);
+            expect(bufferToNumber).toStrictEqual(testValue);
+            // @ts-ignore-end
+        });
+
         for (const [testName, testValue] of [
             ...numericTests,
             ...stringTests,
             ...dateTests,
             ...collectionsTests,
             ...binaryStringsTests,
+            ...geometriesTests,
+            ...jsonTests,
         ]) {
             it(testName, async () => {
                 const DataTypes = connection!.model(dataTypesTableName);
@@ -136,26 +174,6 @@ describe('MySQL', () => {
                 // @ts-ignore-end
             });
         }
-
-        // BIT (mysql2 driver returns bit field as a Uint8Array)
-        it('bit', async () => {
-            const DataTypes = connection!.model(dataTypesTableName);
-            const testField = `f_bit`;
-            const testValue = 127;
-            const res = await DataTypes.upsert({ [testField]: testValue });
-
-            expect(res).toBe(true);
-
-            const rows = await DataTypes.findAll({ order: [['id', 'DESC']], limit: 1, /* raw: true */ });
-            expect(rows.length).toBe(1);
-
-            // @ts-ignore-start
-            const receivedValue: Uint8Array = rows[0][testField];
-            expect(receivedValue).toBeDefined();
-            const bufferToNumber: number = Buffer.from(receivedValue).readUIntBE(0, receivedValue.length);
-            expect(bufferToNumber).toStrictEqual(testValue);
-            // @ts-ignore-end
-        });
     });
 
     afterAll(async () => {

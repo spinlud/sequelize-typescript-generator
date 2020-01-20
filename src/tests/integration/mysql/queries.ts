@@ -6,6 +6,7 @@ export const dataTypesTableCREATE = `
     CREATE TABLE ${dataTypesTableName}
     (
         id                   INT                  auto_increment          primary key,  
+        f_bit                BIT(7)               null,        
         f_bigint             BIGINT               null,
         f_smallint           SMALLINT             null,
         f_mediumint          MEDIUMINT            null,
@@ -32,14 +33,14 @@ export const dataTypesTableCREATE = `
         f_tinyblob           TINYBLOB             null,
         f_mediumblob         MEDIUMBLOB           null,
         f_longblob           LONGBLOB             null,
-        f_bit                BIT(7)               null,
-        f_geometry           GEOMETRY             null,
-        f_geometrycollection GEOMETRYCOLLECTION   null,
         f_point              POINT                null,
         f_multipoint         MULTIPOINT           null,
-        f_multipolygon       MULTIPOLYGON         null,
         f_linestring         LINESTRING           null,
         f_multilinestring    MULTILINESTRING      null,
+        f_polygon            POLYGON              null,
+        f_multipolygon       MULTIPOLYGON         null,
+        f_geometry           GEOMETRY             null,
+        f_geometrycollection GEOMETRYCOLLECTION   null,
         f_json               JSON                 null
     ) CHARSET = 'latin1'
 `;
