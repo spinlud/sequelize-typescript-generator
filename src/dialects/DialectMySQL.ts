@@ -20,6 +20,7 @@ export class DialectMySQL extends Dialect {
         decimal: DataType.DECIMAL,
         float: DataType.FLOAT,
         double: DataType.DOUBLE,
+
         bit: DataType.INTEGER,
 
         varchar: DataType.STRING,
@@ -38,10 +39,11 @@ export class DialectMySQL extends Dialect {
         enum: DataType.ENUM,
         set: DataType.STRING,
 
-        binary: DataType.STRING,
+        binary: DataType.BLOB,
         blob: DataType.BLOB,
-        longblob: DataType.BLOB,
         tinyblob: DataType.BLOB,
+        mediumblob: DataType.BLOB,
+        longblob: DataType.BLOB,
 
         geometry: DataType.GEOMETRY,
         geometrycollection: DataType.GEOMETRY,
@@ -63,7 +65,8 @@ export class DialectMySQL extends Dialect {
         float: 'number',
         double: 'number',
         int: 'number',
-        bit: 'number',
+
+        bit: 'Uint8Array',
 
         varchar: 'string',
         char: 'string',
@@ -83,8 +86,9 @@ export class DialectMySQL extends Dialect {
 
         binary: 'Buffer',
         blob: 'Buffer',
-        longblob: 'Buffer',
         tinyblob: 'Buffer',
+        mediumblob: 'Buffer',
+        longblob: 'Buffer',
 
         geometry: 'object',
         geometrycollection: 'object',

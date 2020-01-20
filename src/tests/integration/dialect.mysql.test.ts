@@ -49,10 +49,19 @@ const dateTests: [string, string | number | Date][] = [
     ['datetime', new Date()],
     ['timestamp', new Date()],
     ['year', new Date().getFullYear()],
-]
+];
 
-const binaryTests: [string, Buffer][] = [
-    // ['bit', 1],
+const collectionsTests: [string, string][] = [
+    ['enum', 'BB'],
+    ['set', 'X'],
+];
+
+const binaryStringsTests: [string, Buffer | number | string][] = [
+    ['binary', Buffer.from('A')],
+    ['blob', Buffer.from('Not authorized')],
+    ['tinyblob', Buffer.from('xyz')],
+    ['mediumblob', Buffer.from('Voodoo Lady')],
+    ['longblob', Buffer.from('Supercalifragilisticexpialidocious')],
 ];
 
 describe('MySQL', () => {
@@ -97,21 +106,56 @@ describe('MySQL', () => {
             await initTestTables(connection!);
         });
 
-        // Numeric and string tests
-        for (const [testName, testValue] of [...numericTests, ...stringTests, ...dateTests]) {
+        for (const [testName, testValue] of [
+            ...numericTests,
+            ...stringTests,
+            ...dateTests,
+            ...collectionsTests,
+            ...binaryStringsTests,
+        ]) {
             it(testName, async () => {
                 const DataTypes = connection!.model(dataTypesTableName);
-                const field = `f_${testName}`;
-                const res = await DataTypes.upsert({ [field]: testValue });
+                const testField = `f_${testName}`;
+                const res = await DataTypes.upsert({ [testField]: testValue });
 
                 expect(res).toBe(true);
 
-                const rows = await DataTypes.findAll({ order: [['id', 'DESC']], limit: 1, raw: true });
+                const rows = await DataTypes.findAll({ order: [['id', 'DESC']], limit: 1, /* raw: true */ });
                 expect(rows.length).toBe(1);
-                expect(rows[0]).toHaveProperty(field, testValue);
+
+                // @ts-ignore-start
+                const receivedValue = rows[0][testField];
+                expect(receivedValue).toBeDefined();
+
+                if (Buffer.isBuffer(testValue)) {
+                    expect(Buffer.compare(receivedValue, testValue)).toBe(0);
+                }
+                else {
+                    expect(receivedValue).toStrictEqual(testValue);
+                }
+                // @ts-ignore-end
             });
         }
 
+        // BIT (mysql2 driver returns bit field as a Uint8Array)
+        it('bit', async () => {
+            const DataTypes = connection!.model(dataTypesTableName);
+            const testField = `f_bit`;
+            const testValue = 127;
+            const res = await DataTypes.upsert({ [testField]: testValue });
+
+            expect(res).toBe(true);
+
+            const rows = await DataTypes.findAll({ order: [['id', 'DESC']], limit: 1, /* raw: true */ });
+            expect(rows.length).toBe(1);
+
+            // @ts-ignore-start
+            const receivedValue: Uint8Array = rows[0][testField];
+            expect(receivedValue).toBeDefined();
+            const bufferToNumber: number = Buffer.from(receivedValue).readUIntBE(0, receivedValue.length);
+            expect(bufferToNumber).toStrictEqual(testValue);
+            // @ts-ignore-end
+        });
     });
 
     afterAll(async () => {
