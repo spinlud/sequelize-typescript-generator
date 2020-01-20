@@ -43,6 +43,14 @@ const stringTests: [string, string][] = [
     ['text', 'Access denied'],
 ];
 
+const dateTests: [string, string | number | Date][] = [
+    ['date', '2020-01-01'],
+    ['time', '23:59:59'],
+    ['datetime', new Date()],
+    ['timestamp', new Date()],
+    ['year', new Date().getFullYear()],
+]
+
 const binaryTests: [string, Buffer][] = [
     // ['bit', 1],
 ];
@@ -90,7 +98,7 @@ describe('MySQL', () => {
         });
 
         // Numeric and string tests
-        for (const [testName, testValue] of [...numericTests, ...stringTests]) {
+        for (const [testName, testValue] of [...numericTests, ...stringTests, ...dateTests]) {
             it(testName, async () => {
                 const DataTypes = connection!.model(dataTypesTableName);
                 const field = `f_${testName}`;

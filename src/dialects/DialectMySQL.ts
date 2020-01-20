@@ -3,7 +3,7 @@ import { Sequelize, DataType } from 'sequelize-typescript';
 import { createConnection } from '../connection';
 import { IConfig } from '../config';
 import { ITableMetadata, IColumnMetadata, Dialect } from './Dialect';
-import { IColumnMetadataMySQL, numericPrecisionScale } from './utils';
+import { IColumnMetadataMySQL, numericPrecisionScale, dateTimePrecision } from './utils';
 
 /**
  * Dialect for MySQL
@@ -33,7 +33,7 @@ export class DialectMySQL extends Dialect {
         datetime: DataType.DATE,
         time: DataType.TIME,
         timestamp: DataType.DATE,
-        year: DataType.STRING,
+        year: DataType.INTEGER,
 
         enum: DataType.ENUM,
         set: DataType.STRING,
@@ -73,9 +73,9 @@ export class DialectMySQL extends Dialect {
         text: 'string',
 
         date: 'string',
-        datetime: 'string',
         time: 'string',
-        timestamp: 'string',
+        datetime: 'Date',
+        timestamp: 'Date',
         year: 'string',
 
         enum: 'string',
@@ -172,13 +172,18 @@ export class DialectMySQL extends Dialect {
                         autoIncrement: columnMetadataMySQL.EXTRA === 'auto_increment',
                     };
 
-                    // Add numeric precision/scale for data types DECIMAL, NUMERIC, FLOAT, DOUBLE
+                    // Additional data type informations
                     switch (columnMetadataMySQL.DATA_TYPE) {
                         case 'decimal':
                         case 'numeric':
                         case 'float':
                         case 'double':
                             columnMetadata.dataType += numericPrecisionScale(columnMetadataMySQL);
+                            break;
+
+                        case 'datetime':
+                        case 'timestamp':
+                            columnMetadata.dataType += dateTimePrecision(columnMetadataMySQL);
                             break;
                     }
 

@@ -20,13 +20,11 @@ export const dataTypesTableCREATE = `
         f_tinytext           TINYTEXT             null,
         f_mediumtext         MEDIUMTEXT           null,
         f_longtext           LONGTEXT             null,
-        f_text               TEXT                 null,
-        f_linestring         LINESTRING           null,
-        f_multilinestring    MULTILINESTRING      null,
+        f_text               TEXT                 null,        
         f_date               DATE                 null,
-        f_datetime           DATETIME             null,
         f_time               TIME                 null,
-        f_timestamp          TIMESTAMP            null,
+        f_datetime           DATETIME(6)          null,
+        f_timestamp          TIMESTAMP(3)         null,
         f_year               YEAR                 null,        
         f_enum               ENUM ('A', 'B', 'C') null,
         f_set                SET ('X', 'Y', 'Z')  null,
@@ -39,6 +37,8 @@ export const dataTypesTableCREATE = `
         f_point              POINT                null,
         f_multipoint         MULTIPOINT           null,
         f_multipolygon       MULTIPOLYGON         null,
+        f_linestring         LINESTRING           null,
+        f_multilinestring    MULTILINESTRING      null,
         f_json               JSON                 null
     ) CHARSET = 'latin1'
 `;

@@ -33,3 +33,17 @@ export const numericPrecisionScale = (columnMetadataMySQL: IColumnMetadataMySQL)
         `, ${columnMetadataMySQL.NUMERIC_SCALE})` : `)`;
     return res;
 };
+
+/**
+ * Compute date time precision signature: TIMESTAMP(3), DATETIME(6)
+ * @param {IColumnMetadataMySQL} columnMetadataMySQL
+ * @returns {string} '(3)'
+ */
+export const dateTimePrecision = (columnMetadataMySQL: IColumnMetadataMySQL): string => {
+    if (columnMetadataMySQL.DATETIME_PRECISION) {
+        return `(${columnMetadataMySQL.DATETIME_PRECISION})`;
+    }
+    else {
+        return '';
+    }
+};
