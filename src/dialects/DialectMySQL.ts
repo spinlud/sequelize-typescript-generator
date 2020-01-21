@@ -5,6 +5,11 @@ import { IConfig } from '../config';
 import { ITableMetadata, IColumnMetadata, Dialect } from './Dialect';
 import { IColumnMetadataMySQL, numericPrecisionScale, dateTimePrecision } from './utils';
 
+interface ITableNameRow {
+    table_name?: string;
+    TABLE_NAME?: string;
+}
+
 /**
  * Dialect for MySQL
  * @class DialectMySQL
@@ -131,7 +136,9 @@ export class DialectMySQL extends Dialect {
                     type: QueryTypes.SELECT,
                     raw: true,
                 }
-            )).map(row => row['table_name' as keyof typeof row] as string);
+            ) as ITableNameRow[]).map(row => {
+                return row.table_name ?? row.TABLE_NAME!;
+            });
 
             for (const tableName of tableNames) {
                 const tableMetadataQuery = `

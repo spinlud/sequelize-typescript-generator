@@ -39,8 +39,7 @@ export const dataTypesTableCREATE = `
         f_multilinestring    MULTILINESTRING      null,
         f_polygon            POLYGON              null,
         f_multipolygon       MULTIPOLYGON         null,
-        f_geometry           GEOMETRY             null,
-        f_geometrycollection GEOMETRYCOLLECTION   null,
+        f_geometry           GEOMETRY             null,        
         f_json               JSON                 null
     ) CHARSET = 'latin1'
 `;

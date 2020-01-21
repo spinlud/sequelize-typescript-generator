@@ -39,7 +39,8 @@
     "ts-jest": "^24.3.0",
     "ts-node-dev": "^1.0.0-pre.44",
     "tsc": "^1.20150623.0",
-    "typescript": "^3.7.4"
+    "typescript": "^3.7.4",
+    "wkx": "^0.4.8"
   },
   "dependencies": {
     "@typescript-eslint/eslint-plugin": "^2.16.0",
