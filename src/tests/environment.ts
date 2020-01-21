@@ -16,7 +16,7 @@ export const buildSequelizeOptions = (dialect: DialectType): Options => {
         dialectOptions: {
             decimalNumbers: true,
         },
-        // logging: false,
+        logging: false,
     };
 
     return sequelizeOptions;
