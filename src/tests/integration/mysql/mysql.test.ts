@@ -5,9 +5,13 @@ import { buildSequelizeOptions } from '../../environment';
 import { IConfig, DialectMySQL, ModelBuilder } from '../../../index';
 import * as geometries from './geometries';
 import {
-    dataTypesTableName,
+    dataTypesTableNAME,
     dataTypesTableDROP,
     dataTypesTableCREATE,
+    indicesTableNAME,
+    indicesTableDROP,
+    indicesTableCREATE,
+    indicesTableINDEX
 } from './queries';
 
 /**
@@ -43,9 +47,12 @@ const applyGeomFromTextWorkaround = (): void => { // Reference: https://github.c
 const initTestTables = async (connection: Sequelize): Promise<void> => {
     // Drop test tables
     await connection.query(dataTypesTableDROP);
+    await connection.query(indicesTableDROP);
 
     // Create test tables
     await connection.query(dataTypesTableCREATE);
+    await connection.query(indicesTableCREATE);
+    await connection.query(indicesTableINDEX);
 };
 
 const numericTests: [string, number][] = [
@@ -136,10 +143,10 @@ describe('MySQL', () => {
 
         it('should register models',() => {
             connection!.addModels([ outDir ]);
-            const DataTypes = connection!.model(dataTypesTableName);
+            const DataTypes = connection!.model(dataTypesTableNAME);
 
             expect(DataTypes).toBeDefined();
-            expect(connection!.isDefined(dataTypesTableName)).toBe(true);
+            expect(connection!.isDefined(dataTypesTableNAME)).toBe(true);
         });
     });
 
@@ -150,7 +157,7 @@ describe('MySQL', () => {
 
         // BIT (mysql2 driver returns bit field as a Uint8Array)
         it('bit', async () => {
-            const DataTypes = connection!.model(dataTypesTableName);
+            const DataTypes = connection!.model(dataTypesTableNAME);
             const testField = `f_bit`;
             const testValue = 127;
             const res = await DataTypes.upsert({ [testField]: testValue });
@@ -178,7 +185,7 @@ describe('MySQL', () => {
             ...jsonTests,
         ]) {
             it(testName, async () => {
-                const DataTypes = connection!.model(dataTypesTableName);
+                const DataTypes = connection!.model(dataTypesTableNAME);
                 const testField = `f_${testName}`;
                 const res = await DataTypes.upsert({ [testField]: testValue });
 
@@ -200,6 +207,14 @@ describe('MySQL', () => {
                 // @ts-ignore-end
             });
         }
+    });
+
+    describe('Index', () => {
+        beforeAll(async () => {
+            await initTestTables(connection!);
+        });
+
+        it('empty', () => {});
     });
 
     afterAll(async () => {

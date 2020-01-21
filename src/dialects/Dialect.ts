@@ -8,6 +8,14 @@ export interface ITableMetadata {
     comment?: string;
 }
 
+export interface IIndexMetadata {
+    name: string;
+    collation: string | null;
+    seq: number;
+    type: string;
+    unique: boolean;
+}
+
 export interface IColumnMetadata {
     name: string;
     type: string;
@@ -17,8 +25,9 @@ export interface IColumnMetadata {
     primaryKey: boolean;
     // foreignKey: boolean;
     allowNull: boolean;
-    // unique: boolean;
     autoIncrement: boolean;
+    unique: boolean;
+    indices?: IIndexMetadata[],
     // default?: ;
 }
 

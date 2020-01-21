@@ -20,6 +20,20 @@ export interface IColumnMetadataMySQL {
     PRIVILEGES: string;
     COLUMN_COMMENT: string;
     GENERATION_EXPRESSION: string;
+
+    // Index info
+    INDEX_NAME: string | null; // The name of the index. If the index is the primary key, the name is always PRIMARY.
+    NON_UNIQUE: number | null; // 0 if the index cannot contain duplicates, 1 if it can
+    INDEX_SCHEMA: string | null; // The name of the schema (database) to which the index belongs.
+    SEQ_IN_INDEX: number | null; // The column sequence number in the index, starting with 1.
+    COLLATION: string | null; // How the column is sorted in the index. This can have values A (ascending), D (descending), or NULL (not sorted).
+    CARDINALITY: number | null; // An estimate of the number of unique values in the index.
+    SUB_PART: string | null; // The index prefix. That is, the number of indexed characters if the column is only partly indexed, NULL if the entire column is indexed.
+    PACKED: string | null;// Indicates how the key is packed. NULL if it is not.
+    NULLABLE: string | null; // Contains YES if the column may contain NULL values and '' if not.
+    INDEX_TYPE: string | null; // The index method used (BTREE, FULLTEXT, HASH, RTREE).
+    COMMENT: string | null;
+    INDEX_COMMENT: string | null;
 }
 
 /**

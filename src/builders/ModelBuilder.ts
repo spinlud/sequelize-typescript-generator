@@ -3,8 +3,9 @@ import path from 'path';
 import * as ts from 'typescript';
 import { lintFiles } from '../lint';
 import { ModelAttributeColumnOptions } from 'sequelize';
+import { IndexOptions, IndexFieldOptions } from 'sequelize-typescript';
 import { IConfig } from '../config';
-import { IColumnMetadata, ITableMetadata, Dialect } from '../dialects/Dialect';
+import { IColumnMetadata, ITableMetadata, IIndexMetadata, Dialect } from '../dialects/Dialect';
 import { generateNamedImports, generateObjectLiteralDecorator, nodeToString } from './utils';
 import { Builder } from './Builder';
 
@@ -19,16 +20,39 @@ export class ModelBuilder extends Builder {
     }
 
     private buildColumnPropertyDecl(col: IColumnMetadata, dataTypeMap: { [key: string]: string }): ts.PropertyDeclaration {
-        const props: Partial<ModelAttributeColumnOptions> = {
-            ...col.primaryKey && { primaryKey: col.primaryKey },
-            ...col.autoIncrement && { autoIncrement: col.autoIncrement },
-            ...col.allowNull && { allowNull: col.allowNull },
-            type: col.dataType,
-        };
+
+        const buildColumnDecoratorProps = (col: IColumnMetadata): Partial<ModelAttributeColumnOptions> => {
+            const props: Partial<ModelAttributeColumnOptions> = {
+                ...col.primaryKey && { primaryKey: col.primaryKey },
+                ...col.unique && { unique: col.unique },
+                ...col.autoIncrement && { autoIncrement: col.autoIncrement },
+                ...col.allowNull && { allowNull: col.allowNull },
+                type: col.dataType,
+            };
+
+            return props;
+        }
+
+        const buildIndexDecoratorProps = (index: IIndexMetadata): Partial<IndexOptions & IndexFieldOptions> => {
+            const props: Partial<IndexOptions & IndexFieldOptions> = {
+                name: index.name,
+                // type: index.type as 'UNIQUE' | 'FULLTEXT' | 'SPATIAL', // BTREE missing in types
+                // ...index.collation && { collate: index.collation }, // Redundant maybe
+                ...index.collation && { order: index.collation === 'A' ? 'ASC' : 'DESC' },
+                unique: index.unique,
+            };
+
+            return props;
+        }
+
 
         return ts.createProperty(
             [
-                generateObjectLiteralDecorator('Column', props),
+                generateObjectLiteralDecorator('Column', buildColumnDecoratorProps(col)),
+                ...(col.indices && col.indices.length ?
+                    col.indices.map(index => generateObjectLiteralDecorator('Index', buildIndexDecoratorProps(index))) :
+                    []
+                )
             ],
             undefined,
             col.name,
@@ -83,7 +107,8 @@ export class ModelBuilder extends Builder {
                 'Model',
                 'Table',
                 'Column',
-                'DataType'
+                'DataType',
+                'Index'
             ],
             'sequelize-typescript'
         ));

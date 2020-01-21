@@ -1,9 +1,9 @@
-export const dataTypesTableName = 'data_types';
+export const dataTypesTableNAME = 'data_types';
 
-export const dataTypesTableDROP = `DROP TABLE IF EXISTS ${dataTypesTableName}`;
+export const dataTypesTableDROP = `DROP TABLE IF EXISTS ${dataTypesTableNAME}`;
 
 export const dataTypesTableCREATE = `
-    CREATE TABLE ${dataTypesTableName}
+    CREATE TABLE ${dataTypesTableNAME}
     (
         id                   INT                  auto_increment          primary key,  
         f_bit                BIT(7)               null,        
@@ -42,4 +42,25 @@ export const dataTypesTableCREATE = `
         f_geometry           GEOMETRY             null,        
         f_json               JSON                 null
     ) CHARSET = 'latin1'
+`;
+
+export const indicesTableNAME = 'indices';
+
+export const indicesTableDROP = `DROP TABLE IF EXISTS ${indicesTableNAME}`;
+
+export const indicesTableCREATE = `
+    create table ${indicesTableNAME}
+    (
+        id int auto_increment primary key,
+        f_unique bigint null,
+        f_multi_1 int not null,
+        f_multi_2 int null,
+        constraint indices_f_multi_1_uindex unique (f_multi_1),
+        constraint indices_f_unique_uindex unique (f_unique)
+    ) CHARSET = 'latin1'
+`;
+
+export const indicesTableINDEX = `
+    create index indices_f_multi_1_f_multi_2_index
+        on ${indicesTableNAME} (f_multi_1, f_multi_2);
 `;
