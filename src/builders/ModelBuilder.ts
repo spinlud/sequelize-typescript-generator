@@ -23,6 +23,7 @@ export class ModelBuilder extends Builder {
 
         const buildColumnDecoratorProps = (col: IColumnMetadata): Partial<ModelAttributeColumnOptions> => {
             const props: Partial<ModelAttributeColumnOptions> = {
+                ...col.fieldName && { field: col.fieldName },
                 ...col.primaryKey && { primaryKey: col.primaryKey },
                 ...col.unique && { unique: col.unique },
                 ...col.autoIncrement && { autoIncrement: col.autoIncrement },
@@ -68,7 +69,7 @@ export class ModelBuilder extends Builder {
      * @param tableMetadata
      */
     private buildTableClassDeclaration(tableMetadata: ITableMetadata): string {
-        const { name: tableName, columns } = tableMetadata;
+        const { name: tableName, modelName, columns } = tableMetadata;
 
         const classDecl = ts.createClassDeclaration(
             [
@@ -82,14 +83,14 @@ export class ModelBuilder extends Builder {
             [
                 ts.createToken(ts.SyntaxKind.ExportKeyword),
             ],
-            tableName,
+            modelName,
             undefined,
             [
                 ts.createHeritageClause(
                     ts.SyntaxKind.ExtendsKeyword,
                     [
                         ts.createExpressionWithTypeArguments(
-                            [ ts.createTypeReferenceNode(tableName, undefined) ],
+                            [ ts.createTypeReferenceNode(modelName, undefined) ],
                             ts.createIdentifier('Model')
                         )
                     ]
@@ -160,7 +161,7 @@ export class ModelBuilder extends Builder {
             const tableClassDecl = this.buildTableClassDeclaration(tableMetadata);
 
             writePromises.push((async () => {
-                const outPath = path.join(outDir, tableMetadata.name + '.ts');
+                const outPath = path.join(outDir, tableMetadata.modelName + '.ts');
 
                 await fs.writeFile(
                     outPath,

@@ -6,7 +6,8 @@ import { ITableMetadata, IColumnMetadata, Dialect } from './Dialect';
 import {
     IColumnMetadataMySQL,
     numericPrecisionScale,
-    dateTimePrecision
+    dateTimePrecision,
+    caseTransformer,
 } from './utils';
 
 interface ITableNameRow {
@@ -178,12 +179,15 @@ export class DialectMySQL extends Dialect {
                         c.COLUMN_KEY,
                         c.EXTRA,
                         c.COLUMN_COMMENT,
+                        t.TABLE_COMMENT,
                         s.INDEX_NAME,
                         s.INDEX_TYPE,
                         s.COLLATION,
                         s.SEQ_IN_INDEX,
                         s.NON_UNIQUE
                         FROM information_schema.columns c
+                        INNER JOIN information_schema.tables t
+                            ON c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME
                         LEFT OUTER JOIN information_schema.statistics s
                             ON c.TABLE_SCHEMA = s.TABLE_SCHEMA AND c.TABLE_NAME = s.TABLE_NAME AND c.COLUMN_NAME = s.COLUMN_NAME
                         WHERE c.TABLE_SCHEMA='${database}' AND c.TABLE_NAME = '${tableName}'
@@ -205,8 +209,11 @@ export class DialectMySQL extends Dialect {
                         c.IS_NULLABLE,
                         c.COLUMN_KEY,
                         c.EXTRA,
-                        c.COLUMN_COMMENT                        
-                        FROM information_schema.columns c                       
+                        c.COLUMN_COMMENT,
+                        t.TABLE_COMMENT                        
+                        FROM information_schema.columns c
+                        INNER JOIN information_schema.tables t
+                            ON c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME                    
                         WHERE c.TABLE_SCHEMA='${database}' AND c.TABLE_NAME = '${tableName}'
                         ORDER BY c.ORDINAL_POSITION;
                     `;
@@ -222,13 +229,13 @@ export class DialectMySQL extends Dialect {
 
                 const tableMetadata: ITableMetadata = {
                     name: tableName,
+                    modelName: tableName,
                     timestamps: config.metadata?.timestamps ?? false,
                     columns: [],
+                    comment: columnsMetadataMySQL[0].TABLE_COMMENT,
                 };
 
                 for (const columnMetadataMySQL of columnsMetadataMySQL) {
-                    tableMetadata.comment = columnMetadataMySQL.COLUMN_COMMENT;
-
                     // Column already added: we only need to add the new index for this column
                     if (config.metadata?.indices && tableMetadata.columns.length &&
                         tableMetadata.columns[tableMetadata.columns.length - 1].name === columnMetadataMySQL.COLUMN_NAME
@@ -276,7 +283,8 @@ export class DialectMySQL extends Dialect {
                                     unique: columnMetadataMySQL.NON_UNIQUE === 0,
                                 }
                             ]
-                        }
+                        },
+                        comment: columnMetadataMySQL.COLUMN_COMMENT,
                     };
 
                     // Additional data type informations
@@ -313,7 +321,13 @@ export class DialectMySQL extends Dialect {
             connection && await connection.close();
         }
 
-        return tablesMetadata;
+        // Apply transformation if any
+        if (config.metadata?.case) {
+            return tablesMetadata.map(tableMetadata => caseTransformer(tableMetadata, config.metadata!.case!));
+        }
+        else {
+            return tablesMetadata;
+        }
     }
 
 }

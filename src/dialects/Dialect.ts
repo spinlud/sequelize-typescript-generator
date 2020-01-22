@@ -2,10 +2,27 @@ import { IndexType, IndexMethod, AbstractDataTypeConstructor } from 'sequelize';
 import { IConfig } from '../config';
 
 export interface ITableMetadata {
-    name: string;
+    name: string; // Table name
+    modelName: string; // Model name
     timestamps?: boolean;
     columns: IColumnMetadata[];
     comment?: string;
+}
+
+export interface IColumnMetadata {
+    name: string; // Model field name
+    fieldName?: string; // Map to original table field name in case of a transformation
+    type: string;
+    typeExt: string;
+    dataType: string;
+    primaryKey: boolean;
+    // foreignKey: boolean;
+    allowNull: boolean;
+    autoIncrement: boolean;
+    unique: boolean;
+    indices?: IIndexMetadata[],
+    comment?: string;
+    // default?: ;
 }
 
 export interface IIndexMetadata {
@@ -15,21 +32,6 @@ export interface IIndexMetadata {
     seq: number;
     type?: IndexType;
     unique: boolean;
-}
-
-export interface IColumnMetadata {
-    name: string;
-    type: string;
-    typeExt: string;
-    dataType: string;
-    // enumValues?: string[],
-    primaryKey: boolean;
-    // foreignKey: boolean;
-    allowNull: boolean;
-    autoIncrement: boolean;
-    unique: boolean;
-    indices?: IIndexMetadata[],
-    // default?: ;
 }
 
 export abstract class Dialect {

@@ -12,7 +12,7 @@ import {
 
 export const cli = async (): Promise<void> => {
     const {argv} = yargs
-        .usage(`Usage: sta -d <database> -D <dialect> -u <username> -x [password] -h [host] -p [port] -o [out-dir] -s [schema] -t [tables] -T [skip-tables] -i [indices] -c [camel] -n [underscore]`)
+        .usage(`Usage: sta -d <database> -D <dialect> -u <username> -x [password] -h [host] -p [port] -o [out-dir] -s [schema] -t [tables] -T [skip-tables] -i [indices] -c [case]`)
         .demand(['database', 'username', 'dialect'])
         .option('h', {
             alias: aliasesMap.HOST,
@@ -80,14 +80,16 @@ export const cli = async (): Promise<void> => {
             describe: `Add default timestamps to tables`,
         })
         .option('c', {
-            alias: aliasesMap.CAMELCASE,
-            boolean: true,
-            describe: `Use camel case to name files, models and fields.`,
-        })
-        .option('n', {
-            alias: aliasesMap.UNDERSCORE,
-            boolean: true,
-            describe: `Use underscore case to name files, models and fields.`,
+            alias: aliasesMap.CASE,
+            string: true,
+            describe: `Transform tables and fields names with the specified case. Possible values:
+             - underscore
+             - camel
+             - upper
+             - lower
+             - pascal
+             - const    
+            `,
         });
 
     // Args validation

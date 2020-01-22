@@ -1,6 +1,6 @@
 import path from 'path';
 import { Dialect as DialectType } from 'sequelize';
-import { IConfig } from '../config';
+import { IConfig, Cases } from '../config/IConfig';
 import { Dialect } from '../dialects/Dialect';
 import { DialectMySQL } from '../dialects';
 
@@ -22,8 +22,7 @@ export const aliasesMap = {
     OUTPUT_DIR_CLEAN: 'clean',
     INDICES: 'indices',
     TIMESTAMPS: 'timestamps',
-    CAMELCASE: 'camel',
-    UNDERSCORE: 'underscore',
+    CASE: 'case',
 }
 
 /**
@@ -60,10 +59,9 @@ export const buildConfig = (argv: ArgvType): IConfig => {
                     .split(',')
                     .map(tableName => tableName.toLowerCase())
             },
-            camelCased: !!argv[aliasesMap.CAMELCASE],
-            underscored: !!argv[aliasesMap.UNDERSCORE],
             indices: !!argv[aliasesMap.INDICES],
             timestamps: !!argv[aliasesMap.TIMESTAMPS],
+            ...argv[aliasesMap.CASE] && {case: argv[aliasesMap.CASE].toUpperCase()},
         },
         output: {
             outDir: argv[aliasesMap.OUTPUT_DIR] ?
@@ -123,6 +121,11 @@ export const validateArgs = (argv: ArgvType): void => {
     // Validate port if any
     if (argv[aliasesMap.PORT] && (!Number.isInteger(argv[aliasesMap.PORT]) || argv[aliasesMap.PORT] <= 0)) {
         error(`Argument -p [port] must be a positive integer (${argv[aliasesMap.PORT]})`);
+    }
+
+    // Validate case if any
+    if (argv[aliasesMap.CASE] && !Cases.has(argv[aliasesMap.CASE].toUpperCase())) {
+        error(`Argument -c [case] must be one of (${Array.from(Cases).join(', ').toLowerCase()})`)
     }
 
     // TODO Validate schema if dialect is postgres ?

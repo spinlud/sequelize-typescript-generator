@@ -12,7 +12,7 @@
     "lint": "eslint --fix --ext .ts output/*.ts",
     "test": "./src/tests/integration/mysql/docker-mysql.sh && jest",
     "build": "npm run clean && tsc",
-    "dev": "ts-node-dev src/bin/cli.ts -d 'dbtest' --dialect mysql -u root -x mysql -p 3306 --indices --tables indices --clean"
+    "dev": "ts-node-dev src/bin/cli.ts -u root -x mysql --dialect mysql --database dbtest -c pascal --clean"
   },
   "keywords": [],
   "author": "Ludovico Fabbri",
@@ -45,6 +45,7 @@
   "dependencies": {
     "@typescript-eslint/eslint-plugin": "^2.16.0",
     "@typescript-eslint/parser": "^2.16.0",
+    "change-case": "^4.1.1",
     "eslint": "^6.8.0",
     "eslint-plugin-import": "^2.20.0",
     "yargs": "^15.1.0"

@@ -1,9 +1,12 @@
 import path from 'path';
+import { promises as fs } from 'fs';
 import { Sequelize } from 'sequelize-typescript';
 import { createConnection } from '../../../connection';
 import { buildSequelizeOptions } from '../../environment';
 import { IConfig, DialectMySQL, ModelBuilder } from '../../../index';
 import * as geometries from './geometries';
+import { Case, Cases } from '../../../config/IConfig';
+
 import {
     dataTypesTableNAME,
     dataTypesTableDROP,
@@ -13,6 +16,7 @@ import {
     indicesTableCREATE,
     indicesTableINDEX
 } from './queries';
+import {getTransformer} from "../../../dialects/utils";
 
 /**
  * Workaround: deprecated GeomFromText function
@@ -172,8 +176,6 @@ describe('MySQL', () => {
             const dialect = new DialectMySQL();
             const builder = new ModelBuilder(config, dialect);
             await builder.build();
-
-            await initTestTables(connection!);
         });
 
         afterAll(async () => {
@@ -212,8 +214,6 @@ describe('MySQL', () => {
             const dialect = new DialectMySQL();
             const builder = new ModelBuilder(config, dialect);
             await builder.build();
-
-            await initTestTables(connection!);
         });
 
         afterAll(async () => {
@@ -255,8 +255,6 @@ describe('MySQL', () => {
             const dialect = new DialectMySQL();
             const builder = new ModelBuilder(config, dialect);
             await builder.build();
-
-            await initTestTables(connection!);
         });
 
         afterAll(async () => {
@@ -274,6 +272,51 @@ describe('MySQL', () => {
             expect(connection!.isDefined(dataTypesTableNAME)).toBe(true);
             expect(connection!.isDefined(indicesTableNAME)).toBe(false);
         });
+    });
+
+    describe('Transform case', () => {
+        let connection: Sequelize | undefined;
+
+        beforeEach(async () => {
+            connection = createConnection({ ...sequelizeOptions });
+            await connection.authenticate();
+            await initTestTables(connection);
+        });
+
+        afterEach(async () => {
+            connection && await connection.close();
+        });
+
+        for (const transformCase of Cases) {
+            it(`should transform table and fields name to ${transformCase.toLowerCase()} case`, async () => {
+                const transformCase: Case = 'CAMEL';
+
+                const config: IConfig = {
+                    connection: sequelizeOptions,
+                    metadata: {
+                        case: transformCase,
+                    },
+                    output: {
+                        outDir: outDir,
+                        clean: true,
+                    }
+                };
+
+                const dialect = new DialectMySQL();
+                const builder = new ModelBuilder(config, dialect);
+                await builder.build();
+
+                const transformer = getTransformer(transformCase);
+                await fs.access(path.join(outDir, transformer(dataTypesTableNAME) + '.ts'));
+                await fs.access(path.join(outDir, transformer(indicesTableNAME) + '.ts'));
+
+                // TODO problem with models registration due to 'require(path/to/module)'
+                //  which inconsistently change case of module name
+                // connection!.addModels([ outDir ]);
+                // expect(connection!.isDefined(transformer(dataTypesTableNAME))).toBe(true);
+                // expect(connection!.isDefined(transformer(indicesTableNAME))).toBe(true);
+            });
+        }
     });
 
     describe('Data Types', () => {
@@ -301,7 +344,6 @@ describe('MySQL', () => {
             const builder = new ModelBuilder(config, dialect);
             await builder.build();
 
-            await initTestTables(connection!);
             connection!.addModels([ outDir ]);
         });
 
