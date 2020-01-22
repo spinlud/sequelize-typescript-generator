@@ -134,6 +134,7 @@ export class DialectMySQL extends Dialect {
                 WHERE table_schema = '${database}';
             `;
 
+            // Fetch table names (include metadata.tables and exclude metadata.skipTables if provided)
             const tableNames: string[] = (await connection.query(
                 tableNamesQuery,
                 {
@@ -142,7 +143,21 @@ export class DialectMySQL extends Dialect {
                 }
             ) as ITableNameRow[]).map(row => {
                 return row.table_name ?? row.TABLE_NAME!;
-            });
+            }).filter(tableName => {
+                if (config.metadata?.tables?.length) {
+                    return config.metadata.tables.includes(tableName.toLowerCase());
+                }
+                else {
+                    return true;
+                }
+            }).filter(tableName => {
+                if (config.metadata?.skipTables?.length) {
+                    return !(config.metadata.skipTables.includes(tableName.toLowerCase()));
+                }
+                else {
+                    return true;
+                }
+            })
 
             for (const tableName of tableNames) {
                 let tableMetadataQuery: string;

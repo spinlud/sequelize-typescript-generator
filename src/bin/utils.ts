@@ -52,8 +52,14 @@ export const buildConfig = (argv: ArgvType): IConfig => {
             ...argv[aliasesMap.PASSWORD] && {password: argv[aliasesMap.PASSWORD] as string},
         },
         metadata: {
-            ...argv[aliasesMap.TABLES] && {tables: (argv[aliasesMap.TABLES] as string).split(',')},
-            ...argv[aliasesMap.SKIP_TABLES] && {skipTables: (argv[aliasesMap.SKIP_TABLES] as string).split(',')},
+            ...argv[aliasesMap.TABLES] && {tables: (argv[aliasesMap.TABLES] as string)
+                    .split(',')
+                    .map(tableName => tableName.toLowerCase())
+            },
+            ...argv[aliasesMap.SKIP_TABLES] && {skipTables: (argv[aliasesMap.SKIP_TABLES] as string)
+                    .split(',')
+                    .map(tableName => tableName.toLowerCase())
+            },
             camelCased: !!argv[aliasesMap.CAMELCASE],
             underscored: !!argv[aliasesMap.UNDERSCORE],
             indices: !!argv[aliasesMap.INDICES],
@@ -62,7 +68,8 @@ export const buildConfig = (argv: ArgvType): IConfig => {
         output: {
             outDir: argv[aliasesMap.OUTPUT_DIR] ?
                 path.isAbsolute(argv[aliasesMap.OUTPUT_DIR] as string) ?
-                    argv[aliasesMap.OUTPUT_DIR] as string : path.join(process.cwd(), argv[aliasesMap.OUTPUT_DIR] as string)
+                    argv[aliasesMap.OUTPUT_DIR] as string
+                    : path.join(process.cwd(), argv[aliasesMap.OUTPUT_DIR] as string)
                 : path.join(process.cwd(), defaultOutputDir),
             clean: !!argv[aliasesMap.OUTPUT_DIR_CLEAN],
         }

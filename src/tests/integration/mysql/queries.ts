@@ -51,10 +51,10 @@ export const indicesTableDROP = `DROP TABLE IF EXISTS ${indicesTableNAME}`;
 export const indicesTableCREATE = `
     create table ${indicesTableNAME}
     (
-        id int auto_increment primary key,
-        f_unique bigint null,
-        f_multi_1 int not null,
-        f_multi_2 varchar(80) null,
+        id              int             auto_increment          primary key,
+        f_unique        bigint          null,
+        f_multi_1       int not         null,
+        f_multi_2       varchar(80)     null,
         constraint indices_f_multi_1_uindex unique (f_multi_1),
         constraint indices_f_unique_uindex unique (f_unique)
     ) CHARSET = 'latin1'

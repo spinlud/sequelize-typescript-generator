@@ -113,20 +113,21 @@ const jsonTests: [string, Object][] = [
 
 describe('MySQL', () => {
     const outDir = path.join(process.cwd(), 'output-models');
-    let connection: Sequelize | undefined;
     let sequelizeOptions = buildSequelizeOptions('mysql');
 
-    beforeAll(async () => {
-        applyGeomFromTextWorkaround();
-
-        connection = createConnection({ ...sequelizeOptions });
-
-        await connection.authenticate();
-
-        await initTestTables(connection);
-    });
-
     describe('Build', () => {
+        let connection: Sequelize | undefined;
+
+        beforeAll(async () => {
+            connection = createConnection({ ...sequelizeOptions });
+            await connection.authenticate();
+            await initTestTables(connection);
+        });
+
+        afterAll(async () => {
+            connection && await connection.close();
+        });
+
         it('should build models', async () => {
             const config: IConfig = {
                 connection: sequelizeOptions,
@@ -143,15 +144,20 @@ describe('MySQL', () => {
 
         it('should register models',() => {
             connection!.addModels([ outDir ]);
-            const DataTypes = connection!.model(dataTypesTableNAME);
+            connection!.model(dataTypesTableNAME);
 
-            expect(DataTypes).toBeDefined();
             expect(connection!.isDefined(dataTypesTableNAME)).toBe(true);
         });
     });
 
     describe('Indices', () => {
+        let connection: Sequelize | undefined;
+
         beforeAll(async () => {
+            connection = createConnection({ ...sequelizeOptions });
+            await connection.authenticate();
+            await initTestTables(connection);
+
             const config: IConfig = {
                 connection: sequelizeOptions,
                 metadata: {
@@ -168,6 +174,10 @@ describe('MySQL', () => {
             await builder.build();
 
             await initTestTables(connection!);
+        });
+
+        afterAll(async () => {
+            connection && await connection.close();
         });
 
         it('should register models',() => {
@@ -179,8 +189,103 @@ describe('MySQL', () => {
         });
     });
 
-    describe('Data Types', () => {
+
+    describe('Tables', () => {
+        let connection: Sequelize | undefined;
+
         beforeAll(async () => {
+            connection = createConnection({ ...sequelizeOptions });
+            await connection.authenticate();
+            await initTestTables(connection);
+
+            const config: IConfig = {
+                connection: sequelizeOptions,
+                metadata: {
+                    tables: [ indicesTableNAME.toLowerCase() ]
+                },
+                output: {
+                    outDir: outDir,
+                    clean: true,
+                }
+            };
+
+            const dialect = new DialectMySQL();
+            const builder = new ModelBuilder(config, dialect);
+            await builder.build();
+
+            await initTestTables(connection!);
+        });
+
+        afterAll(async () => {
+            connection && await connection.close();
+        });
+
+        it('should register models',() => {
+            connection!.addModels([ outDir ]);
+        });
+
+        it('should have registered only the provided tables', () => {
+            connection!.model(indicesTableNAME);
+            expect(() => connection!.model(dataTypesTableNAME)).toThrow();
+
+            expect(connection!.isDefined(indicesTableNAME)).toBe(true);
+            expect(connection!.isDefined(dataTypesTableNAME)).toBe(false);
+        });
+    });
+
+    describe('Skip tables', () => {
+        let connection: Sequelize | undefined;
+
+        beforeAll(async () => {
+            connection = createConnection({ ...sequelizeOptions });
+            await connection.authenticate();
+            await initTestTables(connection);
+
+            const config: IConfig = {
+                connection: sequelizeOptions,
+                metadata: {
+                    skipTables: [ indicesTableNAME.toLowerCase() ]
+                },
+                output: {
+                    outDir: outDir,
+                    clean: true,
+                }
+            };
+
+            const dialect = new DialectMySQL();
+            const builder = new ModelBuilder(config, dialect);
+            await builder.build();
+
+            await initTestTables(connection!);
+        });
+
+        afterAll(async () => {
+            connection && await connection.close();
+        });
+
+        it('should register models',() => {
+            connection!.addModels([ outDir ]);
+        });
+
+        it('should have skipped the provided tables', () => {
+            connection!.model(dataTypesTableNAME);
+            expect(() => connection!.model(indicesTableNAME)).toThrow();
+
+            expect(connection!.isDefined(dataTypesTableNAME)).toBe(true);
+            expect(connection!.isDefined(indicesTableNAME)).toBe(false);
+        });
+    });
+
+    describe('Data Types', () => {
+        let connection: Sequelize | undefined;
+
+        beforeAll(async () => {
+            applyGeomFromTextWorkaround();
+
+            connection = createConnection({ ...sequelizeOptions });
+            await connection.authenticate();
+            await initTestTables(connection);
+
             const config: IConfig = {
                 connection: sequelizeOptions,
                 metadata: {
@@ -197,6 +302,11 @@ describe('MySQL', () => {
             await builder.build();
 
             await initTestTables(connection!);
+            connection!.addModels([ outDir ]);
+        });
+
+        afterAll(async () => {
+            connection && await connection.close();
         });
 
         // BIT (mysql2 driver returns bit field as a Uint8Array)
@@ -251,9 +361,5 @@ describe('MySQL', () => {
                 // @ts-ignore-end
             });
         }
-    });
-
-    afterAll(async () => {
-        connection && await connection.close();
     });
 });
