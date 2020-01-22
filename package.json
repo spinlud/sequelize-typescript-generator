@@ -12,7 +12,7 @@
     "lint": "eslint --fix --ext .ts output/*.ts",
     "test": "./src/tests/integration/mysql/docker-mysql.sh && jest",
     "build": "npm run clean && tsc",
-    "dev": "ts-node-dev src/bin/cli.ts -d 'dbtest' --dialect mysql -u root -x mysql -p 3306 --clean"
+    "dev": "ts-node-dev src/bin/cli.ts -d 'dbtest' --dialect mysql -u root -x mysql -p 3306 --indices --clean"
   },
   "keywords": [],
   "author": "Ludovico Fabbri",

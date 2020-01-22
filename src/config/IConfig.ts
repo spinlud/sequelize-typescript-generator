@@ -8,6 +8,7 @@ export interface IConfig {
         camelCased?: boolean,
         underscored?: boolean,
         capitalized?: boolean,
+        indices?: boolean,
         timestamps?: boolean,
     },
     output: {

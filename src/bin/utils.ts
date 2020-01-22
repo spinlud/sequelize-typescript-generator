@@ -20,6 +20,7 @@ export const aliasesMap = {
     SKIP_TABLES: 'skip-tables',
     OUTPUT_DIR: 'out-dir',
     OUTPUT_DIR_CLEAN: 'clean',
+    INDICES: 'indices',
     TIMESTAMPS: 'timestamps',
     CAMELCASE: 'camel',
     UNDERSCORE: 'underscore',
@@ -55,6 +56,7 @@ export const buildConfig = (argv: ArgvType): IConfig => {
             ...argv[aliasesMap.SKIP_TABLES] && {skipTables: (argv[aliasesMap.SKIP_TABLES] as string).split(',')},
             camelCased: !!argv[aliasesMap.CAMELCASE],
             underscored: !!argv[aliasesMap.UNDERSCORE],
+            indices: !!argv[aliasesMap.INDICES],
             timestamps: !!argv[aliasesMap.TIMESTAMPS],
         },
         output: {

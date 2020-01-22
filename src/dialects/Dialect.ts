@@ -1,4 +1,4 @@
-import { AbstractDataTypeConstructor } from 'sequelize';
+import { IndexType, IndexMethod, AbstractDataTypeConstructor } from 'sequelize';
 import { IConfig } from '../config';
 
 export interface ITableMetadata {
@@ -10,9 +10,10 @@ export interface ITableMetadata {
 
 export interface IIndexMetadata {
     name: string;
+    using: IndexMethod;
     collation: string | null;
     seq: number;
-    type: string;
+    type?: IndexType;
     unique: boolean;
 }
 

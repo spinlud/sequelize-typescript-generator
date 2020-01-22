@@ -36,7 +36,7 @@ export class ModelBuilder extends Builder {
         const buildIndexDecoratorProps = (index: IIndexMetadata): Partial<IndexOptions & IndexFieldOptions> => {
             const props: Partial<IndexOptions & IndexFieldOptions> = {
                 name: index.name,
-                // type: index.type as 'UNIQUE' | 'FULLTEXT' | 'SPATIAL', // BTREE missing in types
+                using: index.using,
                 // ...index.collation && { collate: index.collation }, // Redundant maybe
                 ...index.collation && { order: index.collation === 'A' ? 'ASC' : 'DESC' },
                 unique: index.unique,

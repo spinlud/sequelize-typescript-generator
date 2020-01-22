@@ -150,8 +150,52 @@ describe('MySQL', () => {
         });
     });
 
+    describe('Indices', () => {
+        beforeAll(async () => {
+            const config: IConfig = {
+                connection: sequelizeOptions,
+                metadata: {
+                    indices: true,
+                },
+                output: {
+                    outDir: outDir,
+                    clean: true,
+                }
+            };
+
+            const dialect = new DialectMySQL();
+            const builder = new ModelBuilder(config, dialect);
+            await builder.build();
+
+            await initTestTables(connection!);
+        });
+
+        it('should register models',() => {
+            connection!.addModels([ outDir ]);
+            const Indices = connection!.model(indicesTableNAME);
+
+            expect(Indices).toBeDefined();
+            expect(connection!.isDefined(indicesTableNAME)).toBe(true);
+        });
+    });
+
     describe('Data Types', () => {
         beforeAll(async () => {
+            const config: IConfig = {
+                connection: sequelizeOptions,
+                metadata: {
+                    indices: true,
+                },
+                output: {
+                    outDir: outDir,
+                    clean: true,
+                }
+            };
+
+            const dialect = new DialectMySQL();
+            const builder = new ModelBuilder(config, dialect);
+            await builder.build();
+
             await initTestTables(connection!);
         });
 
@@ -207,14 +251,6 @@ describe('MySQL', () => {
                 // @ts-ignore-end
             });
         }
-    });
-
-    describe('Index', () => {
-        beforeAll(async () => {
-            await initTestTables(connection!);
-        });
-
-        it('empty', () => {});
     });
 
     afterAll(async () => {

@@ -12,7 +12,7 @@ import {
 
 export const cli = async (): Promise<void> => {
     const {argv} = yargs
-        .usage(`Usage: sta -d <database> -D <dialect> -u <username> -x [password] -h [host] -p [port] -o [out-dir] -s [schema] -t [tables] -T [skip-tables] -c [camel] -n [underscore]`)
+        .usage(`Usage: sta -d <database> -D <dialect> -u <username> -x [password] -h [host] -p [port] -o [out-dir] -s [schema] -t [tables] -T [skip-tables] -i [indices] -c [camel] -n [underscore]`)
         .demand(['database', 'username', 'dialect'])
         .option('h', {
             alias: aliasesMap.HOST,
@@ -58,6 +58,11 @@ export const cli = async (): Promise<void> => {
             alias: aliasesMap.SKIP_TABLES,
             string: true,
             describe: `Comma-separated names of tables to skip.`,
+        })
+        .option('i', {
+            alias: aliasesMap.INDICES,
+            boolean: true,
+            describe: `Include columns index in the generated models`,
         })
         .option('o', {
             alias: aliasesMap.OUTPUT_DIR,

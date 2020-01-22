@@ -145,7 +145,10 @@ export class DialectMySQL extends Dialect {
             });
 
             for (const tableName of tableNames) {
-                const tableMetadataQuery = `
+                let tableMetadataQuery: string;
+
+                if (config.metadata?.indices) {
+                    tableMetadataQuery = `
                     SELECT 
                         c.ORDINAL_POSITION,
                         c.TABLE_SCHEMA,
@@ -165,12 +168,34 @@ export class DialectMySQL extends Dialect {
                         s.COLLATION,
                         s.SEQ_IN_INDEX,
                         s.NON_UNIQUE
-                    FROM information_schema.columns c
-                    LEFT OUTER JOIN information_schema.statistics s
-                        ON c.TABLE_SCHEMA = s.TABLE_SCHEMA AND c.TABLE_NAME = s.TABLE_NAME AND c.COLUMN_NAME = s.COLUMN_NAME
-                    WHERE c.TABLE_SCHEMA='${database}' AND c.TABLE_NAME = '${tableName}'
-                    ORDER BY c.ORDINAL_POSITION;
-                `;
+                        FROM information_schema.columns c
+                        LEFT OUTER JOIN information_schema.statistics s
+                            ON c.TABLE_SCHEMA = s.TABLE_SCHEMA AND c.TABLE_NAME = s.TABLE_NAME AND c.COLUMN_NAME = s.COLUMN_NAME
+                        WHERE c.TABLE_SCHEMA='${database}' AND c.TABLE_NAME = '${tableName}'
+                        ORDER BY c.ORDINAL_POSITION;
+                    `;
+                }
+                else {
+                    tableMetadataQuery = `
+                    SELECT 
+                        c.ORDINAL_POSITION,
+                        c.TABLE_SCHEMA,
+                        c.TABLE_NAME,
+                        c.COLUMN_NAME,
+                        c.DATA_TYPE,
+                        c.COLUMN_TYPE,
+                        c.NUMERIC_PRECISION,
+                        c.NUMERIC_SCALE,
+                        c.DATETIME_PRECISION,                                             
+                        c.IS_NULLABLE,
+                        c.COLUMN_KEY,
+                        c.EXTRA,
+                        c.COLUMN_COMMENT                        
+                        FROM information_schema.columns c                       
+                        WHERE c.TABLE_SCHEMA='${database}' AND c.TABLE_NAME = '${tableName}'
+                        ORDER BY c.ORDINAL_POSITION;
+                    `;
+                }
 
                 const columnsMetadataMySQL = await connection.query(
                     tableMetadataQuery,
@@ -190,12 +215,12 @@ export class DialectMySQL extends Dialect {
                     tableMetadata.comment = columnMetadataMySQL.COLUMN_COMMENT;
 
                     // Column already added: we only need to add the new index for this column
-                    if (tableMetadata.columns.length &&
+                    if (config.metadata?.indices && tableMetadata.columns.length &&
                         tableMetadata.columns[tableMetadata.columns.length - 1].name === columnMetadataMySQL.COLUMN_NAME
                     ) {
                         tableMetadata.columns[tableMetadata.columns.length - 1].indices!.push({
                             name: columnMetadataMySQL.INDEX_NAME!,
-                            type: columnMetadataMySQL.INDEX_TYPE!,
+                            using: columnMetadataMySQL.INDEX_TYPE!,
                             collation: columnMetadataMySQL.COLLATION!,
                             seq: columnMetadataMySQL.SEQ_IN_INDEX!,
                             unique: columnMetadataMySQL.NON_UNIQUE === 0,
@@ -226,11 +251,11 @@ export class DialectMySQL extends Dialect {
                         autoIncrement: columnMetadataMySQL.EXTRA === 'auto_increment',
                         unique: columnMetadataMySQL.COLUMN_KEY === 'UNI',
 
-                        ...columnMetadataMySQL.INDEX_NAME && {
+                        ...config.metadata?.indices && columnMetadataMySQL.INDEX_NAME && {
                             indices: [
                                 {
                                     name: columnMetadataMySQL.INDEX_NAME!,
-                                    type: columnMetadataMySQL.INDEX_TYPE!,
+                                    using: columnMetadataMySQL.INDEX_TYPE!,
                                     collation: columnMetadataMySQL.COLLATION,
                                     seq: columnMetadataMySQL.SEQ_IN_INDEX!,
                                     unique: columnMetadataMySQL.NON_UNIQUE === 0,

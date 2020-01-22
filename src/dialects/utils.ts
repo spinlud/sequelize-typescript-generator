@@ -1,3 +1,5 @@
+import { IndexType, IndexMethod } from 'sequelize';
+
 export interface IColumnMetadataMySQL {
     TABLE_CATALOG: string;
     TABLE_SCHEMA: string;
@@ -31,7 +33,7 @@ export interface IColumnMetadataMySQL {
     SUB_PART: string | null; // The index prefix. That is, the number of indexed characters if the column is only partly indexed, NULL if the entire column is indexed.
     PACKED: string | null;// Indicates how the key is packed. NULL if it is not.
     NULLABLE: string | null; // Contains YES if the column may contain NULL values and '' if not.
-    INDEX_TYPE: string | null; // The index method used (BTREE, FULLTEXT, HASH, RTREE).
+    INDEX_TYPE: IndexMethod | null; // The index method used (BTREE, FULLTEXT, HASH, RTREE).
     COMMENT: string | null;
     INDEX_COMMENT: string | null;
 }
