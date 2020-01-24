@@ -2,9 +2,6 @@
 
 CONTAINER_NAME="mysql"
 
-# Stop and remove any running container
-docker ps -a | awk -F '[ ]+' 'NR>1 {print($1)}' | xargs -n1 docker stop | xargs -n1 docker rm
-
 docker pull mysql:${DOCKER_MYSQL_VERSION}
 
 docker run -d --name ${CONTAINER_NAME} \

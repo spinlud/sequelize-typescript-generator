@@ -10,7 +10,10 @@
   "scripts": {
     "clean": "rm -fr build",
     "lint": "eslint --fix --ext .ts output/*.ts",
-    "test": "./src/tests/integration/mysql/docker-mysql.sh && jest",
+    "remove-docker-containers": "./src/tests/integration/docker-remove-containers.sh",
+    "test-mysql": "npm run remove-docker-containers && ./src/tests/integration/mysql/docker-start-mysql.sh && jest src/tests/integration/mysql",
+    "test-postgres": "npm run remove-docker-containers && ./src/tests/integration/postgres/docker-start-postgres.sh && jest src/tests/integration/postgres",
+    "test": "npm run test-mysql && npm run test-postgres",
     "build": "npm run clean && tsc",
     "dev": "ts-node-dev src/bin/cli.ts -u root -x mysql --dialect mysql --database dbtest -c pascal --clean"
   },
@@ -33,6 +36,8 @@
     "@types/yargs": "^15.0.0",
     "jest": "^24.9.0",
     "mysql2": "^2.1.0",
+    "pg": "^7.17.1",
+    "pg-hstore": "^2.3.3",
     "reflect-metadata": "^0.1.13",
     "sequelize": "^5.21.3",
     "sequelize-typescript": "^1.1.0",
