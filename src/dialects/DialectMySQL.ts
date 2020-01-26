@@ -4,16 +4,12 @@ import { createConnection } from '../connection';
 import { IConfig } from '../config';
 import { ITableMetadata, IColumnMetadata, Dialect } from './Dialect';
 import {
+    ITableNameRow,
     IColumnMetadataMySQL,
     numericPrecisionScale,
     dateTimePrecision,
     caseTransformer,
 } from './utils';
-
-interface ITableNameRow {
-    table_name?: string;
-    TABLE_NAME?: string;
-}
 
 /**
  * Dialect for MySQL
@@ -158,33 +154,33 @@ export class DialectMySQL extends Dialect {
                 else {
                     return true;
                 }
-            })
+            });
 
             for (const tableName of tableNames) {
                 let tableMetadataQuery: string;
 
                 if (config.metadata?.indices) {
                     tableMetadataQuery = `
-                    SELECT 
-                        c.ORDINAL_POSITION,
-                        c.TABLE_SCHEMA,
-                        c.TABLE_NAME,
-                        c.COLUMN_NAME,
-                        c.DATA_TYPE,
-                        c.COLUMN_TYPE,
-                        c.NUMERIC_PRECISION,
-                        c.NUMERIC_SCALE,
-                        c.DATETIME_PRECISION,                                             
-                        c.IS_NULLABLE,
-                        c.COLUMN_KEY,
-                        c.EXTRA,
-                        c.COLUMN_COMMENT,
-                        t.TABLE_COMMENT,
-                        s.INDEX_NAME,
-                        s.INDEX_TYPE,
-                        s.COLLATION,
-                        s.SEQ_IN_INDEX,
-                        s.NON_UNIQUE
+                        SELECT 
+                            c.ORDINAL_POSITION,
+                            c.TABLE_SCHEMA,
+                            c.TABLE_NAME,
+                            c.COLUMN_NAME,
+                            c.DATA_TYPE,
+                            c.COLUMN_TYPE,
+                            c.NUMERIC_PRECISION,
+                            c.NUMERIC_SCALE,
+                            c.DATETIME_PRECISION,                                             
+                            c.IS_NULLABLE,
+                            c.COLUMN_KEY,
+                            c.EXTRA,
+                            c.COLUMN_COMMENT,
+                            t.TABLE_COMMENT,
+                            s.INDEX_NAME,
+                            s.INDEX_TYPE,
+                            s.COLLATION,
+                            s.SEQ_IN_INDEX,
+                            s.NON_UNIQUE
                         FROM information_schema.columns c
                         INNER JOIN information_schema.tables t
                             ON c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME
@@ -196,21 +192,21 @@ export class DialectMySQL extends Dialect {
                 }
                 else {
                     tableMetadataQuery = `
-                    SELECT 
-                        c.ORDINAL_POSITION,
-                        c.TABLE_SCHEMA,
-                        c.TABLE_NAME,
-                        c.COLUMN_NAME,
-                        c.DATA_TYPE,
-                        c.COLUMN_TYPE,
-                        c.NUMERIC_PRECISION,
-                        c.NUMERIC_SCALE,
-                        c.DATETIME_PRECISION,                                             
-                        c.IS_NULLABLE,
-                        c.COLUMN_KEY,
-                        c.EXTRA,
-                        c.COLUMN_COMMENT,
-                        t.TABLE_COMMENT                        
+                        SELECT 
+                            c.ORDINAL_POSITION,
+                            c.TABLE_SCHEMA,
+                            c.TABLE_NAME,
+                            c.COLUMN_NAME,
+                            c.DATA_TYPE,
+                            c.COLUMN_TYPE,
+                            c.NUMERIC_PRECISION,
+                            c.NUMERIC_SCALE,
+                            c.DATETIME_PRECISION,                                             
+                            c.IS_NULLABLE,
+                            c.COLUMN_KEY,
+                            c.EXTRA,
+                            c.COLUMN_COMMENT,
+                            t.TABLE_COMMENT                        
                         FROM information_schema.columns c
                         INNER JOIN information_schema.tables t
                             ON c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME                    

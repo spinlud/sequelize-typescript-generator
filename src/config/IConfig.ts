@@ -14,6 +14,7 @@ export const Cases = new Set<Case>([
 export interface IConfig {
     connection: Options,
     metadata?: {
+        schema?: 'public' | string, // Postgres only
         tables?: string[],
         skipTables?: string[],
         indices?: boolean,

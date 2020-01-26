@@ -1,0 +1,51 @@
+export const schemaName = 'dbtest';
+
+export const dataTypesTableName = 'data_types';
+
+export const dataTypesTableCREATE = `
+    create table if not exists  ${schemaName}.${dataTypesTableName}
+    (
+        id            serial      not null      constraint data_types_pk        primary key,
+        f_smallint    smallint,
+        f_integer     integer,
+        f_bigint      bigint,
+        f_decimal     numeric(7, 3),
+        f_numeric     numeric(5, 2),
+        f_real        real,
+        f_double      double precision,
+        f_smallserial smallserial not null,
+        f_serial      serial      not null,
+        f_bigserial   bigserial   not null,
+        f_money       money,
+        f_varchar     varchar(80),
+        f_char        char,
+        f_character   char,
+        f_text        text,
+        f_bytea       bytea,
+        f_timestamp   timestamp,
+        f_timestamptz timestamptz,
+        f_date        date,
+        f_time        time,
+        f_timetz      timetz,
+        f_interval    interval,
+        f_boolean     boolean,
+        f_point       point,
+        f_line        line,
+        f_lseg        lseg,
+        f_box         box,
+        f_path        path,
+        f_polygon     polygon,
+        f_circle      circle,
+        f_cidr        cidr,
+        f_inet        inet,
+        f_macaddr     macaddr,
+        f_macaddr8    macaddr8,
+        f_bit         bit,
+        f_varbit      bit varying,
+        f_uuid        uuid,
+        f_xml         xml,
+        f_json        json,
+        f_jsonb       jsonb,
+        f_jsonpath    jsonpath
+    )
+`;

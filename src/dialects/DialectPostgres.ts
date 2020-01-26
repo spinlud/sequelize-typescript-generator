@@ -4,7 +4,8 @@ import { createConnection } from '../connection';
 import { IConfig } from '../config';
 import { ITableMetadata, IColumnMetadata, Dialect } from './Dialect';
 import {
-    IColumnMetadataMySQL,
+    ITableNameRow,
+    IColumnMetadataPostgres,
     numericPrecisionScale,
     dateTimePrecision,
     caseTransformer,
@@ -58,37 +59,143 @@ export class DialectPostgres extends Dialect {
     // macaddr	6 bytes	MAC addresses
     // macaddr8	8 bytes	MAC addresses (EUI-64 format)
 
+    // public readonly sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
+    //     smallint: DataType.INTEGER,
+    //     integer: DataType.INTEGER,
+    //     bigint: DataType.BIGINT,
+    //     decimal: DataType.DECIMAL,
+    //     numeric: DataType.DECIMAL,
+    //     real: DataType.REAL,
+    //     double: DataType.DOUBLE,
+    //     smallserial: DataType.INTEGER,
+    //     serial: DataType.INTEGER,
+    //     bigserial: DataType.BIGINT,
+    //
+    //     money: DataType.DECIMAL,
+    //
+    //     varchar: DataType.STRING,
+    //     varying: DataType.STRING,
+    //     character: DataType.STRING,
+    //     char: DataType.STRING,
+    //     text: DataType.STRING,
+    //
+    //     bytea: DataType.BLOB,
+    //
+    //     timestamp: DataType.DATE,
+    //     date: DataType.DATEONLY,
+    //     time: DataType.DATE,
+    //     interval: DataType.DATE,
+    //
+    //     boolean: DataType.BOOLEAN,
+    //
+    //     enum: DataType.ENUM,
+    //
+    //     point: DataType.GEOMETRY,
+    //     line: DataType.GEOMETRY,
+    //     lseg: DataType.GEOMETRY,
+    //     box: DataType.GEOMETRY,
+    //     path: DataType.GEOMETRY,
+    //     polygon: DataType.GEOMETRY,
+    //     circle: DataType.GEOMETRY,
+    //
+    //     cidr: DataType.CIDR,
+    //     inet: DataType.INET,
+    //     macaddr: DataType.MACADDR,
+    //     macaddr8: DataType.MACADDR,
+    //
+    //     bit: DataType.INTEGER,
+    //     'bit varying': DataType.INTEGER,
+    //
+    //     // tsvector: ?
+    //     // tsquery: ?
+    //
+    //     uuid: DataType.UUID,
+    //
+    //     xml: DataType.STRING,
+    //
+    //     json: DataType.JSON,
+    //     jsonb: DataType.JSON,
+    //     jsonpath: DataType.JSON,
+    // };
+
+    // public readonly jsDataTypesMap = {
+    //     smallint: 'number',
+    //     integer: 'number',
+    //     bigint: 'bigint',
+    //     decimal: 'number',
+    //     numeric: 'number',
+    //     real: 'number',
+    //     double: 'number',
+    //     smallserial: 'number',
+    //     serial: 'number',
+    //     bigserial: 'bigint',
+    //
+    //     money: 'number',
+    //
+    //     varchar: 'string',
+    //     varying: 'string',
+    //     character: 'string',
+    //     char: 'string',
+    //     text: 'string',
+    //
+    //     bytea: 'Buffer',
+    //
+    //     timestamp: 'string',
+    //     date: 'string',
+    //     time: 'string',
+    //     interval: 'string',
+    //
+    //     boolean: 'boolean',
+    //
+    //     enum: 'string',
+    //
+    //     point: 'object',
+    //     line: 'object',
+    //     lseg: 'object',
+    //     box: 'object',
+    //     path: 'object',
+    //     polygon: 'object',
+    //     circle: 'object',
+    //
+    //     cidr: 'string',
+    //     inet: 'string',
+    //     macaddr: 'string',
+    //     macaddr8: 'string',
+    //
+    //     bit: 'number',
+    //     'bit varying': 'number',
+    //
+    //     // tsvector: ?
+    //     // tsquery: ?
+    //
+    //     uuid: 'string',
+    //
+    //     xml: 'string',
+    //
+    //     json: 'object',
+    //     jsonb: 'object',
+    //     jsonpath: 'object',
+    // }
+
     public readonly sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
-        smallint: DataType.INTEGER,
-        integer: DataType.INTEGER,
-        bigint: DataType.BIGINT,
-        decimal: DataType.DECIMAL,
-        numeric: DataType.DECIMAL,
-        real: DataType.REAL,
-        double: DataType.DOUBLE,
-        smallserial: DataType.INTEGER,
-        serial: DataType.INTEGER,
-        bigserial: DataType.BIGINT,
-
-        money: DataType.DECIMAL,
-
+        int2: DataType.INTEGER,
+        int4: DataType.INTEGER,
+        int8: DataType.BIGINT,
+        numeric: DataType.NUMBER,
+        float4: DataType.FLOAT,
+        float8: DataType.DOUBLE,
+        money: DataType.NUMBER,
         varchar: DataType.STRING,
-        varying: DataType.STRING,
-        character: DataType.STRING,
-        char: DataType.STRING,
+        bpchar: DataType.STRING,
         text: DataType.STRING,
-
         bytea: DataType.BLOB,
-
-        timestamp: DataType.DATE,
-        date: DataType.DATEONLY,
-        time: DataType.DATE,
-        interval: DataType.DATE,
-
-        boolean: DataType.BOOLEAN,
-
-        enum: DataType.ENUM,
-
+        timestamp: DataType.STRING,
+        timestamptz: DataType.STRING,
+        date: DataType.STRING,
+        time: DataType.STRING,
+        timetz: DataType.STRING,
+        interval: DataType.STRING,
+        bool: DataType.BOOLEAN,
         point: DataType.GEOMETRY,
         line: DataType.GEOMETRY,
         lseg: DataType.GEOMETRY,
@@ -96,58 +203,38 @@ export class DialectPostgres extends Dialect {
         path: DataType.GEOMETRY,
         polygon: DataType.GEOMETRY,
         circle: DataType.GEOMETRY,
-
-        cidr: DataType.CIDR,
-        inet: DataType.INET,
-        macaddr: DataType.MACADDR,
-        macaddr8: DataType.MACADDR,
-
+        cidr: DataType.STRING,
+        inet: DataType.STRING,
+        macaddr: DataType.STRING,
+        macaddr8: DataType.STRING,
         bit: DataType.INTEGER,
-        'bit varying': DataType.INTEGER,
-
-        // tsvector: ?
-        // tsquery: ?
-
-        uuid: DataType.UUID,
-
+        varbit: DataType.INTEGER,
+        uuid: DataType.STRING,
         xml: DataType.STRING,
-
         json: DataType.JSON,
-        jsonb: DataType.JSON,
+        jsonb: DataType.JSONB,
         jsonpath: DataType.JSON,
-    };
+    }
 
     public readonly jsDataTypesMap = {
-        smallint: 'number',
-        integer: 'number',
-        bigint: 'bigint',
-        decimal: 'number',
+        int2: 'number',
+        int4: 'number',
+        int8: 'bigint',
         numeric: 'number',
-        real: 'number',
-        double: 'number',
-        smallserial: 'number',
-        serial: 'number',
-        bigserial: 'bigint',
-
+        float4: 'number',
+        float8: 'number',
         money: 'number',
-
         varchar: 'string',
-        varying: 'string',
-        character: 'string',
-        char: 'string',
+        bpchar: 'string',
         text: 'string',
-
         bytea: 'Buffer',
-
         timestamp: 'string',
+        timestamptz: 'string',
         date: 'string',
         time: 'string',
+        timetz: 'string',
         interval: 'string',
-
-        boolean: 'boolean',
-
-        enum: 'string',
-
+        bool: 'boolean',
         point: 'object',
         line: 'object',
         lseg: 'object',
@@ -155,22 +242,14 @@ export class DialectPostgres extends Dialect {
         path: 'object',
         polygon: 'object',
         circle: 'object',
-
         cidr: 'string',
         inet: 'string',
         macaddr: 'string',
         macaddr8: 'string',
-
         bit: 'number',
-        'bit varying': 'number',
-
-        // tsvector: ?
-        // tsquery: ?
-
+        varbit: 'number',
         uuid: 'string',
-
         xml: 'string',
-
         json: 'object',
         jsonb: 'object',
         jsonpath: 'object',
@@ -182,7 +261,150 @@ export class DialectPostgres extends Dialect {
      * @returns {Promise<ITableMetadata[]>}
      */
     async fetchMetadata(config: IConfig): Promise<ITableMetadata[]> {
-        return [];
+        let connection: Sequelize | undefined;
+        const tablesMetadata: ITableMetadata[] = [];
+
+        try {
+            connection = createConnection(config.connection);
+
+            await connection.authenticate();
+
+            const tableSchema = config.metadata?.schema ?? 'public';
+
+            const tableNamesQuery = `
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema='${tableSchema}';
+            `;
+
+            // Fetch table names (include metadata.tables and exclude metadata.skipTables if provided)
+            const tableNames: string[] = (await connection.query(
+                tableNamesQuery,
+                {
+                    type: QueryTypes.SELECT,
+                    raw: true,
+                }
+            ) as ITableNameRow[]).map(row => {
+                return row.table_name ?? row.TABLE_NAME!;
+            }).filter(tableName => {
+                if (config.metadata?.tables?.length) {
+                    return config.metadata.tables.includes(tableName.toLowerCase());
+                }
+                else {
+                    return true;
+                }
+            }).filter(tableName => {
+                if (config.metadata?.skipTables?.length) {
+                    return !(config.metadata.skipTables.includes(tableName.toLowerCase()));
+                }
+                else {
+                    return true;
+                }
+            });
+
+            for (const tableName of tableNames) {
+                let tableMetadataQuery: string;
+
+                tableMetadataQuery = `
+                    SELECT *
+                    FROM information_schema.columns
+                    WHERE table_schema='${tableSchema}' AND table_name='${tableName}'                    
+                `;
+
+                const columnsMetadataPostgres = await connection.query(
+                    tableMetadataQuery,
+                    {
+                        type: QueryTypes.SELECT,
+                        raw: true,
+                    }
+                ) as IColumnMetadataPostgres[];
+
+                const tableMetadata: ITableMetadata = {
+                    name: tableName,
+                    modelName: tableName,
+                    timestamps: config.metadata?.timestamps ?? false,
+                    columns: [],
+                    comment: '', // TODO
+                };
+
+                for (const columnMetadataPostgres of columnsMetadataPostgres) {
+                    // Data type not recognized
+                    if (!this.sequelizeDataTypesMap[columnMetadataPostgres.udt_name]) {
+                        console.warn(`[Warning]`,
+                            `Unknown data type mapping for '${columnMetadataPostgres.udt_name}'`);
+                        console.warn(`[Warning]`,
+                            `Skipping column`, columnMetadataPostgres);
+                        continue;
+                    }
+
+                    // Add new column
+                    const columnMetadata: IColumnMetadata = {
+                        name: columnMetadataPostgres.column_name,
+                        type: columnMetadataPostgres.udt_name,
+                        typeExt: columnMetadataPostgres.data_type,
+                        dataType: 'DataType.' +
+                            this.sequelizeDataTypesMap[columnMetadataPostgres.udt_name].key
+                                .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
+                        allowNull: columnMetadataPostgres.is_nullable === 'YES',
+                        primaryKey: false, // TODO
+                        autoIncrement: false, // TODO
+                        unique: false, // TODO
+
+                        // ...config.metadata?.indices && columnMetadataPostgres.INDEX_NAME && {
+                        //     indices: [
+                        //         {
+                        //             name: columnMetadataPostgres.INDEX_NAME!,
+                        //             using: columnMetadataPostgres.INDEX_TYPE!,
+                        //             collation: columnMetadataPostgres.COLLATION,
+                        //             seq: columnMetadataPostgres.SEQ_IN_INDEX!,
+                        //             unique: columnMetadataPostgres.NON_UNIQUE === 0,
+                        //         }
+                        //     ]
+                        // },
+                        comment: '', // TODO
+                    };
+
+                    // // Additional data type informations
+                    // switch (columnMetadataPostgres.DATA_TYPE) {
+                    //     case 'decimal':
+                    //     case 'numeric':
+                    //     case 'float':
+                    //     case 'double':
+                    //         columnMetadata.dataType += numericPrecisionScale(columnMetadataPostgres);
+                    //         break;
+                    //
+                    //     case 'datetime':
+                    //     case 'timestamp':
+                    //         columnMetadata.dataType += dateTimePrecision(columnMetadataPostgres);
+                    //         break;
+                    // }
+                    //
+                    // // ENUM: add values to data type -> DataType.ENUM('v1', 'v2')
+                    // if (columnMetadataPostgres.DATA_TYPE === 'enum') {
+                    //     columnMetadata.dataType += columnMetadata.typeExt.match(/\(.*\)/)![0];
+                    // }
+
+                    tableMetadata.columns.push(columnMetadata);
+                }
+
+                tablesMetadata.push(tableMetadata);
+            }
+        }
+        catch(err) {
+            console.error(err);
+            process.exit(1);
+        }
+        finally {
+            connection && await connection.close();
+        }
+
+        // Apply transformation if any
+        if (config.metadata?.case) {
+            return tablesMetadata.map(tableMetadata => caseTransformer(tableMetadata, config.metadata!.case!));
+        }
+        else {
+            return tablesMetadata;
+        }
     }
 
 }

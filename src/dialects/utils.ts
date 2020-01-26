@@ -8,6 +8,11 @@ import {
     snakeCase,
 } from "change-case";
 
+export interface ITableNameRow {
+    table_name?: string;
+    TABLE_NAME?: string;
+};
+
 export interface IColumnMetadataMySQL {
     TABLE_CATALOG: string;
     TABLE_SCHEMA: string;
@@ -45,6 +50,53 @@ export interface IColumnMetadataMySQL {
     INDEX_TYPE: IndexMethod | null; // The index method used (BTREE, FULLTEXT, HASH, RTREE).
     COMMENT: string | null;
     INDEX_COMMENT: string | null;
+}
+
+export interface IColumnMetadataPostgres {
+    table_catalog: string;
+    table_schema: string;
+    table_name: string;
+    column_name: string;
+    ordinal_position: number;
+    column_default: string;
+    is_nullable: string;
+    data_type: string;
+    character_maximum_length: number;
+    character_octet_length: number;
+    numeric_precision: number;
+    numeric_precision_radix: number;
+    numeric_scale: number;
+    datetime_precision: number;
+    interval_type: string;
+    interval_precision: number;
+    character_set_catalog: string;
+    character_set_schema: string;
+    character_set_name: string;
+    collation_catalog: string;
+    collation_schema: string;
+    collation_name: string;
+    domain_catalog: string;
+    domain_schema: string;
+    domain_name: string;
+    udt_catalog: string;
+    udt_schema: string;
+    udt_name: string;
+    scope_catalog: string;
+    scope_schema: string;
+    scope_name: string;
+    maximum_cardinality: number;
+    dtd_identifier: string;
+    is_self_referencing: string;
+    is_identity: string;
+    identity_generation: string;
+    identity_start: string;
+    identity_increment: string;
+    identity_maximum: string;
+    identity_minimum: string;
+    identity_cycle: string;
+    is_generated: string;
+    generation_expression: string;
+    is_updatable: string;
 }
 
 /**

@@ -2,7 +2,7 @@ import path from 'path';
 import { Dialect as DialectType } from 'sequelize';
 import { IConfig, Cases } from '../config/IConfig';
 import { Dialect } from '../dialects/Dialect';
-import { DialectMySQL } from '../dialects';
+import { DialectMySQL, DialectPostgres  } from '../dialects';
 
 export type ArgvType = { [key: string]: any };
 
@@ -51,6 +51,7 @@ export const buildConfig = (argv: ArgvType): IConfig => {
             ...argv[aliasesMap.PASSWORD] && {password: argv[aliasesMap.PASSWORD] as string},
         },
         metadata: {
+            ...argv[aliasesMap.SCHEMA] && {schema: argv[aliasesMap.SCHEMA] as string},
             ...argv[aliasesMap.TABLES] && {tables: (argv[aliasesMap.TABLES] as string)
                     .split(',')
                     .map(tableName => tableName.toLowerCase())
@@ -86,7 +87,7 @@ export const buildDialect = (argv: ArgvType): Dialect => {
 
     switch (argv[aliasesMap.DIALECT]) {
         case 'postgres':
-            dialect = new DialectMySQL(); // TODO
+            dialect = new DialectPostgres();
             break;
         case 'mysql':
             dialect = new DialectMySQL();

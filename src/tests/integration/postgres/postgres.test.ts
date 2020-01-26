@@ -7,6 +7,10 @@ import {DialectMySQL, IConfig, ModelBuilder} from '../../../index';
 import { Case, Cases } from '../../../config/IConfig';
 import {dataTypesTableNAME} from "../mysql/queries";
 
+const schemaName = 'dbtest';
+
+
+
 describe('MySQL', () => {
     const outDir = path.join(process.cwd(), 'output-models');
     let sequelizeOptions = buildSequelizeOptions('postgres');
@@ -19,6 +23,8 @@ describe('MySQL', () => {
             connection = createConnection({ ...sequelizeOptions });
             await connection.authenticate();
             // await initTestTables(connection);
+
+            await connection.createSchema(schemaName, {});
         });
 
         afterAll(async () => {
