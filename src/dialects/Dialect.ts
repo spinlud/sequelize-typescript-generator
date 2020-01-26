@@ -4,6 +4,7 @@ import { IConfig } from '../config';
 export interface ITableMetadata {
     name: string; // Table name
     modelName: string; // Model name
+    schema?: 'public' | string; // Postgres only
     timestamps?: boolean;
     columns: IColumnMetadata[];
     comment?: string;

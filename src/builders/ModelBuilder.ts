@@ -76,6 +76,7 @@ export class ModelBuilder extends Builder {
                 // @Table decorator
                 generateObjectLiteralDecorator('Table', {
                     tableName: tableName,
+                    ...tableMetadata.schema && { schema: tableMetadata.schema },
                     timestamps: tableMetadata.timestamps,
                     comment: tableMetadata.comment,
                 })

@@ -303,16 +303,33 @@ export class DialectPostgres extends Dialect {
             });
 
             for (const tableName of tableNames) {
-                let tableMetadataQuery: string;
+                let columnsMetadataQuery: string;
 
-                tableMetadataQuery = `
-                    SELECT *
-                    FROM information_schema.columns
-                    WHERE table_schema='${tableSchema}' AND table_name='${tableName}'                    
+                // columnsMetadataQuery = `
+                //     SELECT *
+                //     FROM information_schema.columns
+                //     WHERE table_schema='${tableSchema}' AND table_name='${tableName}'
+                // `;
+
+                columnsMetadataQuery = `
+                    SELECT 
+                           CASE WHEN p.attname IS NOT NULL THEN 'YES' ELSE 'NO' END AS column_key, 
+                           c.*
+                    FROM information_schema.columns c
+                    LEFT OUTER JOIN (
+                        SELECT a.attname
+                        FROM   pg_index i
+                        JOIN   pg_attribute a
+                            ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+                        WHERE i.indrelid = '${tableSchema}.${tableName}'::regclass AND i.indisprimary
+                    ) p
+                    ON c.column_name = p.attname
+                    WHERE table_schema = '${tableSchema}' AND table_name = '${tableName}'
+                    ORDER BY ordinal_position;                    
                 `;
 
                 const columnsMetadataPostgres = await connection.query(
-                    tableMetadataQuery,
+                    columnsMetadataQuery,
                     {
                         type: QueryTypes.SELECT,
                         raw: true,
@@ -322,6 +339,7 @@ export class DialectPostgres extends Dialect {
                 const tableMetadata: ITableMetadata = {
                     name: tableName,
                     modelName: tableName,
+                    schema: tableSchema,
                     timestamps: config.metadata?.timestamps ?? false,
                     columns: [],
                     comment: '', // TODO
@@ -346,7 +364,7 @@ export class DialectPostgres extends Dialect {
                             this.sequelizeDataTypesMap[columnMetadataPostgres.udt_name].key
                                 .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
                         allowNull: columnMetadataPostgres.is_nullable === 'YES',
-                        primaryKey: false, // TODO
+                        primaryKey: columnMetadataPostgres.column_key === 'YES',
                         autoIncrement: false, // TODO
                         unique: false, // TODO
 

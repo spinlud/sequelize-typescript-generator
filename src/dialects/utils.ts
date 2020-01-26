@@ -57,6 +57,7 @@ export interface IColumnMetadataPostgres {
     table_schema: string;
     table_name: string;
     column_name: string;
+    column_key: string;
     ordinal_position: number;
     column_default: string;
     is_nullable: string;
