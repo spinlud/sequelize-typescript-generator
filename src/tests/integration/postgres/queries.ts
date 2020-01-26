@@ -1,9 +1,11 @@
-export const schemaName = 'dbtest';
+export const SCHEMA_NAME = 'dbtest';
+export const SCHEMA_DROP = `DROP SCHEMA IF EXISTS ${SCHEMA_NAME}`;
+export const SCHEMA_CREATE = `CREATE SCHEMA IF NOT EXISTS ${SCHEMA_NAME}`;
 
-export const dataTypesTableName = 'data_types';
-
-export const dataTypesTableCREATE = `
-    create table if not exists  ${schemaName}.${dataTypesTableName}
+export const DATA_TYPES_TABLE_NAME = 'data_types';
+export const DATA_TYPES_TABLE_DROP = `DROP TABLE IF EXISTS ${DATA_TYPES_TABLE_NAME}`;
+export const DATA_TYPES_TABLE_CREATE = `
+    create table if not exists  ${SCHEMA_NAME}.${DATA_TYPES_TABLE_NAME}
     (
         id            serial      not null      constraint data_types_pk        primary key,
         f_smallint    smallint,

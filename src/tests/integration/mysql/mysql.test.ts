@@ -8,13 +8,13 @@ import * as geometries from './geometries';
 import { Case, Cases } from '../../../config/IConfig';
 
 import {
-    dataTypesTableNAME,
-    dataTypesTableDROP,
-    dataTypesTableCREATE,
-    indicesTableNAME,
-    indicesTableDROP,
-    indicesTableCREATE,
-    indicesTableINDEX
+    DATA_TYPES_TABLE_NAME,
+    DATA_TYPES_TABLE_DROP,
+    DATA_TYPES_TABLE_CREATE,
+    INDICES_TABLE_NAME,
+    INDICES_TABLE_DROP,
+    INDICES_TABLE_CREATE,
+    INDICES_TABLE_CREATE_INDEX
 } from './queries';
 import {getTransformer} from "../../../dialects/utils";
 
@@ -50,13 +50,13 @@ const applyGeomFromTextWorkaround = (): void => { // Reference: https://github.c
  */
 const initTestTables = async (connection: Sequelize): Promise<void> => {
     // Drop test tables
-    await connection.query(dataTypesTableDROP);
-    await connection.query(indicesTableDROP);
+    await connection.query(DATA_TYPES_TABLE_DROP);
+    await connection.query(INDICES_TABLE_DROP);
 
     // Create test tables
-    await connection.query(dataTypesTableCREATE);
-    await connection.query(indicesTableCREATE);
-    await connection.query(indicesTableINDEX);
+    await connection.query(DATA_TYPES_TABLE_CREATE);
+    await connection.query(INDICES_TABLE_CREATE);
+    await connection.query(INDICES_TABLE_CREATE_INDEX);
 };
 
 const numericTests: [string, number][] = [
@@ -148,9 +148,9 @@ describe('MySQL', () => {
 
         it('should register models',() => {
             connection!.addModels([ outDir ]);
-            connection!.model(dataTypesTableNAME);
+            connection!.model(DATA_TYPES_TABLE_NAME);
 
-            expect(connection!.isDefined(dataTypesTableNAME)).toBe(true);
+            expect(connection!.isDefined(DATA_TYPES_TABLE_NAME)).toBe(true);
         });
     });
 
@@ -184,10 +184,10 @@ describe('MySQL', () => {
 
         it('should register models',() => {
             connection!.addModels([ outDir ]);
-            const Indices = connection!.model(indicesTableNAME);
+            const Indices = connection!.model(INDICES_TABLE_NAME);
 
             expect(Indices).toBeDefined();
-            expect(connection!.isDefined(indicesTableNAME)).toBe(true);
+            expect(connection!.isDefined(INDICES_TABLE_NAME)).toBe(true);
         });
     });
 
@@ -203,7 +203,7 @@ describe('MySQL', () => {
             const config: IConfig = {
                 connection: sequelizeOptions,
                 metadata: {
-                    tables: [ indicesTableNAME.toLowerCase() ]
+                    tables: [ INDICES_TABLE_NAME.toLowerCase() ]
                 },
                 output: {
                     outDir: outDir,
@@ -225,11 +225,11 @@ describe('MySQL', () => {
         });
 
         it('should have registered only the provided tables', () => {
-            connection!.model(indicesTableNAME);
-            expect(() => connection!.model(dataTypesTableNAME)).toThrow();
+            connection!.model(INDICES_TABLE_NAME);
+            expect(() => connection!.model(DATA_TYPES_TABLE_NAME)).toThrow();
 
-            expect(connection!.isDefined(indicesTableNAME)).toBe(true);
-            expect(connection!.isDefined(dataTypesTableNAME)).toBe(false);
+            expect(connection!.isDefined(INDICES_TABLE_NAME)).toBe(true);
+            expect(connection!.isDefined(DATA_TYPES_TABLE_NAME)).toBe(false);
         });
     });
 
@@ -244,7 +244,7 @@ describe('MySQL', () => {
             const config: IConfig = {
                 connection: sequelizeOptions,
                 metadata: {
-                    skipTables: [ indicesTableNAME.toLowerCase() ]
+                    skipTables: [ INDICES_TABLE_NAME.toLowerCase() ]
                 },
                 output: {
                     outDir: outDir,
@@ -266,11 +266,11 @@ describe('MySQL', () => {
         });
 
         it('should have skipped the provided tables', () => {
-            connection!.model(dataTypesTableNAME);
-            expect(() => connection!.model(indicesTableNAME)).toThrow();
+            connection!.model(DATA_TYPES_TABLE_NAME);
+            expect(() => connection!.model(INDICES_TABLE_NAME)).toThrow();
 
-            expect(connection!.isDefined(dataTypesTableNAME)).toBe(true);
-            expect(connection!.isDefined(indicesTableNAME)).toBe(false);
+            expect(connection!.isDefined(DATA_TYPES_TABLE_NAME)).toBe(true);
+            expect(connection!.isDefined(INDICES_TABLE_NAME)).toBe(false);
         });
     });
 
@@ -307,8 +307,8 @@ describe('MySQL', () => {
                 await builder.build();
 
                 const transformer = getTransformer(transformCase);
-                await fs.access(path.join(outDir, transformer(dataTypesTableNAME) + '.ts'));
-                await fs.access(path.join(outDir, transformer(indicesTableNAME) + '.ts'));
+                await fs.access(path.join(outDir, transformer(DATA_TYPES_TABLE_NAME) + '.ts'));
+                await fs.access(path.join(outDir, transformer(INDICES_TABLE_NAME) + '.ts'));
 
                 // TODO problem with models registration due to 'require(path/to/module)'
                 //  which inconsistently change case of module name
@@ -353,7 +353,7 @@ describe('MySQL', () => {
 
         // BIT (mysql2 driver returns bit field as a Uint8Array)
         it('bit', async () => {
-            const DataTypes = connection!.model(dataTypesTableNAME);
+            const DataTypes = connection!.model(DATA_TYPES_TABLE_NAME);
             const testField = `f_bit`;
             const testValue = 127;
             const res = await DataTypes.upsert({ [testField]: testValue });
@@ -381,7 +381,7 @@ describe('MySQL', () => {
             ...jsonTests,
         ]) {
             it(testName, async () => {
-                const DataTypes = connection!.model(dataTypesTableNAME);
+                const DataTypes = connection!.model(DATA_TYPES_TABLE_NAME);
                 const testField = `f_${testName}`;
                 const res = await DataTypes.upsert({ [testField]: testValue });
 

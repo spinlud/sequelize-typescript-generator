@@ -3,13 +3,28 @@ import { promises as fs } from 'fs';
 import { Sequelize } from 'sequelize-typescript';
 import { createConnection } from '../../../connection';
 import { buildSequelizeOptions } from '../../environment';
-import {DialectMySQL, IConfig, ModelBuilder} from '../../../index';
+import { IConfig, DialectPostgres, ModelBuilder} from '../../../index';
 import { Case, Cases } from '../../../config/IConfig';
-import {dataTypesTableNAME} from "../mysql/queries";
+import {
+    SCHEMA_NAME,
+    SCHEMA_DROP,
+    SCHEMA_CREATE,
+    DATA_TYPES_TABLE_NAME,
+    DATA_TYPES_TABLE_DROP,
+    DATA_TYPES_TABLE_CREATE,
+} from "./queries";
 
-const schemaName = 'dbtest';
+/**
+ * Initialize test database
+ * @param {Sequelize} connection
+ * @returns {Promise<void>}
+ */
+const initTestDb = async (connection: Sequelize): Promise<void> => {
+    await connection.query(SCHEMA_DROP);
+    await connection.query(SCHEMA_CREATE);
 
-
+    await connection.query(DATA_TYPES_TABLE_CREATE);
+}
 
 describe('MySQL', () => {
     const outDir = path.join(process.cwd(), 'output-models');
@@ -22,9 +37,9 @@ describe('MySQL', () => {
         beforeAll(async () => {
             connection = createConnection({ ...sequelizeOptions });
             await connection.authenticate();
-            // await initTestTables(connection);
+            await initTestDb(connection);
 
-            await connection.createSchema(schemaName, {});
+            await connection.createSchema(SCHEMA_NAME, {});
         });
 
         afterAll(async () => {

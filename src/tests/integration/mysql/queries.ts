@@ -1,11 +1,11 @@
-export const dataTypesTableNAME = 'data_types';
+export const DATA_TYPES_TABLE_NAME = 'data_types';
 
-export const dataTypesTableDROP = `DROP TABLE IF EXISTS ${dataTypesTableNAME}`;
+export const DATA_TYPES_TABLE_DROP = `DROP TABLE IF EXISTS ${DATA_TYPES_TABLE_NAME}`;
 
-export const dataTypesTableCREATE = `
-    CREATE TABLE ${dataTypesTableNAME}
+export const DATA_TYPES_TABLE_CREATE = `
+    CREATE TABLE ${DATA_TYPES_TABLE_NAME}
     (
-        id                   INT                  auto_increment          primary key,  
+        id                   INT                  AUTO_INCREMENT          PRIMARY KEY,  
         f_bit                BIT(7)               null,        
         f_bigint             BIGINT               null,
         f_smallint           SMALLINT             null,
@@ -44,23 +44,23 @@ export const dataTypesTableCREATE = `
     ) CHARSET = 'latin1'
 `;
 
-export const indicesTableNAME = 'indices';
+export const INDICES_TABLE_NAME = 'indices';
 
-export const indicesTableDROP = `DROP TABLE IF EXISTS ${indicesTableNAME}`;
+export const INDICES_TABLE_DROP = `DROP TABLE IF EXISTS ${INDICES_TABLE_NAME}`;
 
-export const indicesTableCREATE = `
-    create table ${indicesTableNAME}
+export const INDICES_TABLE_CREATE = `
+    CREATE TABLE ${INDICES_TABLE_NAME}
     (
         id              int             auto_increment          primary key,
         f_unique        bigint          null,
         f_multi_1       int not         null,
         f_multi_2       varchar(80)     null,
-        constraint indices_f_multi_1_uindex unique (f_multi_1),
-        constraint indices_f_unique_uindex unique (f_unique)
+        CONSTRAINT indices_f_multi_1_uindex UNIQUE (f_multi_1),
+        CONSTRAINT indices_f_unique_uindex UNIQUE (f_unique)
     ) CHARSET = 'latin1'
 `;
 
-export const indicesTableINDEX = `
-    create index indices_f_multi_1_f_multi_2_index
-        on ${indicesTableNAME} (f_multi_1, f_multi_2);
+export const INDICES_TABLE_CREATE_INDEX = `
+    CREATE INDEX indices_f_multi_1_f_multi_2_index
+        ON ${INDICES_TABLE_NAME} (f_multi_1, f_multi_2);
 `;
