@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import * as ts from 'typescript';
-import { lintFiles } from '../lint';
+import { Linter } from '../lint';
 import { ModelAttributeColumnOptions } from 'sequelize';
 import { IndexOptions, IndexFieldOptions } from 'sequelize-typescript';
 import { IConfig } from '../config';
@@ -177,6 +177,7 @@ export class ModelBuilder extends Builder {
         await Promise.all(writePromises);
 
         // Lint files
-        lintFiles([path.join(outDir, '*.ts')]);
+        const linter = new Linter();
+        linter.lintFiles([path.join(outDir, '*.ts')]);
     }
 }

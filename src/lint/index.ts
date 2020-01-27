@@ -1,1 +1,1 @@
-export * from './linter';
+export { Linter } from './Linter';

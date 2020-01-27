@@ -1,4 +1,4 @@
-export const eslintConfig = {
+export const eslintDefaultConfig = {
     parser:  '@typescript-eslint/parser',
     parserOptions:  {
         ecmaVersion:  2018,
