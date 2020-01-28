@@ -13,9 +13,6 @@ export const buildSequelizeOptions = (dialect: DialectType): Options => {
         ...process.env.TEST_DB_DATABASE && { database: process.env.TEST_DB_DATABASE },
         ...process.env.TEST_DB_USERNAME && { username: process.env.TEST_DB_USERNAME },
         ...process.env.TEST_DB_PASSWORD && { password: process.env.TEST_DB_PASSWORD },
-        dialectOptions: {
-            decimalNumbers: true,
-        },
         logging: false,
     };
 

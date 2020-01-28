@@ -37,10 +37,9 @@ export class ModelBuilder extends Builder {
         const buildIndexDecoratorProps = (index: IIndexMetadata): Partial<IndexOptions & IndexFieldOptions> => {
             const props: Partial<IndexOptions & IndexFieldOptions> = {
                 name: index.name,
-                using: index.using,
-                // ...index.collation && { collate: index.collation }, // Redundant maybe
+                ...index.using && { using: index.using },
                 ...index.collation && { order: index.collation === 'A' ? 'ASC' : 'DESC' },
-                unique: index.unique,
+                ...index.unique && { unique: index.unique },
             };
 
             return props;
@@ -132,7 +131,7 @@ export class ModelBuilder extends Builder {
         const tablesMetadata = await this.dialect.fetchMetadata(this.config);
 
         if (tablesMetadata.length === 0) {
-            console.warn(`Couldn't find any table for database ${this.config.connection.database}`);
+            console.warn(`Couldn't find any table for database ${this.config.connection.database} and provided filters`);
             return;
         }
 

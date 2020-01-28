@@ -6,8 +6,8 @@ import { ITableMetadata, IColumnMetadata, Dialect } from './Dialect';
 import {
     ITableNameRow,
     IColumnMetadataMySQL,
-    numericPrecisionScale,
-    dateTimePrecision,
+    numericPrecisionScaleMySQL,
+    dateTimePrecisionMySQL,
     caseTransformer,
 } from './utils';
 
@@ -68,7 +68,7 @@ export class DialectMySQL extends Dialect {
         smallint: 'number',
         mediumint: 'number',
         tinyint: 'number',
-        decimal: 'number',
+        decimal: 'string',
         float: 'number',
         double: 'number',
         int: 'number',
@@ -157,63 +157,35 @@ export class DialectMySQL extends Dialect {
             });
 
             for (const tableName of tableNames) {
-                let tableMetadataQuery: string;
-
-                if (config.metadata?.indices) {
-                    tableMetadataQuery = `
-                        SELECT 
-                            c.ORDINAL_POSITION,
-                            c.TABLE_SCHEMA,
-                            c.TABLE_NAME,
-                            c.COLUMN_NAME,
-                            c.DATA_TYPE,
-                            c.COLUMN_TYPE,
-                            c.NUMERIC_PRECISION,
-                            c.NUMERIC_SCALE,
-                            c.DATETIME_PRECISION,                                             
-                            c.IS_NULLABLE,
-                            c.COLUMN_KEY,
-                            c.EXTRA,
-                            c.COLUMN_COMMENT,
-                            t.TABLE_COMMENT,
-                            s.INDEX_NAME,
-                            s.INDEX_TYPE,
-                            s.COLLATION,
-                            s.SEQ_IN_INDEX,
-                            s.NON_UNIQUE
-                        FROM information_schema.columns c
-                        INNER JOIN information_schema.tables t
-                            ON c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME
-                        LEFT OUTER JOIN information_schema.statistics s
-                            ON c.TABLE_SCHEMA = s.TABLE_SCHEMA AND c.TABLE_NAME = s.TABLE_NAME AND c.COLUMN_NAME = s.COLUMN_NAME
-                        WHERE c.TABLE_SCHEMA='${database}' AND c.TABLE_NAME = '${tableName}'
-                        ORDER BY c.ORDINAL_POSITION;
-                    `;
-                }
-                else {
-                    tableMetadataQuery = `
-                        SELECT 
-                            c.ORDINAL_POSITION,
-                            c.TABLE_SCHEMA,
-                            c.TABLE_NAME,
-                            c.COLUMN_NAME,
-                            c.DATA_TYPE,
-                            c.COLUMN_TYPE,
-                            c.NUMERIC_PRECISION,
-                            c.NUMERIC_SCALE,
-                            c.DATETIME_PRECISION,                                             
-                            c.IS_NULLABLE,
-                            c.COLUMN_KEY,
-                            c.EXTRA,
-                            c.COLUMN_COMMENT,
-                            t.TABLE_COMMENT                        
-                        FROM information_schema.columns c
-                        INNER JOIN information_schema.tables t
-                            ON c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME                    
-                        WHERE c.TABLE_SCHEMA='${database}' AND c.TABLE_NAME = '${tableName}'
-                        ORDER BY c.ORDINAL_POSITION;
-                    `;
-                }
+                const tableMetadataQuery = `
+                    SELECT 
+                        c.ORDINAL_POSITION,
+                        c.TABLE_SCHEMA,
+                        c.TABLE_NAME,
+                        c.COLUMN_NAME,
+                        c.DATA_TYPE,
+                        c.COLUMN_TYPE,
+                        c.NUMERIC_PRECISION,
+                        c.NUMERIC_SCALE,
+                        c.DATETIME_PRECISION,                                             
+                        c.IS_NULLABLE,
+                        c.COLUMN_KEY,
+                        c.EXTRA,
+                        c.COLUMN_COMMENT,
+                        t.TABLE_COMMENT,
+                        s.INDEX_NAME,
+                        s.INDEX_TYPE,
+                        s.COLLATION,
+                        s.SEQ_IN_INDEX,
+                        s.NON_UNIQUE
+                    FROM information_schema.columns c
+                    INNER JOIN information_schema.tables t
+                        ON c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME
+                    LEFT OUTER JOIN information_schema.statistics s
+                        ON c.TABLE_SCHEMA = s.TABLE_SCHEMA AND c.TABLE_NAME = s.TABLE_NAME AND c.COLUMN_NAME = s.COLUMN_NAME
+                    WHERE c.TABLE_SCHEMA='${database}' AND c.TABLE_NAME = '${tableName}'
+                    ORDER BY c.ORDINAL_POSITION;
+                `;
 
                 const columnsMetadataMySQL = await connection.query(
                     tableMetadataQuery,
@@ -231,21 +203,8 @@ export class DialectMySQL extends Dialect {
                     comment: columnsMetadataMySQL[0].TABLE_COMMENT,
                 };
 
-                for (const columnMetadataMySQL of columnsMetadataMySQL) {
-                    // Column already added: we only need to add the new index for this column
-                    if (config.metadata?.indices && tableMetadata.columns.length &&
-                        tableMetadata.columns[tableMetadata.columns.length - 1].name === columnMetadataMySQL.COLUMN_NAME
-                    ) {
-                        tableMetadata.columns[tableMetadata.columns.length - 1].indices!.push({
-                            name: columnMetadataMySQL.INDEX_NAME!,
-                            using: columnMetadataMySQL.INDEX_TYPE!,
-                            collation: columnMetadataMySQL.COLLATION!,
-                            seq: columnMetadataMySQL.SEQ_IN_INDEX!,
-                            unique: columnMetadataMySQL.NON_UNIQUE === 0,
-                        });
-
-                        continue;
-                    }
+                for (let i = 0; i < columnsMetadataMySQL.length; ++i) {
+                    const columnMetadataMySQL = columnsMetadataMySQL[i];
 
                     // Data type not recognized
                     if (!this.sequelizeDataTypesMap[columnMetadataMySQL.DATA_TYPE]) {
@@ -268,18 +227,7 @@ export class DialectMySQL extends Dialect {
                         primaryKey: columnMetadataMySQL.COLUMN_KEY === 'PRI',
                         autoIncrement: columnMetadataMySQL.EXTRA === 'auto_increment',
                         unique: columnMetadataMySQL.COLUMN_KEY === 'UNI',
-
-                        ...config.metadata?.indices && columnMetadataMySQL.INDEX_NAME && {
-                            indices: [
-                                {
-                                    name: columnMetadataMySQL.INDEX_NAME!,
-                                    using: columnMetadataMySQL.INDEX_TYPE!,
-                                    collation: columnMetadataMySQL.COLLATION,
-                                    seq: columnMetadataMySQL.SEQ_IN_INDEX!,
-                                    unique: columnMetadataMySQL.NON_UNIQUE === 0,
-                                }
-                            ]
-                        },
+                        indices: [],
                         comment: columnMetadataMySQL.COLUMN_COMMENT,
                     };
 
@@ -289,12 +237,12 @@ export class DialectMySQL extends Dialect {
                         case 'numeric':
                         case 'float':
                         case 'double':
-                            columnMetadata.dataType += numericPrecisionScale(columnMetadataMySQL);
+                            columnMetadata.dataType += numericPrecisionScaleMySQL(columnMetadataMySQL);
                             break;
 
                         case 'datetime':
                         case 'timestamp':
-                            columnMetadata.dataType += dateTimePrecision(columnMetadataMySQL);
+                            columnMetadata.dataType += dateTimePrecisionMySQL(columnMetadataMySQL);
                             break;
                     }
 
@@ -302,6 +250,29 @@ export class DialectMySQL extends Dialect {
                     if (columnMetadataMySQL.DATA_TYPE === 'enum') {
                         columnMetadata.dataType += columnMetadata.typeExt.match(/\(.*\)/)![0];
                     }
+
+                    // Indices
+                    let j = i;
+                    const ordinalPosition = columnMetadataMySQL.ORDINAL_POSITION;
+
+                    // Keep adding indices for this column until new column or end of columns is reached
+                    while (j < columnsMetadataMySQL.length &&
+                        columnsMetadataMySQL[j].ORDINAL_POSITION === ordinalPosition) {
+
+                        if (columnsMetadataMySQL[j].INDEX_NAME && columnsMetadataMySQL[j].COLUMN_KEY !== 'PRI') {
+                            columnMetadata.indices!.push({
+                                name: columnsMetadataMySQL[j].INDEX_NAME!,
+                                using: columnsMetadataMySQL[j].INDEX_TYPE!,
+                                collation: columnsMetadataMySQL[j].COLLATION,
+                                seq: columnsMetadataMySQL[j].SEQ_IN_INDEX!,
+                                unique: columnsMetadataMySQL[j].NON_UNIQUE === 0,
+                            });
+                        }
+
+                        j++;
+                    }
+
+                    i = j - 1;
 
                     tableMetadata.columns.push(columnMetadata);
                 }

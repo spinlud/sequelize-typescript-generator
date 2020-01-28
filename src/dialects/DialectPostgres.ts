@@ -6,8 +6,8 @@ import { ITableMetadata, IColumnMetadata, Dialect } from './Dialect';
 import {
     ITableNameRow,
     IColumnMetadataPostgres,
-    numericPrecisionScale,
-    dateTimePrecision,
+    numericPrecisionScalePostgres,
+    dateTimePrecisionPostgres,
     caseTransformer,
 } from './utils';
 
@@ -59,129 +59,11 @@ export class DialectPostgres extends Dialect {
     // macaddr	6 bytes	MAC addresses
     // macaddr8	8 bytes	MAC addresses (EUI-64 format)
 
-    // public readonly sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
-    //     smallint: DataType.INTEGER,
-    //     integer: DataType.INTEGER,
-    //     bigint: DataType.BIGINT,
-    //     decimal: DataType.DECIMAL,
-    //     numeric: DataType.DECIMAL,
-    //     real: DataType.REAL,
-    //     double: DataType.DOUBLE,
-    //     smallserial: DataType.INTEGER,
-    //     serial: DataType.INTEGER,
-    //     bigserial: DataType.BIGINT,
-    //
-    //     money: DataType.DECIMAL,
-    //
-    //     varchar: DataType.STRING,
-    //     varying: DataType.STRING,
-    //     character: DataType.STRING,
-    //     char: DataType.STRING,
-    //     text: DataType.STRING,
-    //
-    //     bytea: DataType.BLOB,
-    //
-    //     timestamp: DataType.DATE,
-    //     date: DataType.DATEONLY,
-    //     time: DataType.DATE,
-    //     interval: DataType.DATE,
-    //
-    //     boolean: DataType.BOOLEAN,
-    //
-    //     enum: DataType.ENUM,
-    //
-    //     point: DataType.GEOMETRY,
-    //     line: DataType.GEOMETRY,
-    //     lseg: DataType.GEOMETRY,
-    //     box: DataType.GEOMETRY,
-    //     path: DataType.GEOMETRY,
-    //     polygon: DataType.GEOMETRY,
-    //     circle: DataType.GEOMETRY,
-    //
-    //     cidr: DataType.CIDR,
-    //     inet: DataType.INET,
-    //     macaddr: DataType.MACADDR,
-    //     macaddr8: DataType.MACADDR,
-    //
-    //     bit: DataType.INTEGER,
-    //     'bit varying': DataType.INTEGER,
-    //
-    //     // tsvector: ?
-    //     // tsquery: ?
-    //
-    //     uuid: DataType.UUID,
-    //
-    //     xml: DataType.STRING,
-    //
-    //     json: DataType.JSON,
-    //     jsonb: DataType.JSON,
-    //     jsonpath: DataType.JSON,
-    // };
-
-    // public readonly jsDataTypesMap = {
-    //     smallint: 'number',
-    //     integer: 'number',
-    //     bigint: 'bigint',
-    //     decimal: 'number',
-    //     numeric: 'number',
-    //     real: 'number',
-    //     double: 'number',
-    //     smallserial: 'number',
-    //     serial: 'number',
-    //     bigserial: 'bigint',
-    //
-    //     money: 'number',
-    //
-    //     varchar: 'string',
-    //     varying: 'string',
-    //     character: 'string',
-    //     char: 'string',
-    //     text: 'string',
-    //
-    //     bytea: 'Buffer',
-    //
-    //     timestamp: 'string',
-    //     date: 'string',
-    //     time: 'string',
-    //     interval: 'string',
-    //
-    //     boolean: 'boolean',
-    //
-    //     enum: 'string',
-    //
-    //     point: 'object',
-    //     line: 'object',
-    //     lseg: 'object',
-    //     box: 'object',
-    //     path: 'object',
-    //     polygon: 'object',
-    //     circle: 'object',
-    //
-    //     cidr: 'string',
-    //     inet: 'string',
-    //     macaddr: 'string',
-    //     macaddr8: 'string',
-    //
-    //     bit: 'number',
-    //     'bit varying': 'number',
-    //
-    //     // tsvector: ?
-    //     // tsquery: ?
-    //
-    //     uuid: 'string',
-    //
-    //     xml: 'string',
-    //
-    //     json: 'object',
-    //     jsonb: 'object',
-    //     jsonpath: 'object',
-    // }
-
     public readonly sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
         int2: DataType.INTEGER,
         int4: DataType.INTEGER,
         int8: DataType.BIGINT,
-        numeric: DataType.NUMBER,
+        numeric: DataType.DECIMAL,
         float4: DataType.FLOAT,
         float8: DataType.DOUBLE,
         money: DataType.NUMBER,
@@ -189,8 +71,8 @@ export class DialectPostgres extends Dialect {
         bpchar: DataType.STRING,
         text: DataType.STRING,
         bytea: DataType.BLOB,
-        timestamp: DataType.STRING,
-        timestamptz: DataType.STRING,
+        timestamp: DataType.DATE,
+        timestamptz: DataType.DATE,
         date: DataType.STRING,
         time: DataType.STRING,
         timetz: DataType.STRING,
@@ -219,17 +101,17 @@ export class DialectPostgres extends Dialect {
     public readonly jsDataTypesMap = {
         int2: 'number',
         int4: 'number',
-        int8: 'bigint',
-        numeric: 'number',
-        float4: 'number',
-        float8: 'number',
+        int8: 'string',
+        numeric: 'string',
+        float4: 'string',
+        float8: 'string',
         money: 'number',
         varchar: 'string',
         bpchar: 'string',
         text: 'string',
         bytea: 'Buffer',
-        timestamp: 'string',
-        timestamptz: 'string',
+        timestamp: 'Date',
+        timestamptz: 'Date',
         date: 'string',
         time: 'string',
         timetz: 'string',
@@ -303,29 +185,57 @@ export class DialectPostgres extends Dialect {
             });
 
             for (const tableName of tableNames) {
-                let columnsMetadataQuery: string;
-
-                // columnsMetadataQuery = `
-                //     SELECT *
-                //     FROM information_schema.columns
-                //     WHERE table_schema='${tableSchema}' AND table_name='${tableName}'
-                // `;
-
-                columnsMetadataQuery = `
-                    SELECT 
-                           CASE WHEN p.attname IS NOT NULL THEN 'YES' ELSE 'NO' END AS column_key, 
-                           c.*
+                const columnsMetadataQuery = `
+                    SELECT
+                           c.*,
+                           CASE WHEN(seq.sequence_name IS NOT NULL) THEN TRUE ELSE FALSE END AS is_sequence,
+                           ix.index_name,
+                           ix.index_type,
+                           ix.index_is_primary,
+                           ix.index_is_unique,
+                           ix.index_is_clustered
                     FROM information_schema.columns c
-                    LEFT OUTER JOIN (
-                        SELECT a.attname
-                        FROM   pg_index i
-                        JOIN   pg_attribute a
-                            ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-                        WHERE i.indrelid = '${tableSchema}.${tableName}'::regclass AND i.indisprimary
-                    ) p
-                    ON c.column_name = p.attname
-                    WHERE table_schema = '${tableSchema}' AND table_name = '${tableName}'
-                    ORDER BY ordinal_position;                    
+                    LEFT OUTER JOIN ( -- Indices metadata
+                        SELECT
+                           pc.relname as index_name,
+                           am.amname as index_type,
+                           a.attname,
+                           a.attnum,
+                           CASE WHEN (pc.relname IS NOT NULL AND x.indisprimary IS TRUE) THEN 'YES' ELSE NULL END AS index_is_primary,
+                           CASE WHEN (pc.relname IS NOT NULL AND x.indisunique IS TRUE) THEN 'YES' ELSE NULL END AS index_is_unique,
+                           CASE WHEN (pc.relname IS NOT NULL AND x.indisclustered IS TRUE) THEN 'YES' ELSE NULL END AS index_is_clustered
+                        FROM pg_attribute a
+                        LEFT OUTER JOIN pg_index x
+                            ON a.attnum = ANY (x.indkey) AND a.attrelid = x.indrelid
+                        LEFT OUTER JOIN pg_class pc
+                            ON x.indexrelid = pc.oid
+                        LEFT OUTER JOIN pg_am am
+                            ON pc.relam = am.oid
+                        WHERE a.attrelid = '${tableSchema}.${tableName}'::regclass AND a.attnum > 0
+                    ) ix
+                        ON c.ordinal_position = ix.attnum
+                    LEFT OUTER JOIN ( -- Sequences (auto increment) metadata
+                        SELECT
+                           seqclass.relname         AS sequence_name,
+                           pn.nspname               AS schema_name,
+                           depclass.relname         AS table_name,
+                           attrib.attname           AS column_name
+                        FROM   pg_class AS seqclass
+                        JOIN pg_sequence AS seq
+                            ON ( seq.seqrelid = seqclass.relfilenode )
+                        JOIN pg_depend AS dep
+                            ON ( seq.seqrelid = dep.objid )
+                        JOIN pg_class AS depclass
+                            ON ( dep.refobjid = depclass.relfilenode )
+                        JOIN pg_attribute AS attrib
+                            ON ( attrib.attnum = dep.refobjsubid AND attrib.attrelid = dep.refobjid )
+                        JOIN pg_namespace pn
+                            ON seqclass.relnamespace = pn.oid
+                        WHERE pn.nspname = '${tableSchema}' AND depclass.relname = '${tableName}'
+                    ) seq
+                        ON c.table_schema = seq.schema_name AND c.table_name = seq.table_name AND c.column_name = seq.column_name
+                    WHERE c.table_schema = '${tableSchema}' AND c.table_name = '${tableName}'
+                    ORDER BY c.ordinal_position;
                 `;
 
                 const columnsMetadataPostgres = await connection.query(
@@ -345,7 +255,10 @@ export class DialectPostgres extends Dialect {
                     comment: '', // TODO
                 };
 
-                for (const columnMetadataPostgres of columnsMetadataPostgres) {
+                // for (const columnMetadataPostgres of columnsMetadataPostgres) {
+                for (let i = 0; i < columnsMetadataPostgres.length; ++i) {
+                    const columnMetadataPostgres = columnsMetadataPostgres[i];
+
                     // Data type not recognized
                     if (!this.sequelizeDataTypesMap[columnMetadataPostgres.udt_name]) {
                         console.warn(`[Warning]`,
@@ -363,44 +276,49 @@ export class DialectPostgres extends Dialect {
                         dataType: 'DataType.' +
                             this.sequelizeDataTypesMap[columnMetadataPostgres.udt_name].key
                                 .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
-                        allowNull: columnMetadataPostgres.is_nullable === 'YES',
-                        primaryKey: columnMetadataPostgres.column_key === 'YES',
-                        autoIncrement: false, // TODO
-                        unique: false, // TODO
-
-                        // ...config.metadata?.indices && columnMetadataPostgres.INDEX_NAME && {
-                        //     indices: [
-                        //         {
-                        //             name: columnMetadataPostgres.INDEX_NAME!,
-                        //             using: columnMetadataPostgres.INDEX_TYPE!,
-                        //             collation: columnMetadataPostgres.COLLATION,
-                        //             seq: columnMetadataPostgres.SEQ_IN_INDEX!,
-                        //             unique: columnMetadataPostgres.NON_UNIQUE === 0,
-                        //         }
-                        //     ]
-                        // },
+                        allowNull: !!columnMetadataPostgres.is_nullable && !columnMetadataPostgres.index_is_primary,
+                        primaryKey: !!columnMetadataPostgres.index_is_primary,
+                        autoIncrement: columnMetadataPostgres.is_sequence,
+                        unique: !!columnMetadataPostgres.index_is_unique && !columnMetadataPostgres.index_is_primary,
+                        indices: [],
                         comment: '', // TODO
                     };
 
-                    // // Additional data type informations
-                    // switch (columnMetadataPostgres.DATA_TYPE) {
-                    //     case 'decimal':
-                    //     case 'numeric':
-                    //     case 'float':
-                    //     case 'double':
-                    //         columnMetadata.dataType += numericPrecisionScale(columnMetadataPostgres);
-                    //         break;
-                    //
-                    //     case 'datetime':
-                    //     case 'timestamp':
-                    //         columnMetadata.dataType += dateTimePrecision(columnMetadataPostgres);
-                    //         break;
-                    // }
-                    //
-                    // // ENUM: add values to data type -> DataType.ENUM('v1', 'v2')
-                    // if (columnMetadataPostgres.DATA_TYPE === 'enum') {
-                    //     columnMetadata.dataType += columnMetadata.typeExt.match(/\(.*\)/)![0];
-                    // }
+                    // Additional data type information
+                    switch (columnMetadataPostgres.udt_name) {
+                        case 'decimal':
+                        case 'numeric':
+                        case 'float':
+                        case 'double':
+                            columnMetadata.dataType += numericPrecisionScalePostgres(columnMetadataPostgres);
+                            break;
+
+                        case 'timestamp':
+                        case 'timestampz':
+                            columnMetadata.dataType += dateTimePrecisionPostgres(columnMetadataPostgres);
+                            break;
+                    }
+
+                    let j = i;
+                    const ordinalPosition = columnMetadataPostgres.ordinal_position;
+
+                    // Keep adding indices for this column until new column or end of columns is reached
+                    while (j < columnsMetadataPostgres.length &&
+                        columnsMetadataPostgres[j].ordinal_position === ordinalPosition) {
+
+                        if (columnsMetadataPostgres[j].index_name && !columnsMetadataPostgres[j].index_is_primary) {
+                            columnMetadata.indices!.push({
+                                name: columnsMetadataPostgres[j].index_name!,
+                                using: columnsMetadataPostgres[j].index_type!,
+                                unique: !!columnsMetadataPostgres[j].index_is_unique,
+                            });
+                        }
+
+                        j++;
+                    }
+
+                    i = j - 1;
+
 
                     tableMetadata.columns.push(columnMetadata);
                 }

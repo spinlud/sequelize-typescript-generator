@@ -11,7 +11,7 @@ import {
 export interface ITableNameRow {
     table_name?: string;
     TABLE_NAME?: string;
-};
+}
 
 export interface IColumnMetadataMySQL {
     TABLE_CATALOG: string;
@@ -57,7 +57,7 @@ export interface IColumnMetadataPostgres {
     table_schema: string;
     table_name: string;
     column_name: string;
-    column_key: string;
+    // column_key: string;
     ordinal_position: number;
     column_default: string;
     is_nullable: string;
@@ -98,6 +98,12 @@ export interface IColumnMetadataPostgres {
     is_generated: string;
     generation_expression: string;
     is_updatable: string;
+    is_sequence: boolean;
+    index_name: string | null;
+    index_type: string | null;
+    index_is_primary: string | null;
+    index_is_unique: string | null;
+    index_is_clustered: string | null;
 }
 
 /**
@@ -105,7 +111,7 @@ export interface IColumnMetadataPostgres {
  * @param {IColumnMetadataMySQL} columnMetadataMySQL
  * @returns {string} '(5, 2)'
  */
-export const numericPrecisionScale = (columnMetadataMySQL: IColumnMetadataMySQL): string => {
+export const numericPrecisionScaleMySQL = (columnMetadataMySQL: IColumnMetadataMySQL): string => {
     let res = `(${columnMetadataMySQL.NUMERIC_PRECISION}`;
     res +=  columnMetadataMySQL.NUMERIC_SCALE ?
         `, ${columnMetadataMySQL.NUMERIC_SCALE})` : `)`;
@@ -117,9 +123,35 @@ export const numericPrecisionScale = (columnMetadataMySQL: IColumnMetadataMySQL)
  * @param {IColumnMetadataMySQL} columnMetadataMySQL
  * @returns {string} '(3)'
  */
-export const dateTimePrecision = (columnMetadataMySQL: IColumnMetadataMySQL): string => {
+export const dateTimePrecisionMySQL = (columnMetadataMySQL: IColumnMetadataMySQL): string => {
     if (columnMetadataMySQL.DATETIME_PRECISION) {
         return `(${columnMetadataMySQL.DATETIME_PRECISION})`;
+    }
+    else {
+        return '';
+    }
+};
+
+/**
+ * Compute precision/scale signature for numeric types: FLOAT(4, 2), DECIMAL(5, 2) etc
+ * @param {IColumnMetadataPostgres} columnMetadataPostgres
+ * @returns {string} '(5, 2)'
+ */
+export const numericPrecisionScalePostgres = (columnMetadataPostgres: IColumnMetadataPostgres): string => {
+    let res = `(${columnMetadataPostgres.numeric_precision}`;
+    res +=  columnMetadataPostgres.numeric_scale ?
+        `, ${columnMetadataPostgres.numeric_scale})` : `)`;
+    return res;
+};
+
+/**
+ * Compute date time precision signature: TIMESTAMP(3), DATETIME(6)
+ * @param {IColumnMetadataPostgres} columnMetadataPostgres
+ * @returns {string} '(3)'
+ */
+export const dateTimePrecisionPostgres = (columnMetadataPostgres: IColumnMetadataPostgres): string => {
+    if (columnMetadataPostgres.datetime_precision) {
+        return `(${columnMetadataPostgres.datetime_precision})`;
     }
     else {
         return '';

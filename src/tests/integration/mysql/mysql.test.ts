@@ -14,7 +14,7 @@ import {
     INDICES_TABLE_NAME,
     INDICES_TABLE_DROP,
     INDICES_TABLE_CREATE,
-    INDICES_TABLE_CREATE_INDEX
+    INDICES_TABLE_CREATE_INDEX,
 } from './queries';
 import {getTransformer} from "../../../dialects/utils";
 
@@ -59,12 +59,12 @@ const initTestTables = async (connection: Sequelize): Promise<void> => {
     await connection.query(INDICES_TABLE_CREATE_INDEX);
 };
 
-const numericTests: [string, number][] = [
+const numericTests: [string, number | string][] = [
     ['bigint', 100000000000000000],
     ['smallint', 32767],
     ['mediumint', 8388607],
     ['tinyint', 127],
-    ['decimal', 99.999],
+    ['decimal', '99.999'],
     ['float', 66.78],
     ['double', 11.2345],
     ['int', 2147483647],
@@ -149,50 +149,14 @@ describe('MySQL', () => {
         it('should register models',() => {
             connection!.addModels([ outDir ]);
             connection!.model(DATA_TYPES_TABLE_NAME);
+            connection!.model(INDICES_TABLE_NAME);
 
             expect(connection!.isDefined(DATA_TYPES_TABLE_NAME)).toBe(true);
-        });
-    });
-
-    describe('Indices', () => {
-        let connection: Sequelize | undefined;
-
-        beforeAll(async () => {
-            connection = createConnection({ ...sequelizeOptions });
-            await connection.authenticate();
-            await initTestTables(connection);
-
-            const config: IConfig = {
-                connection: sequelizeOptions,
-                metadata: {
-                    indices: true,
-                },
-                output: {
-                    outDir: outDir,
-                    clean: true,
-                }
-            };
-
-            const dialect = new DialectMySQL();
-            const builder = new ModelBuilder(config, dialect);
-            await builder.build();
-        });
-
-        afterAll(async () => {
-            connection && await connection.close();
-        });
-
-        it('should register models',() => {
-            connection!.addModels([ outDir ]);
-            const Indices = connection!.model(INDICES_TABLE_NAME);
-
-            expect(Indices).toBeDefined();
             expect(connection!.isDefined(INDICES_TABLE_NAME)).toBe(true);
         });
     });
 
-
-    describe('Tables', () => {
+    describe('Filter --tables', () => {
         let connection: Sequelize | undefined;
 
         beforeAll(async () => {
@@ -233,7 +197,7 @@ describe('MySQL', () => {
         });
     });
 
-    describe('Skip tables', () => {
+    describe('Filter --skip-tables', () => {
         let connection: Sequelize | undefined;
 
         beforeAll(async () => {
@@ -313,8 +277,8 @@ describe('MySQL', () => {
                 // TODO problem with models registration due to 'require(path/to/module)'
                 //  which inconsistently change case of module name
                 // connection!.addModels([ outDir ]);
-                // expect(connection!.isDefined(transformer(dataTypesTableNAME))).toBe(true);
-                // expect(connection!.isDefined(transformer(indicesTableNAME))).toBe(true);
+                // expect(connection!.isDefined(transformer(DATA_TYPES_TABLE_NAME))).toBe(true);
+                // expect(connection!.isDefined(transformer(INDICES_TABLE_NAME))).toBe(true);
             });
         }
     });

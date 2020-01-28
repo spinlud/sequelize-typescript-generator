@@ -28,11 +28,11 @@ export interface IColumnMetadata {
 
 export interface IIndexMetadata {
     name: string;
-    using: IndexMethod;
-    collation: string | null;
-    seq: number;
     type?: IndexType;
-    unique: boolean;
+    unique?: boolean;
+    using?: IndexMethod;
+    collation?: string | null;
+    seq?: number;
 }
 
 export abstract class Dialect {

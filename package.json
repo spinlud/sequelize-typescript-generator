@@ -15,7 +15,7 @@
     "test-postgres": "npm run remove-docker-containers && ./src/tests/integration/postgres/docker-start-postgres.sh && jest src/tests/integration/postgres",
     "test": "npm run test-mysql && npm run test-postgres",
     "build": "npm run clean && tsc",
-    "dev": "ts-node-dev src/bin/cli.ts --port 4321 -u dbuser -x dbpwd --dialect postgres --database dbtest --schema dbtest --clean"
+    "dev": "ts-node-dev src/bin/cli.ts --port 4321 -u dbuser -x dbpwd --dialect postgres --database dbtest --schema dbtest --indices --clean"
   },
   "keywords": [],
   "author": "Ludovico Fabbri",
