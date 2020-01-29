@@ -25,7 +25,6 @@ export class ModelBuilder extends Builder {
             const props: Partial<ModelAttributeColumnOptions> = {
                 ...col.fieldName && { field: col.fieldName },
                 ...col.primaryKey && { primaryKey: col.primaryKey },
-                ...col.unique && { unique: col.unique },
                 ...col.autoIncrement && { autoIncrement: col.autoIncrement },
                 ...col.allowNull && { allowNull: col.allowNull },
                 type: col.dataType,

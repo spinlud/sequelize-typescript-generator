@@ -182,14 +182,14 @@ export class DialectMySQL extends Dialect {
         connection: Sequelize,
         config: IConfig
     ): Promise<string[]> {
-        const tableNamesQuery = `
+        const query = `
             SELECT table_name 
             FROM information_schema.tables
             WHERE table_schema = '${config.connection.database}';
         `;
 
         const tableNames: string[] = (await connection.query(
-            tableNamesQuery,
+            query,
             {
                 type: QueryTypes.SELECT,
                 raw: true,
@@ -264,7 +264,6 @@ export class DialectMySQL extends Dialect {
                 allowNull: column.IS_NULLABLE === 'YES',
                 primaryKey: column.COLUMN_KEY === 'PRI',
                 autoIncrement: column.EXTRA === 'auto_increment',
-                unique: column.COLUMN_KEY === 'UNI',
                 indices: [],
                 comment: column.COLUMN_COMMENT,
             };

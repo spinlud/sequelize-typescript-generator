@@ -40,9 +40,9 @@ const initTestDb = async (connection: Sequelize): Promise<void> => {
 }
 
 describe('Postgres', () => {
+    jest.setTimeout(120000);
     const outDir = path.join(process.cwd(), 'output-models');
     let sequelizeOptions = buildSequelizeOptions('postgres');
-    console.log(sequelizeOptions);
 
     describe('Build', () => {
         let connection: Sequelize | undefined;
@@ -61,13 +61,15 @@ describe('Postgres', () => {
             const config: IConfig = {
                 connection: sequelizeOptions,
                 metadata: {
-                    ...process.env.TEST_DB_SCHEMA && { schema: process.env.TEST_DB_SCHEMA },
+                    schema: process.env.TEST_DB_SCHEMA || 'public',
                 },
                 output: {
                     outDir: outDir,
                     clean: true,
                 }
             };
+
+            console.log(config);
 
             const dialect = new DialectPostgres();
             const builder = new ModelBuilder(config, dialect);
@@ -95,7 +97,7 @@ describe('Postgres', () => {
             const config: IConfig = {
                 connection: sequelizeOptions,
                 metadata: {
-                    ...process.env.TEST_DB_SCHEMA && { schema: process.env.TEST_DB_SCHEMA },
+                    schema: process.env.TEST_DB_SCHEMA || 'public',
                     tables: [ INDICES_TABLE_NAME.toLowerCase() ]
                 },
                 output: {
@@ -137,7 +139,7 @@ describe('Postgres', () => {
             const config: IConfig = {
                 connection: sequelizeOptions,
                 metadata: {
-                    ...process.env.TEST_DB_SCHEMA && { schema: process.env.TEST_DB_SCHEMA },
+                    schema: process.env.TEST_DB_SCHEMA || 'public',
                     skipTables: [ INDICES_TABLE_NAME.toLowerCase() ]
                 },
                 output: {
@@ -188,7 +190,7 @@ describe('Postgres', () => {
                 const config: IConfig = {
                     connection: sequelizeOptions,
                     metadata: {
-                        ...process.env.TEST_DB_SCHEMA && { schema: process.env.TEST_DB_SCHEMA },
+                        schema: process.env.TEST_DB_SCHEMA || 'public',
                         case: transformCase,
                     },
                     output: {
@@ -225,7 +227,7 @@ describe('Postgres', () => {
             const config: IConfig = {
                 connection: sequelizeOptions,
                 metadata: {
-                    ...process.env.TEST_DB_SCHEMA && { schema: process.env.TEST_DB_SCHEMA },
+                    schema: process.env.TEST_DB_SCHEMA || 'public',
                 },
                 output: {
                     outDir: outDir,

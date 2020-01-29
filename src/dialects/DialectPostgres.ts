@@ -1,15 +1,97 @@
 import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize, DataType } from 'sequelize-typescript';
-import { createConnection } from '../connection';
 import { IConfig } from '../config';
-import { ITableMetadata, IColumnMetadata, IIndexMetadata, Dialect } from './Dialect';
-import {
-    ITableNameRow,
-    IColumnMetadataPostgres,
-    numericPrecisionScalePostgres,
-    dateTimePrecisionPostgres,
-    caseTransformer,
-} from './utils';
+import { IColumnMetadata, IIndexMetadata, Dialect } from './Dialect';
+
+interface ITableNameRow {
+    table_name?: string;
+    TABLE_NAME?: string;
+}
+
+interface IColumnMetadataPostgres {
+    is_sequence: boolean;
+    is_primary: boolean;
+    table_catalog: string;
+    table_schema: string;
+    table_name: string;
+    column_name: string;
+    ordinal_position: number;
+    column_default: string;
+    is_nullable: string;
+    data_type: string;
+    character_maximum_length: number;
+    character_octet_length: number;
+    numeric_precision: number;
+    numeric_precision_radix: number;
+    numeric_scale: number;
+    datetime_precision: number;
+    interval_type: string;
+    interval_precision: number;
+    character_set_catalog: string;
+    character_set_schema: string;
+    character_set_name: string;
+    collation_catalog: string;
+    collation_schema: string;
+    collation_name: string;
+    domain_catalog: string;
+    domain_schema: string;
+    domain_name: string;
+    udt_catalog: string;
+    udt_schema: string;
+    udt_name: string;
+    scope_catalog: string;
+    scope_schema: string;
+    scope_name: string;
+    maximum_cardinality: number;
+    dtd_identifier: string;
+    is_self_referencing: string;
+    is_identity: string;
+    identity_generation: string;
+    identity_start: string;
+    identity_increment: string;
+    identity_maximum: string;
+    identity_minimum: string;
+    identity_cycle: string;
+    is_generated: string;
+    generation_expression: string;
+    is_updatable: string;
+}
+
+interface IIndexMetadataPostgres {
+    index_name: string;
+    index_type: string;
+    is_primary: boolean;
+    is_unique: boolean;
+    is_clustered: boolean;
+    column_name: string;
+    ordinal_position: string;
+}
+
+/**
+ * Compute precision/scale signature for numeric types: FLOAT(4, 2), DECIMAL(5, 2) etc
+ * @param {IColumnMetadataPostgres} columnMetadataPostgres
+ * @returns {string} '(5, 2)'
+ */
+const numericPrecisionScalePostgres = (columnMetadataPostgres: IColumnMetadataPostgres): string => {
+    let res = `(${columnMetadataPostgres.numeric_precision}`;
+    res +=  columnMetadataPostgres.numeric_scale ?
+        `, ${columnMetadataPostgres.numeric_scale})` : `)`;
+    return res;
+};
+
+/**
+ * Compute date time precision signature: TIMESTAMP(3), DATETIME(6)
+ * @param {IColumnMetadataPostgres} columnMetadataPostgres
+ * @returns {string} '(3)'
+ */
+const dateTimePrecisionPostgres = (columnMetadataPostgres: IColumnMetadataPostgres): string => {
+    if (columnMetadataPostgres.datetime_precision) {
+        return `(${columnMetadataPostgres.datetime_precision})`;
+    }
+    else {
+        return '';
+    }
+};
 
 /**
  * Dialect for Postgres
@@ -98,7 +180,7 @@ export class DialectPostgres extends Dialect {
         jsonpath: DataType.JSON,
     }
 
-    public readonly jsDataTypesMap = {
+    public readonly jsDataTypesMap: { [key: string]: string } = {
         int2: 'number',
         int4: 'number',
         int8: 'string',
@@ -138,221 +220,188 @@ export class DialectPostgres extends Dialect {
     }
 
     /**
-     * Fetch tables metadata from the database
+     * Fetch table names for the provided database/schema
+     * @param {Sequelize} connection
      * @param {IConfig} config
-     * @returns {Promise<ITableMetadata[]>}
+     * @returns {Promise<string[]>}
      */
-    async fetchMetadata(config: IConfig): Promise<ITableMetadata[]> {
-        let connection: Sequelize | undefined;
-        const tablesMetadata: ITableMetadata[] = [];
+    protected async fetchTableNames(
+        connection: Sequelize,
+        config: IConfig
+    ): Promise<string[]> {
+        const query = `
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema='${config.metadata!.schema}';
+        `;
 
-        try {
-            connection = createConnection(config.connection);
-
-            await connection.authenticate();
-
-            const tableSchema = config.metadata?.schema ?? 'public';
-
-            const tableNamesQuery = `
-                SELECT table_name
-                FROM information_schema.tables
-                WHERE table_schema='${tableSchema}';
-            `;
-
-            // Fetch table names (include metadata.tables and exclude metadata.skipTables if provided)
-            const tableNames: string[] = (await connection.query(
-                tableNamesQuery,
-                {
-                    type: QueryTypes.SELECT,
-                    raw: true,
-                }
-            ) as ITableNameRow[]).map(row => {
-                return row.table_name ?? row.TABLE_NAME!;
-            }).filter(tableName => {
-                if (config.metadata?.tables?.length) {
-                    return config.metadata.tables.includes(tableName.toLowerCase());
-                }
-                else {
-                    return true;
-                }
-            }).filter(tableName => {
-                if (config.metadata?.skipTables?.length) {
-                    return !(config.metadata.skipTables.includes(tableName.toLowerCase()));
-                }
-                else {
-                    return true;
-                }
-            });
-
-            for (const tableName of tableNames) {
-                const columnsMetadataQuery = `
-                    SELECT
-                           c.*,
-                           CASE WHEN(seq.sequence_name IS NOT NULL) THEN TRUE ELSE FALSE END AS is_sequence,
-                           ix.index_name,
-                           ix.index_type,
-                           ix.index_is_primary,
-                           ix.index_is_unique,
-                           ix.index_is_clustered
-                    FROM information_schema.columns c
-                    LEFT OUTER JOIN ( -- Indices metadata
-                        SELECT
-                           pc.relname as index_name,
-                           am.amname as index_type,
-                           a.attname,
-                           a.attnum,
-                           CASE WHEN (pc.relname IS NOT NULL AND x.indisprimary IS TRUE) THEN 'YES' ELSE NULL END AS index_is_primary,
-                           CASE WHEN (pc.relname IS NOT NULL AND x.indisunique IS TRUE) THEN 'YES' ELSE NULL END AS index_is_unique,
-                           CASE WHEN (pc.relname IS NOT NULL AND x.indisclustered IS TRUE) THEN 'YES' ELSE NULL END AS index_is_clustered
-                        FROM pg_attribute a
-                        LEFT OUTER JOIN pg_index x
-                            ON a.attnum = ANY (x.indkey) AND a.attrelid = x.indrelid
-                        LEFT OUTER JOIN pg_class pc
-                            ON x.indexrelid = pc.oid
-                        LEFT OUTER JOIN pg_am am
-                            ON pc.relam = am.oid
-                        WHERE a.attrelid = '${tableSchema}.${tableName}'::regclass AND a.attnum > 0
-                    ) ix
-                        ON c.ordinal_position = ix.attnum
-                    LEFT OUTER JOIN ( -- Sequences (auto increment) metadata
-                        SELECT
-                           seqclass.relname         AS sequence_name,
-                           pn.nspname               AS schema_name,
-                           depclass.relname         AS table_name,
-                           attrib.attname           AS column_name
-                        FROM   pg_class AS seqclass
-                        JOIN pg_sequence AS seq
-                            ON ( seq.seqrelid = seqclass.relfilenode )
-                        JOIN pg_depend AS dep
-                            ON ( seq.seqrelid = dep.objid )
-                        JOIN pg_class AS depclass
-                            ON ( dep.refobjid = depclass.relfilenode )
-                        JOIN pg_attribute AS attrib
-                            ON ( attrib.attnum = dep.refobjsubid AND attrib.attrelid = dep.refobjid )
-                        JOIN pg_namespace pn
-                            ON seqclass.relnamespace = pn.oid
-                        WHERE pn.nspname = '${tableSchema}' AND depclass.relname = '${tableName}'
-                    ) seq
-                        ON c.table_schema = seq.schema_name AND c.table_name = seq.table_name AND c.column_name = seq.column_name
-                    WHERE c.table_schema = '${tableSchema}' AND c.table_name = '${tableName}'
-                    ORDER BY c.ordinal_position;
-                `;
-
-                const columnsMetadataPostgres = await connection.query(
-                    columnsMetadataQuery,
-                    {
-                        type: QueryTypes.SELECT,
-                        raw: true,
-                    }
-                ) as IColumnMetadataPostgres[];
-
-                const tableMetadata: ITableMetadata = {
-                    name: tableName,
-                    modelName: tableName,
-                    schema: tableSchema,
-                    timestamps: config.metadata?.timestamps ?? false,
-                    columns: [],
-                    comment: '', // TODO
-                };
-
-                // for (const columnMetadataPostgres of columnsMetadataPostgres) {
-                for (let i = 0; i < columnsMetadataPostgres.length; ++i) {
-                    const columnMetadataPostgres = columnsMetadataPostgres[i];
-
-                    // Data type not recognized
-                    if (!this.sequelizeDataTypesMap[columnMetadataPostgres.udt_name]) {
-                        console.warn(`[Warning]`,
-                            `Unknown data type mapping for '${columnMetadataPostgres.udt_name}'`);
-                        console.warn(`[Warning]`,
-                            `Skipping column`, columnMetadataPostgres);
-                        continue;
-                    }
-
-                    // Add new column
-                    const columnMetadata: IColumnMetadata = {
-                        name: columnMetadataPostgres.column_name,
-                        type: columnMetadataPostgres.udt_name,
-                        typeExt: columnMetadataPostgres.data_type,
-                        dataType: 'DataType.' +
-                            this.sequelizeDataTypesMap[columnMetadataPostgres.udt_name].key
-                                .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
-                        allowNull: !!columnMetadataPostgres.is_nullable && !columnMetadataPostgres.index_is_primary,
-                        primaryKey: !!columnMetadataPostgres.index_is_primary,
-                        autoIncrement: columnMetadataPostgres.is_sequence,
-                        unique: !!columnMetadataPostgres.index_is_unique && !columnMetadataPostgres.index_is_primary,
-                        indices: [],
-                        comment: '', // TODO
-                    };
-
-                    // Additional data type information
-                    switch (columnMetadataPostgres.udt_name) {
-                        case 'decimal':
-                        case 'numeric':
-                        case 'float':
-                        case 'double':
-                            columnMetadata.dataType += numericPrecisionScalePostgres(columnMetadataPostgres);
-                            break;
-
-                        case 'timestamp':
-                        case 'timestampz':
-                            columnMetadata.dataType += dateTimePrecisionPostgres(columnMetadataPostgres);
-                            break;
-                    }
-
-                    let j = i;
-                    const ordinalPosition = columnMetadataPostgres.ordinal_position;
-
-                    // Keep adding indices for this column until new column or end of columns is reached
-                    while (j < columnsMetadataPostgres.length &&
-                        columnsMetadataPostgres[j].ordinal_position === ordinalPosition) {
-
-                        if (columnsMetadataPostgres[j].index_name && !columnsMetadataPostgres[j].index_is_primary) {
-                            columnMetadata.indices!.push({
-                                name: columnsMetadataPostgres[j].index_name!,
-                                using: columnsMetadataPostgres[j].index_type!,
-                                unique: !!columnsMetadataPostgres[j].index_is_unique,
-                            });
-                        }
-
-                        j++;
-                    }
-
-                    i = j - 1;
-
-
-                    tableMetadata.columns.push(columnMetadata);
-                }
-
-                tablesMetadata.push(tableMetadata);
+        const tableNames: string[] = (await connection.query(
+            query,
+            {
+                type: QueryTypes.SELECT,
+                raw: true,
             }
-        }
-        catch(err) {
-            console.error(err);
-            process.exit(1);
-        }
-        finally {
-            connection && await connection.close();
-        }
+        ) as ITableNameRow[]).map(row => row.table_name ?? row.TABLE_NAME!);
 
-        // Apply transformation if any
-        if (config.metadata?.case) {
-            return tablesMetadata.map(tableMetadata => caseTransformer(tableMetadata, config.metadata!.case!));
-        }
-        else {
-            return tablesMetadata;
-        }
+        return tableNames;
     }
 
-    protected async fetchColumnIndexMetadata(connection: Sequelize, config: IConfig, table: string, column: string): Promise<IIndexMetadata[]> {
-        return [];
+    /**
+     * Fetch columns metadata for the provided schema and table
+     * @param {Sequelize} connection
+     * @param {IConfig} config
+     * @param {string} table
+     * @returns {Promise<IColumnMetadata[]>}
+     */
+    protected async fetchColumnsMetadata(
+        connection: Sequelize,
+        config: IConfig,
+        table: string
+    ): Promise<IColumnMetadata[]> {
+        const columnsMetadata: IColumnMetadata[] = [];
+
+        const query = `
+            SELECT
+                CASE WHEN (seq.sequence_name IS NOT NULL) THEN TRUE ELSE FALSE END AS is_sequence,
+                EXISTS( -- primary key
+                   SELECT
+                    x.indisprimary
+                   FROM pg_attribute a
+                    LEFT OUTER JOIN pg_index x
+                        ON a.attnum = ANY (x.indkey) AND a.attrelid = x.indrelid
+                    WHERE a.attrelid = '${config.metadata!.schema}.${table}'::regclass AND a.attnum > 0
+                        AND c.ordinal_position = a.attnum AND x.indisprimary IS TRUE
+                ) AS is_primary,
+                c.*
+            FROM information_schema.columns c
+            LEFT OUTER JOIN ( -- Sequences (auto increment) metadata
+                SELECT seqclass.relname AS sequence_name,
+                       pn.nspname       AS schema_name,
+                       depclass.relname AS table_name,
+                       attrib.attname   AS column_name
+                FROM pg_class AS seqclass
+                         JOIN pg_sequence AS seq
+                              ON (seq.seqrelid = seqclass.relfilenode)
+                         JOIN pg_depend AS dep
+                              ON (seq.seqrelid = dep.objid)
+                         JOIN pg_class AS depclass
+                              ON (dep.refobjid = depclass.relfilenode)
+                         JOIN pg_attribute AS attrib
+                              ON (attrib.attnum = dep.refobjsubid AND attrib.attrelid = dep.refobjid)
+                         JOIN pg_namespace pn
+                              ON seqclass.relnamespace = pn.oid
+                WHERE pn.nspname = '${config.metadata!.schema}' AND depclass.relname = '${table}'
+            ) seq
+                 ON c.table_schema = seq.schema_name AND c.table_name = seq.table_name AND
+                    c.column_name = seq.column_name
+            WHERE c.table_schema = '${config.metadata!.schema}' AND c.table_name = '${table}'
+            ORDER BY c.ordinal_position;
+        `;
+
+        const columns = await connection.query(
+            query,
+            {
+                type: QueryTypes.SELECT,
+                raw: true,
+            }
+        ) as IColumnMetadataPostgres[];
+
+        for (const column of columns) {
+            // Data type not recognized
+            if (!this.sequelizeDataTypesMap[column.udt_name]) {
+                console.warn(`[Warning]`,
+                    `Unknown data type mapping for '${column.udt_name}'`);
+                console.warn(`[Warning]`,
+                    `Skipping column`, column);
+                continue;
+            }
+
+            const columnMetadata: IColumnMetadata = {
+                name: column.column_name,
+                type: column.udt_name,
+                typeExt: column.data_type,
+                dataType: 'DataType.' +
+                    this.sequelizeDataTypesMap[column.udt_name].key
+                        .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
+                allowNull: !!column.is_nullable && !column.is_primary,
+                primaryKey: column.is_primary,
+                autoIncrement: column.is_sequence,
+                indices: [],
+                comment: '', // TODO
+            };
+
+            // Additional data type information
+            switch (column.udt_name) {
+                case 'decimal':
+                case 'numeric':
+                case 'float':
+                case 'double':
+                    columnMetadata.dataType += numericPrecisionScalePostgres(column);
+                    break;
+
+                case 'timestamp':
+                case 'timestampz':
+                    columnMetadata.dataType += dateTimePrecisionPostgres(column);
+                    break;
+            }
+
+            columnsMetadata.push(columnMetadata);
+        }
+
+        return columnsMetadata;
     }
 
-    protected async fetchColumnsMetadata(connection: Sequelize, config: IConfig, table: string): Promise<IColumnMetadata[]> {
-        return [];
-    }
+    /**
+     * Fetch index metadata for the provided table and column
+     * @param {Sequelize} connection
+     * @param {IConfig} config
+     * @param {string} table
+     * @param {string} column
+     * @returns {Promise<IIndexMetadata[]>}
+     */
+    protected async fetchColumnIndexMetadata(
+        connection: Sequelize,
+        config: IConfig,
+        table: string,
+        column: string
+    ): Promise<IIndexMetadata[]> {
+        const indicesMetadata: IIndexMetadata[] = [];
 
-    protected async fetchTableNames(connection: Sequelize, config: IConfig): Promise<string[]> {
-        return [];
-    }
+        const query = `
+            SELECT pc.relname       AS index_name,
+                   am.amname        AS index_type,
+                   a.attname        AS column_name,
+                   a.attnum         AS ordinal_position,
+                   x.indisprimary   AS is_primary,
+                   x.indisunique    AS is_unique,
+                   x.indisclustered AS is_clustered
+            FROM pg_attribute a
+            INNER JOIN pg_index x
+                ON a.attnum = ANY (x.indkey) AND a.attrelid = x.indrelid
+            INNER JOIN pg_class pc
+                ON x.indexrelid = pc.oid
+            INNER JOIN pg_am am
+                ON pc.relam = am.oid
+            WHERE a.attrelid = '${config.metadata!.schema}.${table}'::regclass AND a.attnum > 0 
+                AND a.attname = '${column}';
+        `;
 
+        const indices = await connection.query(
+            query,
+            {
+                type: QueryTypes.SELECT,
+                raw: true,
+            }
+        ) as IIndexMetadataPostgres[];
+
+        for (const index of indices) {
+            indicesMetadata.push({
+                name: index.index_name,
+                using: index.index_type,
+                unique: index.is_unique,
+            });
+        }
+
+        return indicesMetadata;
+    }
 }

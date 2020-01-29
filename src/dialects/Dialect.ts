@@ -23,7 +23,6 @@ export interface IColumnMetadata {
     // foreignKey: boolean;
     allowNull: boolean;
     autoIncrement: boolean;
-    unique: boolean;
     indices?: IIndexMetadata[],
     comment?: string;
     // default?: ;
@@ -110,6 +109,14 @@ export abstract class Dialect {
         const tablesMetadata: ITableMetadata[] = [];
 
         try {
+            // Set schema for Postgres to 'public' if not provided
+            if (config.connection.dialect === 'postgres' && !config.metadata?.schema) {
+                config.metadata = {
+                    ...config.metadata,
+                    ...{ schema: 'public'},
+                };
+            }
+
             connection = createConnection(config.connection);
 
             await connection.authenticate();
@@ -144,6 +151,7 @@ export abstract class Dialect {
                 const tableMetadata: ITableMetadata = {
                     name: table,
                     modelName: table,
+                    ...config.metadata?.schema && { schema: config.metadata!.schema},
                     timestamps: config.metadata?.timestamps ?? false,
                     columns: columnsMetadata,
                     // comment: columnsMetadataMySQL[0].TABLE_COMMENT,

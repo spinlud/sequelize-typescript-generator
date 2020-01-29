@@ -1,4 +1,4 @@
-export const SCHEMA_NAME = 'dbtest';
+export const SCHEMA_NAME = process.env.TEST_DB_SCHEMA || 'public';
 export const SCHEMA_DROP = `DROP SCHEMA IF EXISTS ${SCHEMA_NAME} CASCADE`;
 export const SCHEMA_CREATE = `CREATE SCHEMA IF NOT EXISTS ${SCHEMA_NAME}`;
 
