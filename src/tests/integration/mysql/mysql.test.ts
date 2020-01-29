@@ -116,6 +116,7 @@ const jsonTests: [string, Object][] = [
 ];
 
 describe('MySQL', () => {
+    jest.setTimeout(30000);
     const outDir = path.join(process.cwd(), 'output-models');
     let sequelizeOptions = buildSequelizeOptions('mysql');
 

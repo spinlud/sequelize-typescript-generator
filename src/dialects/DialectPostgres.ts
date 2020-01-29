@@ -2,7 +2,7 @@ import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize, DataType } from 'sequelize-typescript';
 import { createConnection } from '../connection';
 import { IConfig } from '../config';
-import { ITableMetadata, IColumnMetadata, Dialect } from './Dialect';
+import { ITableMetadata, IColumnMetadata, IIndexMetadata, Dialect } from './Dialect';
 import {
     ITableNameRow,
     IColumnMetadataPostgres,
@@ -341,6 +341,18 @@ export class DialectPostgres extends Dialect {
         else {
             return tablesMetadata;
         }
+    }
+
+    protected async fetchColumnIndexMetadata(connection: Sequelize, config: IConfig, table: string, column: string): Promise<IIndexMetadata[]> {
+        return [];
+    }
+
+    protected async fetchColumnsMetadata(connection: Sequelize, config: IConfig, table: string): Promise<IColumnMetadata[]> {
+        return [];
+    }
+
+    protected async fetchTableNames(connection: Sequelize, config: IConfig): Promise<string[]> {
+        return [];
     }
 
 }

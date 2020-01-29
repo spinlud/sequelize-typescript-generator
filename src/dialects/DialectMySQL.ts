@@ -1,15 +1,78 @@
-import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
+import {QueryTypes, AbstractDataTypeConstructor, IndexMethod} from 'sequelize';
 import { Sequelize, DataType } from 'sequelize-typescript';
-import { createConnection } from '../connection';
 import { IConfig } from '../config';
-import { ITableMetadata, IColumnMetadata, Dialect } from './Dialect';
-import {
-    ITableNameRow,
-    IColumnMetadataMySQL,
-    numericPrecisionScaleMySQL,
-    dateTimePrecisionMySQL,
-    caseTransformer,
-} from './utils';
+import { IColumnMetadata, Dialect, IIndexMetadata } from './Dialect';
+
+interface ITableNameRow {
+    table_name?: string;
+    TABLE_NAME?: string;
+}
+
+interface IColumnMetadataMySQL {
+    TABLE_CATALOG: string;
+    TABLE_SCHEMA: string;
+    TABLE_NAME: string;
+    COLUMN_NAME: string;
+    ORDINAL_POSITION?: number;
+    COLUMN_DEFAULT?: string;
+    IS_NULLABLE: string;
+    DATA_TYPE: string;
+    CHARACTER_MAXIMUM_LENGTH?: string;
+    CHARACTER_OCTET_LENGTH?: string;
+    NUMERIC_PRECISION?: number;
+    NUMERIC_SCALE?: number;
+    DATETIME_PRECISION?: string;
+    CHARACTER_SET_NAME?: string;
+    COLLATION_NAME?: string;
+    COLUMN_TYPE: string;
+    COLUMN_KEY: string;
+    EXTRA: string;
+    PRIVILEGES: string;
+    COLUMN_COMMENT: string;
+    TABLE_COMMENT: string;
+    GENERATION_EXPRESSION: string;
+}
+
+interface IIndexMetadataMySQL {
+    INDEX_NAME: string; // The name of the index. If the index is the primary key, the name is always PRIMARY.
+    NON_UNIQUE: number | null; // 0 if the index cannot contain duplicates, 1 if it can
+    INDEX_SCHEMA: string | null; // The name of the schema (database) to which the index belongs.
+    SEQ_IN_INDEX: number | null; // The column sequence number in the index, starting with 1.
+    COLLATION: string | null; // How the column is sorted in the index. This can have values A (ascending), D (descending), or NULL (not sorted).
+    CARDINALITY: number | null; // An estimate of the number of unique values in the index.
+    SUB_PART: string | null; // The index prefix. That is, the number of indexed characters if the column is only partly indexed, NULL if the entire column is indexed.
+    PACKED: string | null;// Indicates how the key is packed. NULL if it is not.
+    NULLABLE: string | null; // Contains YES if the column may contain NULL values and '' if not.
+    INDEX_TYPE: IndexMethod | null; // The index method used (BTREE, FULLTEXT, HASH, RTREE).
+    COMMENT: string | null;
+    INDEX_COMMENT: string | null;
+}
+
+/**
+ * Compute precision/scale signature for numeric types: FLOAT(4, 2), DECIMAL(5, 2) etc
+ * @param {IColumnMetadataMySQL} columnMetadataMySQL
+ * @returns {string} '(5, 2)'
+ */
+const numericPrecisionScaleMySQL = (columnMetadataMySQL: IColumnMetadataMySQL): string => {
+    let res = `(${columnMetadataMySQL.NUMERIC_PRECISION}`;
+    res +=  columnMetadataMySQL.NUMERIC_SCALE ?
+        `, ${columnMetadataMySQL.NUMERIC_SCALE})` : `)`;
+    return res;
+};
+
+/**
+ * Compute date time precision signature: TIMESTAMP(3), DATETIME(6)
+ * @param {IColumnMetadataMySQL} columnMetadataMySQL
+ * @returns {string} '(3)'
+ */
+const dateTimePrecisionMySQL = (columnMetadataMySQL: IColumnMetadataMySQL): string => {
+    if (columnMetadataMySQL.DATETIME_PRECISION) {
+        return `(${columnMetadataMySQL.DATETIME_PRECISION})`;
+    }
+    else {
+        return '';
+    }
+};
 
 /**
  * Dialect for MySQL
@@ -63,7 +126,7 @@ export class DialectMySQL extends Dialect {
         json: DataType.JSON,
     };
 
-    public readonly jsDataTypesMap = {
+    public readonly jsDataTypesMap: { [key: string]: string } = {
         bigint: 'bigint',
         smallint: 'number',
         mediumint: 'number',
@@ -110,191 +173,169 @@ export class DialectMySQL extends Dialect {
     }
 
     /**
-     * Fetch tables metadata from the database
+     * Fetch table names for the provided database/schema
+     * @param {Sequelize} connection
      * @param {IConfig} config
-     * @returns {Promise<ITableMetadata[]>}
+     * @returns {Promise<string[]>}
      */
-    async fetchMetadata(config: IConfig): Promise<ITableMetadata[]> {
+    protected async fetchTableNames(
+        connection: Sequelize,
+        config: IConfig
+    ): Promise<string[]> {
+        const tableNamesQuery = `
+            SELECT table_name 
+            FROM information_schema.tables
+            WHERE table_schema = '${config.connection.database}';
+        `;
 
-        let connection: Sequelize | undefined;
-        const tablesMetadata: ITableMetadata[] = [];
-
-        try {
-            connection = createConnection(config.connection);
-
-            await connection.authenticate();
-
-            const { database } = config.connection;
-
-            const tableNamesQuery = `
-                SELECT table_name FROM information_schema.tables
-                WHERE table_schema = '${database}';
-            `;
-
-            // Fetch table names (include metadata.tables and exclude metadata.skipTables if provided)
-            const tableNames: string[] = (await connection.query(
-                tableNamesQuery,
-                {
-                    type: QueryTypes.SELECT,
-                    raw: true,
-                }
-            ) as ITableNameRow[]).map(row => {
-                return row.table_name ?? row.TABLE_NAME!;
-            }).filter(tableName => {
-                if (config.metadata?.tables?.length) {
-                    return config.metadata.tables.includes(tableName.toLowerCase());
-                }
-                else {
-                    return true;
-                }
-            }).filter(tableName => {
-                if (config.metadata?.skipTables?.length) {
-                    return !(config.metadata.skipTables.includes(tableName.toLowerCase()));
-                }
-                else {
-                    return true;
-                }
-            });
-
-            for (const tableName of tableNames) {
-                const tableMetadataQuery = `
-                    SELECT 
-                        c.ORDINAL_POSITION,
-                        c.TABLE_SCHEMA,
-                        c.TABLE_NAME,
-                        c.COLUMN_NAME,
-                        c.DATA_TYPE,
-                        c.COLUMN_TYPE,
-                        c.NUMERIC_PRECISION,
-                        c.NUMERIC_SCALE,
-                        c.DATETIME_PRECISION,                                             
-                        c.IS_NULLABLE,
-                        c.COLUMN_KEY,
-                        c.EXTRA,
-                        c.COLUMN_COMMENT,
-                        t.TABLE_COMMENT,
-                        s.INDEX_NAME,
-                        s.INDEX_TYPE,
-                        s.COLLATION,
-                        s.SEQ_IN_INDEX,
-                        s.NON_UNIQUE
-                    FROM information_schema.columns c
-                    INNER JOIN information_schema.tables t
-                        ON c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME
-                    LEFT OUTER JOIN information_schema.statistics s
-                        ON c.TABLE_SCHEMA = s.TABLE_SCHEMA AND c.TABLE_NAME = s.TABLE_NAME AND c.COLUMN_NAME = s.COLUMN_NAME
-                    WHERE c.TABLE_SCHEMA='${database}' AND c.TABLE_NAME = '${tableName}'
-                    ORDER BY c.ORDINAL_POSITION;
-                `;
-
-                const columnsMetadataMySQL = await connection.query(
-                    tableMetadataQuery,
-                    {
-                        type: QueryTypes.SELECT,
-                        raw: true,
-                    }
-                ) as IColumnMetadataMySQL[];
-
-                const tableMetadata: ITableMetadata = {
-                    name: tableName,
-                    modelName: tableName,
-                    timestamps: config.metadata?.timestamps ?? false,
-                    columns: [],
-                    comment: columnsMetadataMySQL[0].TABLE_COMMENT,
-                };
-
-                for (let i = 0; i < columnsMetadataMySQL.length; ++i) {
-                    const columnMetadataMySQL = columnsMetadataMySQL[i];
-
-                    // Data type not recognized
-                    if (!this.sequelizeDataTypesMap[columnMetadataMySQL.DATA_TYPE]) {
-                        console.warn(`[Warning]`,
-                            `Unknown data type mapping for '${columnMetadataMySQL.DATA_TYPE}'`);
-                        console.warn(`[Warning]`,
-                            `Skipping column`, columnMetadataMySQL);
-                        continue;
-                    }
-
-                    // Add new column
-                    const columnMetadata: IColumnMetadata = {
-                        name: columnMetadataMySQL.COLUMN_NAME,
-                        type: columnMetadataMySQL.DATA_TYPE,
-                        typeExt: columnMetadataMySQL.COLUMN_TYPE,
-                        dataType: 'DataType.' +
-                            this.sequelizeDataTypesMap[columnMetadataMySQL.DATA_TYPE].key
-                                .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
-                        allowNull: columnMetadataMySQL.IS_NULLABLE === 'YES',
-                        primaryKey: columnMetadataMySQL.COLUMN_KEY === 'PRI',
-                        autoIncrement: columnMetadataMySQL.EXTRA === 'auto_increment',
-                        unique: columnMetadataMySQL.COLUMN_KEY === 'UNI',
-                        indices: [],
-                        comment: columnMetadataMySQL.COLUMN_COMMENT,
-                    };
-
-                    // Additional data type informations
-                    switch (columnMetadataMySQL.DATA_TYPE) {
-                        case 'decimal':
-                        case 'numeric':
-                        case 'float':
-                        case 'double':
-                            columnMetadata.dataType += numericPrecisionScaleMySQL(columnMetadataMySQL);
-                            break;
-
-                        case 'datetime':
-                        case 'timestamp':
-                            columnMetadata.dataType += dateTimePrecisionMySQL(columnMetadataMySQL);
-                            break;
-                    }
-
-                    // ENUM: add values to data type -> DataType.ENUM('v1', 'v2')
-                    if (columnMetadataMySQL.DATA_TYPE === 'enum') {
-                        columnMetadata.dataType += columnMetadata.typeExt.match(/\(.*\)/)![0];
-                    }
-
-                    // Indices
-                    let j = i;
-                    const ordinalPosition = columnMetadataMySQL.ORDINAL_POSITION;
-
-                    // Keep adding indices for this column until new column or end of columns is reached
-                    while (j < columnsMetadataMySQL.length &&
-                        columnsMetadataMySQL[j].ORDINAL_POSITION === ordinalPosition) {
-
-                        if (columnsMetadataMySQL[j].INDEX_NAME && columnsMetadataMySQL[j].COLUMN_KEY !== 'PRI') {
-                            columnMetadata.indices!.push({
-                                name: columnsMetadataMySQL[j].INDEX_NAME!,
-                                using: columnsMetadataMySQL[j].INDEX_TYPE!,
-                                collation: columnsMetadataMySQL[j].COLLATION,
-                                seq: columnsMetadataMySQL[j].SEQ_IN_INDEX!,
-                                unique: columnsMetadataMySQL[j].NON_UNIQUE === 0,
-                            });
-                        }
-
-                        j++;
-                    }
-
-                    i = j - 1;
-
-                    tableMetadata.columns.push(columnMetadata);
-                }
-
-                tablesMetadata.push(tableMetadata);
+        const tableNames: string[] = (await connection.query(
+            tableNamesQuery,
+            {
+                type: QueryTypes.SELECT,
+                raw: true,
             }
-        }
-        catch(err) {
-            console.error(err);
-            process.exit(1);
-        }
-        finally {
-            connection && await connection.close();
-        }
+        ) as ITableNameRow[]).map(row => row.table_name ?? row.TABLE_NAME!);
 
-        // Apply transformation if any
-        if (config.metadata?.case) {
-            return tablesMetadata.map(tableMetadata => caseTransformer(tableMetadata, config.metadata!.case!));
-        }
-        else {
-            return tablesMetadata;
-        }
+        return tableNames;
     }
 
+    /**
+     * Fetch columns metadata for the provided schema and table
+     * @param {Sequelize} connection
+     * @param {IConfig} config
+     * @param {string} table
+     * @returns {Promise<IColumnMetadata[]>}
+     */
+    protected async fetchColumnsMetadata(
+        connection: Sequelize,
+        config: IConfig,
+        table: string
+    ): Promise<IColumnMetadata[]> {
+        const columnsMetadata: IColumnMetadata[] = [];
+
+        const query = `
+            SELECT 
+                c.ORDINAL_POSITION,
+                c.TABLE_SCHEMA,
+                c.TABLE_NAME,
+                c.COLUMN_NAME,
+                c.DATA_TYPE,
+                c.COLUMN_TYPE,
+                c.NUMERIC_PRECISION,
+                c.NUMERIC_SCALE,
+                c.DATETIME_PRECISION,                                             
+                c.IS_NULLABLE,
+                c.COLUMN_KEY,
+                c.EXTRA,
+                c.COLUMN_COMMENT,
+                t.TABLE_COMMENT                        
+            FROM information_schema.columns c
+            INNER JOIN information_schema.tables t
+                ON c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME                    
+            WHERE c.TABLE_SCHEMA='${config.connection.database}' AND c.TABLE_NAME = '${table}'
+            ORDER BY c.ORDINAL_POSITION;            
+        `;
+
+        const columns = await connection.query(
+            query,
+            {
+                type: QueryTypes.SELECT,
+                raw: true,
+            }
+        ) as IColumnMetadataMySQL[];
+
+        for (const column of columns) {
+            // Data type not recognized
+            if (!this.sequelizeDataTypesMap[column.DATA_TYPE]) {
+                console.warn(`[Warning]`,
+                    `Unknown data type mapping for '${column.DATA_TYPE}'`);
+                console.warn(`[Warning]`,
+                    `Skipping column`, column);
+                continue;
+            }
+
+            const columnMetadata: IColumnMetadata = {
+                name: column.COLUMN_NAME,
+                type: column.DATA_TYPE,
+                typeExt: column.COLUMN_TYPE,
+                dataType: 'DataType.' +
+                    this.sequelizeDataTypesMap[column.DATA_TYPE].key
+                        .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
+                allowNull: column.IS_NULLABLE === 'YES',
+                primaryKey: column.COLUMN_KEY === 'PRI',
+                autoIncrement: column.EXTRA === 'auto_increment',
+                unique: column.COLUMN_KEY === 'UNI',
+                indices: [],
+                comment: column.COLUMN_COMMENT,
+            };
+
+            // Additional data type informations
+            switch (column.DATA_TYPE) {
+                case 'decimal':
+                case 'numeric':
+                case 'float':
+                case 'double':
+                    columnMetadata.dataType += numericPrecisionScaleMySQL(column);
+                    break;
+
+                case 'datetime':
+                case 'timestamp':
+                    columnMetadata.dataType += dateTimePrecisionMySQL(column);
+                    break;
+            }
+
+            // ENUM: add values to data type -> DataType.ENUM('v1', 'v2')
+            if (column.DATA_TYPE === 'enum') {
+                columnMetadata.dataType += columnMetadata.typeExt.match(/\(.*\)/)![0];
+            }
+
+            columnsMetadata.push(columnMetadata);
+        }
+
+        return columnsMetadata;
+    }
+
+    /**
+     * Fetch index metadata for the provided table and column
+     * @param {Sequelize} connection
+     * @param {IConfig} config
+     * @param {string} table
+     * @param {string} column
+     * @returns {Promise<IIndexMetadata[]>}
+     */
+    protected async fetchColumnIndexMetadata(
+        connection: Sequelize,
+        config: IConfig,
+        table: string,
+        column: string
+    ): Promise<IIndexMetadata[]> {
+        const indicesMetadata: IIndexMetadata[] = [];
+
+        const query = `
+            SELECT *                
+            FROM information_schema.statistics s
+            WHERE TABLE_SCHEMA = '${config.connection.database}' AND TABLE_NAME = '${table}' 
+                AND COLUMN_NAME = '${column}';
+        `;
+
+        const indices = await connection.query(
+            query,
+            {
+                type: QueryTypes.SELECT,
+                raw: true,
+            }
+        ) as IIndexMetadataMySQL[];
+
+        for (const index of indices) {
+            indicesMetadata.push({
+                name: index.INDEX_NAME!,
+                using: index.INDEX_TYPE!,
+                collation: index.COLLATION,
+                seq: index.SEQ_IN_INDEX!,
+                unique: index.NON_UNIQUE === 0,
+            });
+        }
+
+        return indicesMetadata;
+    }
 }
