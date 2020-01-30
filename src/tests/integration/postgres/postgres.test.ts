@@ -170,7 +170,7 @@ describe('Postgres', () => {
         });
     });
 
-    describe('Transform case', () => {
+    describe('Transform case in table and fields names', () => {
         let connection: Sequelize | undefined;
 
         beforeEach(async () => {
@@ -184,7 +184,7 @@ describe('Postgres', () => {
         });
 
         for (const transformCase of Cases) {
-            it(`should transform table and fields name to ${transformCase.toLowerCase()} case`, async () => {
+            it(`${transformCase.toLowerCase()} case`, async () => {
                 const transformCase: Case = 'CAMEL';
 
                 const config: IConfig = {
