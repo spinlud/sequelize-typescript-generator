@@ -1,6 +1,6 @@
 import { ITestMetadata } from '../ITestMetadata';
 import { Sequelize } from 'sequelize-typescript';
-import { run } from '../testRunner';
+import { TestRunner } from '../TestRunner';
 import {
     SCHEMA_DROP,
     SCHEMA_CREATE,
@@ -93,4 +93,5 @@ const testMetadata: ITestMetadata = {
     },
 };
 
-run(testMetadata);
+const testRunner = new TestRunner(testMetadata);
+testRunner.run();

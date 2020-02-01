@@ -1,7 +1,7 @@
 import { Sequelize } from 'sequelize-typescript';
 import { QueryTypes } from 'sequelize';
 import { ITestMetadata } from '../ITestMetadata';
-import { run } from '../testRunner';
+import { TestRunner } from '../TestRunner';
 import * as geometries from './geometries';
 import {
     DATA_TYPES_TABLE_NAME,
@@ -97,4 +97,5 @@ const testMetadata: ITestMetadata = {
     },
 };
 
-run(testMetadata);
+const testRunner = new TestRunner(testMetadata);
+testRunner.run();
