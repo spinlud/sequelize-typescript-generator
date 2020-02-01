@@ -2,6 +2,7 @@ import path from 'path';
 import { promises as fs } from 'fs';
 import { ITestMetadata } from './ITestMetadata';
 import { Sequelize } from 'sequelize-typescript';
+import { QueryTypes } from 'sequelize';
 import { buildSequelizeOptions } from '../environment';
 import { createConnection } from '../../connection';
 import { IConfig } from '../../config';
@@ -48,9 +49,9 @@ const getObjectType = (obj: any): string => {
 }
 
 /**
- * Initialize test database
- * @param {Sequelize} connection
- * @returns {Promise<void>}
+ *
+ * @param testMetadata
+ * @param connection
  */
 const initTestDatabase = async (testMetadata: ITestMetadata, connection: Sequelize): Promise<void> => {
     if (testMetadata.schema) {
@@ -93,7 +94,7 @@ export const run = (testMetadata: ITestMetadata) => {
     describe(testMetadata.name, () => {
         jest.setTimeout(120000);
         const outDir = path.join(process.cwd(), 'output-models');
-        let sequelizeOptions = buildSequelizeOptions(testMetadata.dialect);
+        const sequelizeOptions = buildSequelizeOptions(testMetadata.dialect);
 
         describe('Build', () => {
             const { testTables } = testMetadata;
@@ -112,6 +113,10 @@ export const run = (testMetadata: ITestMetadata) => {
             it('should build models', async () => {
                 const config: IConfig = {
                     connection: sequelizeOptions,
+                    metadata: {
+                        ...testMetadata.schema && { schema: testMetadata.schema.name },
+                        indices: true,
+                    },
                     output: {
                         outDir: outDir,
                         clean: true,
@@ -145,7 +150,8 @@ export const run = (testMetadata: ITestMetadata) => {
                 const config: IConfig = {
                     connection: sequelizeOptions,
                     metadata: {
-                        tables: filterTables
+                        ...testMetadata.schema && { schema: testMetadata.schema.name },
+                        tables: filterTables,
                     },
                     output: {
                         outDir: outDir,
@@ -192,7 +198,8 @@ export const run = (testMetadata: ITestMetadata) => {
                 const config: IConfig = {
                     connection: sequelizeOptions,
                     metadata: {
-                        skipTables: filterSkipTables
+                        ...testMetadata.schema && { schema: testMetadata.schema.name },
+                        skipTables: filterSkipTables,
                     },
                     output: {
                         outDir: outDir,
@@ -246,6 +253,7 @@ export const run = (testMetadata: ITestMetadata) => {
                     const config: IConfig = {
                         connection: sequelizeOptions,
                         metadata: {
+                            ...testMetadata.schema && { schema: testMetadata.schema.name },
                             case: transformCase,
                         },
                         output: {
@@ -288,6 +296,7 @@ export const run = (testMetadata: ITestMetadata) => {
                 const config: IConfig = {
                     connection: sequelizeOptions,
                     metadata: {
+                        ...testMetadata.schema && { schema: testMetadata.schema.name },
                         indices: true,
                     },
                     output: {
@@ -307,23 +316,33 @@ export const run = (testMetadata: ITestMetadata) => {
                 connection && await connection.close();
             });
 
-            for (const [testName, testValue] of testMetadata.dataTypes.testValues) {
-                it(testName, async () => {
-                    const dialect = new DialectMySQL();
+            for (const [typeName, typeValue] of testMetadata.dataTypes.testValues) {
+                it(typeName, async () => {
+                    const dialect = buildDialect(testMetadata);
                     const DataTypes = connection!.model(testMetadata.dataTypes.dataTypesTable);
-                    const testField = `f_${testName}`;
-                    const res = await DataTypes.upsert({ [testField]: testValue });
+                    const columnName = `f_${typeName}`;
 
+                    const res = await DataTypes.upsert({ [columnName]: typeValue });
                     expect(res).toBe(true);
 
                     const rows = await DataTypes.findAll({ order: [['id', 'DESC']], limit: 1 });
                     expect(rows.length).toBe(1);
 
                     // @ts-ignore-start
-                    const receivedValue = rows[0][testField];
+                    const receivedValue = rows[0][columnName];
                     expect(receivedValue).toBeDefined();
+
+                    const nativeType = await testMetadata.dataTypes.getColumnNativeDataType(
+                        connection!,
+                        testMetadata.schema?.name ?? process.env.TEST_DB_DATABASE!,
+                        testMetadata.dataTypes.dataTypesTable,
+                        columnName
+                    );
+
+                    expect(dialect.jsDataTypesMap).toHaveProperty(nativeType);
+
                     expect(getObjectType(receivedValue))
-                        .toStrictEqual(dialect.jsDataTypesMap[testName].toLowerCase());
+                        .toStrictEqual(dialect.jsDataTypesMap[nativeType].toLowerCase());
                     // @ts-ignore-end
                 });
             }
@@ -331,5 +350,3 @@ export const run = (testMetadata: ITestMetadata) => {
 
     });
 }
-
-

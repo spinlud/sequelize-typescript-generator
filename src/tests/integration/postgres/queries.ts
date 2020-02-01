@@ -37,7 +37,7 @@ export const DATA_TYPES_TABLE_CREATE = `
         f_date        date,
         f_time        time,
         f_timetz      timetz,
-        f_interval    interval,
+        -- f_interval    interval,
         f_boolean     boolean,
         f_point       point,
         f_line        line,

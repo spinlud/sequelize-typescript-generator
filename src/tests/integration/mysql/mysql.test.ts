@@ -1,5 +1,8 @@
+import { Sequelize } from 'sequelize-typescript';
+import { QueryTypes } from 'sequelize';
 import { ITestMetadata } from '../ITestMetadata';
 import { run } from '../testRunner';
+import * as geometries from './geometries';
 import {
     DATA_TYPES_TABLE_NAME,
     DATA_TYPES_TABLE_DROP,
@@ -9,7 +12,11 @@ import {
     INDICES_TABLE_CREATE,
     INDICES_TABLE_CREATE_INDEX,
 } from './queries';
-import * as geometries from "./geometries";
+
+interface INativeType {
+    DATA_TYPE: string;
+    data_type: string;
+}
 
 const testMetadata: ITestMetadata = {
     name: 'MySQL',
@@ -30,6 +37,25 @@ const testMetadata: ITestMetadata = {
     filterSkipTables: [ INDICES_TABLE_NAME ],
     dataTypes: {
         dataTypesTable: DATA_TYPES_TABLE_NAME,
+        async getColumnNativeDataType(
+            connection: Sequelize,
+            schema: string,
+            table: string,
+            column: string): Promise<string>
+        {
+            const query = `
+                SELECT DATA_TYPE
+                FROM information_schema.columns
+                WHERE table_schema='${schema}' AND table_name='${table}' AND column_name='${column}';
+            `;
+
+            const res = await connection.query(query, {
+                type: QueryTypes.SELECT,
+                raw: true,
+            }) as INativeType[];
+
+            return res[0].DATA_TYPE ?? res[0].data_type;
+        },
         testValues: [
             ['bigint', 100000000000000000],
             ['smallint', 32767],

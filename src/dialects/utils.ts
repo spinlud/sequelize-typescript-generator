@@ -68,3 +68,14 @@ export const caseTransformer = (tableMetadata: ITableMetadata, transformCase: Tr
 
     return transformed;
 }
+
+/**
+ *
+ * @param dataType
+ */
+export const warnUnknownMappingForDataType = (dataType: string) => {
+    console.warn(`[Warning]`,
+`Unknown data type mapping for type '${dataType}'. 
+        You should define the data type manually.     
+    `);
+}

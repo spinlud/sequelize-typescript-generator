@@ -18,7 +18,7 @@ export interface IColumnMetadata {
     fieldName?: string; // Map to original table field name in case of a transformation
     type: string;
     typeExt: string;
-    dataType: string;
+    dataType?: string;
     primaryKey: boolean;
     // foreignKey: boolean;
     allowNull: boolean;

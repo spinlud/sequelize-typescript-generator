@@ -2,6 +2,7 @@ import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize, DataType } from 'sequelize-typescript';
 import { IConfig } from '../config';
 import { IColumnMetadata, IIndexMetadata, Dialect } from './Dialect';
+import { warnUnknownMappingForDataType } from './utils';
 
 interface ITableNameRow {
     table_name?: string;
@@ -158,7 +159,7 @@ export class DialectPostgres extends Dialect {
         date: DataType.STRING,
         time: DataType.STRING,
         timetz: DataType.STRING,
-        interval: DataType.STRING,
+        // interval: DataType.STRING,
         bool: DataType.BOOLEAN,
         point: DataType.GEOMETRY,
         line: DataType.GEOMETRY,
@@ -185,13 +186,13 @@ export class DialectPostgres extends Dialect {
         int4: 'number',
         int8: 'string',
         numeric: 'string',
-        float4: 'string',
-        float8: 'string',
-        money: 'number',
+        float4: 'number',
+        float8: 'number',
+        money: 'string',
         varchar: 'string',
         bpchar: 'string',
         text: 'string',
-        bytea: 'Buffer',
+        bytea: 'Uint8Array',
         timestamp: 'Date',
         timestamptz: 'Date',
         date: 'string',
@@ -307,22 +308,20 @@ export class DialectPostgres extends Dialect {
         ) as IColumnMetadataPostgres[];
 
         for (const column of columns) {
-            // Data type not recognized
+            // Unknown data type
             if (!this.sequelizeDataTypesMap[column.udt_name]) {
-                console.warn(`[Warning]`,
-                    `Unknown data type mapping for '${column.udt_name}'`);
-                console.warn(`[Warning]`,
-                    `Skipping column`, column);
-                continue;
+                warnUnknownMappingForDataType(column.udt_name);
             }
 
             const columnMetadata: IColumnMetadata = {
                 name: column.column_name,
                 type: column.udt_name,
                 typeExt: column.data_type,
-                dataType: 'DataType.' +
-                    this.sequelizeDataTypesMap[column.udt_name].key
-                        .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
+                ...this.sequelizeDataTypesMap[column.udt_name] && {
+                    dataType: 'DataType.' +
+                        this.sequelizeDataTypesMap[column.udt_name].key
+                            .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
+                },
                 allowNull: !!column.is_nullable && !column.is_primary,
                 primaryKey: column.is_primary,
                 autoIncrement: column.is_sequence,

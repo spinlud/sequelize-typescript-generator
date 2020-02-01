@@ -2,6 +2,7 @@ import {QueryTypes, AbstractDataTypeConstructor, IndexMethod} from 'sequelize';
 import { Sequelize, DataType } from 'sequelize-typescript';
 import { IConfig } from '../config';
 import { IColumnMetadata, Dialect, IIndexMetadata } from './Dialect';
+import { warnUnknownMappingForDataType } from './utils';
 
 interface ITableNameRow {
     table_name?: string;
@@ -245,22 +246,19 @@ export class DialectMySQL extends Dialect {
         ) as IColumnMetadataMySQL[];
 
         for (const column of columns) {
-            // Data type not recognized
+            // Unknown data type
             if (!this.sequelizeDataTypesMap[column.DATA_TYPE]) {
-                console.warn(`[Warning]`,
-                    `Unknown data type mapping for '${column.DATA_TYPE}'`);
-                console.warn(`[Warning]`,
-                    `Skipping column`, column);
-                continue;
+                warnUnknownMappingForDataType(column.DATA_TYPE);
             }
 
             const columnMetadata: IColumnMetadata = {
                 name: column.COLUMN_NAME,
                 type: column.DATA_TYPE,
                 typeExt: column.COLUMN_TYPE,
-                dataType: 'DataType.' +
-                    this.sequelizeDataTypesMap[column.DATA_TYPE].key
-                        .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
+                ...this.sequelizeDataTypesMap[column.DATA_TYPE] && { dataType: 'DataType.' +
+                        this.sequelizeDataTypesMap[column.DATA_TYPE].key
+                            .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
+                },
                 allowNull: column.IS_NULLABLE === 'YES',
                 primaryKey: column.COLUMN_KEY === 'PRI',
                 autoIncrement: column.EXTRA === 'auto_increment',

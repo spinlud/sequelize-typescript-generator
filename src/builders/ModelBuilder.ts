@@ -27,7 +27,8 @@ export class ModelBuilder extends Builder {
                 ...col.primaryKey && { primaryKey: col.primaryKey },
                 ...col.autoIncrement && { autoIncrement: col.autoIncrement },
                 ...col.allowNull && { allowNull: col.allowNull },
-                type: col.dataType,
+                // type: col.dataType,
+                ...col.dataType && { type: col.dataType },
             };
 
             return props;

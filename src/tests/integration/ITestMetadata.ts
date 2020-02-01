@@ -1,4 +1,5 @@
 import { Dialect } from 'sequelize';
+import { Sequelize } from 'sequelize-typescript';
 
 interface ITestTable {
     name: string;
@@ -12,6 +13,13 @@ interface ITestSchema {
     dropQuery: string;
 }
 
+type GetColumnNativeDataTypeFn = (
+    connection: Sequelize,
+    schema: string,
+    table: string,
+    column: string
+) => Promise<string>;
+
 export interface ITestMetadata {
     name: string;
     dialect: Dialect;
@@ -21,6 +29,8 @@ export interface ITestMetadata {
     filterSkipTables: string[];
     dataTypes: {
         dataTypesTable: string;
+        // Should return the native data type for a given column in a table
+        getColumnNativeDataType: GetColumnNativeDataTypeFn;
         testValues: [string, any][];
     }
 }
