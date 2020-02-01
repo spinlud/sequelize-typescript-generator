@@ -127,7 +127,7 @@ export class DialectMySQL extends Dialect {
     };
 
     public readonly jsDataTypesMap: { [key: string]: string } = {
-        bigint: 'bigint',
+        bigint: 'number',
         smallint: 'number',
         mediumint: 'number',
         tinyint: 'number',
@@ -149,16 +149,16 @@ export class DialectMySQL extends Dialect {
         time: 'string',
         datetime: 'Date',
         timestamp: 'Date',
-        year: 'string',
+        year: 'number',
 
         enum: 'string',
-        set: 'any',
+        set: 'string',
 
-        binary: 'Buffer',
-        blob: 'Buffer',
-        tinyblob: 'Buffer',
-        mediumblob: 'Buffer',
-        longblob: 'Buffer',
+        binary: 'Uint8Array',
+        blob: 'Uint8Array',
+        tinyblob: 'Uint8Array',
+        mediumblob: 'Uint8Array',
+        longblob: 'Uint8Array',
 
         point: 'object',
         multipoint: 'object',

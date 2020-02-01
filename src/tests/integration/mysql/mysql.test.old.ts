@@ -3,55 +3,108 @@ import { promises as fs } from 'fs';
 import { Sequelize } from 'sequelize-typescript';
 import { createConnection } from '../../../connection';
 import { buildSequelizeOptions } from '../../environment';
-import {IConfig, DialectPostgres, ModelBuilder } from '../../../index';
+import { IConfig, DialectMySQL, ModelBuilder } from '../../../index';
+import * as geometries from './geometries';
 import { TransformCase, TransformCases } from '../../../config/IConfig';
+
 import {
-    SCHEMA_DROP,
-    SCHEMA_CREATE,
     DATA_TYPES_TABLE_NAME,
+    DATA_TYPES_TABLE_DROP,
     DATA_TYPES_TABLE_CREATE,
     INDICES_TABLE_NAME,
+    INDICES_TABLE_DROP,
     INDICES_TABLE_CREATE,
-} from "./queries";
+    INDICES_TABLE_CREATE_INDEX,
+} from './queries';
 import {getTransformer} from "../../../dialects/utils";
 
+/**
+ * Workaround: deprecated GeomFromText function
+ */
+const applyGeomFromTextWorkaround = (): void => { // Reference: https://github.com/sequelize/sequelize/issues/9786
+    const Sequelize = require('sequelize');
+    const wkx = require('wkx');
+
+    // @ts-ignore
+    Sequelize.GEOMETRY.prototype._stringify = function _stringify(value, options) {
+        return `ST_GeomFromText(${options.escape(wkx.Geometry.parseGeoJSON(value).toWkt())})`;
+    }
+    // @ts-ignore
+    Sequelize.GEOMETRY.prototype._bindParam = function _bindParam(value, options) {
+        return `ST_GeomFromText(${options.bindParam(wkx.Geometry.parseGeoJSON(value).toWkt())})`;
+    }
+    // @ts-ignore
+    Sequelize.GEOGRAPHY.prototype._stringify = function _stringify(value, options) {
+        return `ST_GeomFromText(${options.escape(wkx.Geometry.parseGeoJSON(value).toWkt())})`;
+    }
+    // @ts-ignore
+    Sequelize.GEOGRAPHY.prototype._bindParam = function _bindParam(value, options) {
+        return `ST_GeomFromText(${options.bindParam(wkx.Geometry.parseGeoJSON(value).toWkt())})`;
+    }
+}
+
+/**
+ *
+ * @param obj
+ */
+const getObjectType = (obj: any): string => {
+    return Object.prototype.toString.call(obj)
+        .replace(/[\[\]]/g, '')
+        .split(' ')[1]
+        .toLowerCase();
+}
+
+/**
+ * Initialize test tables
+ * @param {Sequelize} connection
+ * @returns {Promise<void>}
+ */
+const initTestTables = async (connection: Sequelize): Promise<void> => {
+    // Drop test tables
+    await connection.query(DATA_TYPES_TABLE_DROP);
+    await connection.query(INDICES_TABLE_DROP);
+
+    // Create test tables
+    await connection.query(DATA_TYPES_TABLE_CREATE);
+    await connection.query(INDICES_TABLE_CREATE);
+    await connection.query(INDICES_TABLE_CREATE_INDEX);
+};
+
 const numericTests: [string, number | string][] = [
+    ['bigint', 100000000000000000],
     ['smallint', 32767],
-    ['integer', 2147483647],
-    ['bigint', '100000000000000000'],
+    ['mediumint', 8388607],
+    ['tinyint', 127],
     ['decimal', '99.999'],
-    ['numeric', '66.78'],
-    ['real', 66.66],
+    ['float', 66.78],
     ['double', 11.2345],
-    ['money', '$100,000.00'],
+    ['int', 2147483647],
 ];
 
 const stringTests: [string, string][] = [
     ['varchar', 'Hello world'],
-    ['char', 'A'],
-    ['character', 'A'],
-    ['text', 'xYz'],
-    ['cidr', '10.0.0.0/16'],
-    ['inet', '192.168.100.128/25'],
-    ['macaddr', '08:00:2b:01:02:03'],
-    ['macaddr8', '08:00:2b:01:02:03:04:05'],
-    ['bit', '1'],
-    ['varbit', '101'],
-    ['uuid', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'],
-    ['xml', `<foo>bar</foo>`],
+    ['char', 'a'],
+    ['tinytext', 'xyz'],
+    ['mediumtext', 'Voodoo Lady'],
+    ['longtext', 'Supercalifragilisticexpialidocious'],
+    ['text', 'Access denied'],
 ];
 
-const binaryTests: [string, string | Buffer][] = [
-    ['bytea', Buffer.from('A')],
-];
-
-const dateTests: [string, string | number | Date | object][] = [
-    ['timestamp', new Date()],
-    ['timestamptz', new Date()],
+const dateTests: [string, string | number | Date][] = [
     ['date', '2020-01-01'],
     ['time', '23:59:59'],
-    ['timetz', '23:59:59+00'],
-    ['interval', { days: 1, hours: 15 }],
+    ['datetime', new Date()],
+    ['timestamp', new Date()],
+    ['year', new Date().getFullYear()],
+];
+
+const collectionsTests: [string, string][] = [
+    ['enum', 'BB'],
+    ['set', 'X'],
+];
+
+const binaryTests: [string, number][] = [
+    ['bit', 127],
 ];
 
 const binaryStringsTests: [string, Buffer][] = [
@@ -62,23 +115,25 @@ const binaryStringsTests: [string, Buffer][] = [
     ['longblob', Buffer.from('Supercalifragilisticexpialidocious')],
 ];
 
-/**
- * Initialize test database
- * @param {Sequelize} connection
- * @returns {Promise<void>}
- */
-const initTestDb = async (connection: Sequelize): Promise<void> => {
-    await connection.query(SCHEMA_DROP);
-    await connection.query(SCHEMA_CREATE);
+const geometriesTests: [string, Object][] = [
+    ['point', geometries.Point],
+    ['multipoint', geometries.MultiPoint],
+    ['linestring', geometries.LineString],
+    ['multilinestring', geometries.MultiLineString],
+    ['polygon', geometries.Polygon],
+    ['multipolygon', geometries.MultiPolygon],
+    ['geometry', geometries.Geometry],
+    // ['geometrycollection', geometries.GeometryCollection],
+];
 
-    await connection.query(DATA_TYPES_TABLE_CREATE);
-    await connection.query(INDICES_TABLE_CREATE);
-}
+const jsonTests: [string, Object][] = [
+    ['json', JSON.parse('{"key1": "value1", "key2": "value2"}')],
+];
 
-describe('Postgres', () => {
+describe('MySQL', () => {
     jest.setTimeout(120000);
     const outDir = path.join(process.cwd(), 'output-models');
-    let sequelizeOptions = buildSequelizeOptions('postgres');
+    let sequelizeOptions = buildSequelizeOptions('mysql');
 
     describe('Build', () => {
         let connection: Sequelize | undefined;
@@ -86,7 +141,7 @@ describe('Postgres', () => {
         beforeAll(async () => {
             connection = createConnection({ ...sequelizeOptions });
             await connection.authenticate();
-            await initTestDb(connection);
+            await initTestTables(connection);
         });
 
         afterAll(async () => {
@@ -96,18 +151,13 @@ describe('Postgres', () => {
         it('should build models', async () => {
             const config: IConfig = {
                 connection: sequelizeOptions,
-                metadata: {
-                    schema: process.env.TEST_DB_SCHEMA || 'public',
-                },
                 output: {
                     outDir: outDir,
                     clean: true,
                 }
             };
 
-            console.log(config);
-
-            const dialect = new DialectPostgres();
+            const dialect = new DialectMySQL();
             const builder = new ModelBuilder(config, dialect);
             await builder.build();
         });
@@ -128,12 +178,11 @@ describe('Postgres', () => {
         beforeAll(async () => {
             connection = createConnection({ ...sequelizeOptions });
             await connection.authenticate();
-            await initTestDb(connection);
+            await initTestTables(connection);
 
             const config: IConfig = {
                 connection: sequelizeOptions,
                 metadata: {
-                    schema: process.env.TEST_DB_SCHEMA || 'public',
                     tables: [ INDICES_TABLE_NAME.toLowerCase() ]
                 },
                 output: {
@@ -142,7 +191,7 @@ describe('Postgres', () => {
                 }
             };
 
-            const dialect = new DialectPostgres();
+            const dialect = new DialectMySQL();
             const builder = new ModelBuilder(config, dialect);
             await builder.build();
         });
@@ -170,12 +219,11 @@ describe('Postgres', () => {
         beforeAll(async () => {
             connection = createConnection({ ...sequelizeOptions });
             await connection.authenticate();
-            await initTestDb(connection);
+            await initTestTables(connection);
 
             const config: IConfig = {
                 connection: sequelizeOptions,
                 metadata: {
-                    schema: process.env.TEST_DB_SCHEMA || 'public',
                     skipTables: [ INDICES_TABLE_NAME.toLowerCase() ]
                 },
                 output: {
@@ -184,7 +232,7 @@ describe('Postgres', () => {
                 }
             };
 
-            const dialect = new DialectPostgres();
+            const dialect = new DialectMySQL();
             const builder = new ModelBuilder(config, dialect);
             await builder.build();
         });
@@ -212,7 +260,7 @@ describe('Postgres', () => {
         beforeEach(async () => {
             connection = createConnection({ ...sequelizeOptions });
             await connection.authenticate();
-            await initTestDb(connection);
+            await initTestTables(connection);
         });
 
         afterEach(async () => {
@@ -226,7 +274,6 @@ describe('Postgres', () => {
                 const config: IConfig = {
                     connection: sequelizeOptions,
                     metadata: {
-                        schema: process.env.TEST_DB_SCHEMA || 'public',
                         case: transformCase,
                     },
                     output: {
@@ -235,7 +282,7 @@ describe('Postgres', () => {
                     }
                 };
 
-                const dialect = new DialectPostgres();
+                const dialect = new DialectMySQL();
                 const builder = new ModelBuilder(config, dialect);
                 await builder.build();
 
@@ -256,14 +303,16 @@ describe('Postgres', () => {
         let connection: Sequelize | undefined;
 
         beforeAll(async () => {
+            applyGeomFromTextWorkaround();
+
             connection = createConnection({ ...sequelizeOptions });
             await connection.authenticate();
-            await initTestDb(connection);
+            await initTestTables(connection);
 
             const config: IConfig = {
                 connection: sequelizeOptions,
                 metadata: {
-                    schema: process.env.TEST_DB_SCHEMA || 'public',
+                    indices: true,
                 },
                 output: {
                     outDir: outDir,
@@ -271,9 +320,10 @@ describe('Postgres', () => {
                 }
             };
 
-            const dialect = new DialectPostgres();
+            const dialect = new DialectMySQL();
             const builder = new ModelBuilder(config, dialect);
             await builder.build();
+
             connection!.addModels([ outDir ]);
         });
 
@@ -284,36 +334,31 @@ describe('Postgres', () => {
         for (const [testName, testValue] of [
             ...numericTests,
             ...stringTests,
-            ...binaryTests,
             ...dateTests,
+            ...collectionsTests,
+            ...binaryTests,
+            ...binaryStringsTests,
+            ...geometriesTests,
+            ...jsonTests,
         ]) {
             it(testName, async () => {
+                const dialect = new DialectMySQL();
                 const DataTypes = connection!.model(DATA_TYPES_TABLE_NAME);
                 const testField = `f_${testName}`;
                 const res = await DataTypes.upsert({ [testField]: testValue });
 
                 expect(res).toBe(true);
 
-                const rows = await DataTypes.findAll({ order: [['id', 'DESC']], limit: 1, /* raw: true */ });
+                const rows = await DataTypes.findAll({ order: [['id', 'DESC']], limit: 1 });
                 expect(rows.length).toBe(1);
 
                 // @ts-ignore-start
                 const receivedValue = rows[0][testField];
                 expect(receivedValue).toBeDefined();
-
-                if (Buffer.isBuffer(testValue)) {
-                    expect(Buffer.compare(receivedValue, testValue)).toBe(0);
-                }
-                else if (testValue instanceof Date) {
-                    expect(receivedValue).toBeInstanceOf(Date);
-                }
-                else {
-                    expect(receivedValue).toStrictEqual(testValue);
-                }
+                expect(getObjectType(receivedValue))
+                    .toStrictEqual(dialect.jsDataTypesMap[testName].toLowerCase());
                 // @ts-ignore-end
             });
         }
-
     });
-
 });

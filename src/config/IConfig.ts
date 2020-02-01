@@ -1,8 +1,8 @@
 import { Options } from 'sequelize';
 
-export type Case = 'UPPER' | 'LOWER' | 'UNDERSCORE' | 'CAMEL' | 'PASCAL' | 'CONST';
+export type TransformCase = 'UPPER' | 'LOWER' | 'UNDERSCORE' | 'CAMEL' | 'PASCAL' | 'CONST';
 
-export const Cases = new Set<Case>([
+export const TransformCases = new Set<TransformCase>([
     'UPPER',
     'LOWER',
     'UNDERSCORE',
@@ -11,18 +11,22 @@ export const Cases = new Set<Case>([
     'CONST'
 ]);
 
+export interface IConfigMetadata {
+    schema?: 'public' | string; // Postgres only
+    tables?: string[];
+    skipTables?: string[];
+    indices?: boolean;
+    timestamps?: boolean;
+    case?: TransformCase;
+}
+
+export interface IConfigOutput {
+    clean?: boolean; // clean output dir before build
+    outDir: string; // output directory
+}
+
 export interface IConfig {
-    connection: Options,
-    metadata?: {
-        schema?: 'public' | string, // Postgres only
-        tables?: string[],
-        skipTables?: string[],
-        indices?: boolean,
-        timestamps?: boolean,
-        case?: Case,
-    },
-    output: {
-        clean?: boolean, // clean output dir before build
-        outDir: string, // output directory
-    }
+    connection: Options;
+    metadata?: IConfigMetadata;
+    output: IConfigOutput;
 }

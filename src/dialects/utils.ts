@@ -1,5 +1,5 @@
 import { IndexType, IndexMethod } from 'sequelize';
-import { Case } from '../config/IConfig';
+import { TransformCase } from '../config/IConfig';
 import { ITableMetadata } from './Dialect';
 import {
     camelCase,
@@ -13,10 +13,10 @@ export const toLowerCase = (s: string) => s.toLowerCase();
 
 /**
  * Return transformer for the provided case
- * @param  {Case} transformCase
+ * @param  {TransformCase} transformCase
  * @returns {function(s: string): string}
  */
-export const getTransformer = (transformCase: Case): (s: string) => string => {
+export const getTransformer = (transformCase: TransformCase): (s: string) => string => {
     let transformer: (s: string) => string;
 
     switch(transformCase) {
@@ -48,10 +48,10 @@ export const getTransformer = (transformCase: Case): (s: string) => string => {
 /**
  * Transform ITableMetadata object using the provided case
  * @param {ITableMetadata} tableMetadata
- * @param {Case} transformCase
+ * @param {TransformCase} transformCase
  * @returns {ITableMetadata}
  */
-export const caseTransformer = (tableMetadata: ITableMetadata, transformCase: Case): ITableMetadata => {
+export const caseTransformer = (tableMetadata: ITableMetadata, transformCase: TransformCase): ITableMetadata => {
     const transformer = getTransformer(transformCase);
 
     const transformed: ITableMetadata = {

@@ -5,6 +5,8 @@ module.exports = {
     },
     testPathIgnorePatterns: [
         'environment.ts',
+        'testsData.ts',
+        'testRunner',
     ],
     verbose: true,
 };

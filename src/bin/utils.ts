@@ -1,6 +1,6 @@
 import path from 'path';
 import { Dialect as DialectType } from 'sequelize';
-import { IConfig, Cases } from '../config/IConfig';
+import { IConfig, TransformCases } from '../config/IConfig';
 import { Dialect } from '../dialects/Dialect';
 import { DialectMySQL, DialectPostgres  } from '../dialects';
 
@@ -125,8 +125,8 @@ export const validateArgs = (argv: ArgvType): void => {
     }
 
     // Validate case if any
-    if (argv[aliasesMap.CASE] && !Cases.has(argv[aliasesMap.CASE].toUpperCase())) {
-        error(`Argument -c [case] must be one of (${Array.from(Cases).join(', ').toLowerCase()})`)
+    if (argv[aliasesMap.CASE] && !TransformCases.has(argv[aliasesMap.CASE].toUpperCase())) {
+        error(`Argument -c [case] must be one of (${Array.from(TransformCases).join(', ').toLowerCase()})`)
     }
 
     // TODO Validate schema if dialect is postgres ?
