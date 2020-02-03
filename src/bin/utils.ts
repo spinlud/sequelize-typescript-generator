@@ -2,7 +2,11 @@ import path from 'path';
 import { Dialect as DialectType } from 'sequelize';
 import { IConfig, TransformCases } from '../config/IConfig';
 import { Dialect } from '../dialects/Dialect';
-import { DialectMySQL, DialectPostgres  } from '../dialects';
+import {
+    DialectMySQL,
+    DialectPostgres,
+    DialectMSSQL,
+} from '../dialects';
 
 export type ArgvType = { [key: string]: any };
 
@@ -99,7 +103,7 @@ export const buildDialect = (argv: ArgvType): Dialect => {
             dialect = new DialectMySQL(); // TODO
             break;
         case 'mssql':
-            dialect = new DialectMySQL(); // TODO
+            dialect = new DialectMSSQL();
             break;
         default:
             error(`Unknown dialect ${argv[aliasesMap.DIALECT]}`);

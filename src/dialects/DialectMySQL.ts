@@ -1,4 +1,4 @@
-import {QueryTypes, AbstractDataTypeConstructor, IndexMethod} from 'sequelize';
+import { QueryTypes, AbstractDataTypeConstructor, IndexMethod } from 'sequelize';
 import { Sequelize, DataType } from 'sequelize-typescript';
 import { IConfig } from '../config';
 import { IColumnMetadata, Dialect, IIndexMetadata } from './Dialect';
@@ -91,7 +91,7 @@ export class DialectMySQL extends Dialect {
         float: DataType.FLOAT,
         double: DataType.DOUBLE,
 
-        bit: DataType.INTEGER,
+        bit: DataType.STRING,
 
         varchar: DataType.STRING,
         char: DataType.CHAR,
