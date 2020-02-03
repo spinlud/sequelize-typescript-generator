@@ -88,7 +88,16 @@ const testMetadata: ITestMetadata = {
             ['date', '2020-01-01'],
             ['time', '23:59:59'],
             ['timetz', '23:59:59+00'],
-            // ['interval', { days: 1, hours: 15 }],
+            ['boolean', true],
+            // ['point', ''], // need PostGIS extension installed on Postgres
+            // ['line', ''], // need PostGIS extension installed on Postgres
+            // ['lseg', ''], // need PostGIS extension installed on Postgres
+            // ['box', ''], // need PostGIS extension installed on Postgres
+            // ['path', ''], // need PostGIS extension installed on Postgres
+            // ['polygon', ''], // need PostGIS extension installed on Postgres
+            // ['circle', ''], // need PostGIS extension installed on Postgres
+            ['json', JSON.parse('{"key1": "value1", "key2": "value2"}')],
+            ['jsonb', JSON.parse('{"key1": "value1", "key2": "value2"}')],
         ],
     },
 };
