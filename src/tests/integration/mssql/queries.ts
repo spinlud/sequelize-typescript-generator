@@ -8,13 +8,12 @@ export const DATA_TYPES_TABLE_CREATE = `
         f_integer          INTEGER,
         f_bigint           BIGINT,
         f_tinyint          TINYINT,
-        f_smallint         SMALLINT,
-        -- f_mediumint MEDIUMINT,
+        f_smallint         SMALLINT,       
         f_numeric          NUMERIC(7, 2),
         f_decimal          DECIMAL(5, 2),
         f_float            FLOAT,
         f_real             REAL,
-        f_dec              DEC,
+        f_dec              DEC(5, 2),
         f_money            MONEY,
         f_char             CHAR(1),
         f_character        CHARACTER(1),
@@ -28,15 +27,14 @@ export const DATA_TYPES_TABLE_CREATE = `
         f_datetime         DATETIME,
         f_datetime2        DATETIME2,
         f_datetimeoffset   DATETIMEOFFSET,
-        f_time             TIME,
-        f_timestamp        TIMESTAMP,
+        f_time             TIME,        
         f_smalldatetime    SMALLDATETIME,
         f_smallmoney       SMALLMONEY,
-        f_binary           BINARY,
+        f_binary           BINARY(16),
         f_bit              BIT,
         f_uniqueidentifier UNIQUEIDENTIFIER,
         f_xml              XML,
-        f_varbinary        VARBINARY
+        f_varbinary        VARBINARY(16)
     );    
 `;
 
