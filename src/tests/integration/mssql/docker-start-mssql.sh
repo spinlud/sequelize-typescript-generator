@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
+set -e
 
 IMAGE_NAME="mcr.microsoft.com/mssql/server"
 CONTAINER_NAME="mssql"
@@ -19,3 +20,10 @@ until docker logs --tail all ${CONTAINER_NAME} 2>&1 | grep -c "Service Broker ma
 done
 
 echo "Database online"
+
+# Create test database
+docker exec -i "$CONTAINER_NAME" /opt/mssql-tools/bin/sqlcmd \
+  -S localhost \
+  -U "$TEST_DB_USERNAME" \
+  -P "$TEST_DB_PASSWORD" \
+  -Q "CREATE DATABASE $TEST_DB_DATABASE"

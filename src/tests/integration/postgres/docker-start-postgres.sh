@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
+set -e
 
 IMAGE_NAME="postgres"
 CONTAINER_NAME="postgres"

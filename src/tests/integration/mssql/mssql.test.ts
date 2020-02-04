@@ -1,0 +1,98 @@
+import { Sequelize } from 'sequelize-typescript';
+import { QueryTypes } from 'sequelize';
+import { ITestMetadata } from '../ITestMetadata';
+import { TestRunner } from '../TestRunner';
+import {
+    DATA_TYPES_TABLE_NAME,
+    DATA_TYPES_TABLE_DROP,
+    DATA_TYPES_TABLE_CREATE,
+    INDICES_TABLE_NAME,
+    INDICES_TABLE_DROP,
+    INDICES_TABLE_CREATE,
+} from './queries';
+
+interface INativeType {
+    DATA_TYPE: string;
+    data_type: string;
+}
+
+const testMetadata: ITestMetadata = {
+    name: 'MSSQL',
+    dialect: 'mssql',
+    testTables: [
+        {
+            name: DATA_TYPES_TABLE_NAME,
+            createQueries: [ DATA_TYPES_TABLE_CREATE ],
+            dropQuery: DATA_TYPES_TABLE_DROP,
+        },
+        {
+            name: INDICES_TABLE_NAME,
+            createQueries: [ INDICES_TABLE_CREATE ],
+            dropQuery: INDICES_TABLE_DROP,
+        },
+    ],
+    filterTables: [ DATA_TYPES_TABLE_NAME ],
+    filterSkipTables: [ INDICES_TABLE_NAME ],
+    dataTypes: {
+        dataTypesTable: DATA_TYPES_TABLE_NAME,
+        async getColumnNativeDataType(
+            connection: Sequelize,
+            schema: string,
+            table: string,
+            column: string): Promise<string>
+        {
+            const query = `
+                SELECT DATA_TYPE
+                FROM information_schema.columns
+                WHERE table_catalog='${schema}' AND table_name='${table}' AND column_name='${column}';
+            `;
+
+            const res = await connection.query(query, {
+                type: QueryTypes.SELECT,
+                raw: true,
+            }) as INativeType[];
+
+            return res[0].DATA_TYPE ?? res[0].data_type;
+        },
+        testValues: [
+            ['bigint', 9007199254740991],
+            ['smallint', 32767],
+            ['tinyint', 127],
+            ['decimal', '99.999'],
+            ['float', 66.78],
+            ['double', 11.2345],
+            ['int', 2147483647],
+            ['varchar', 'Hello world'],
+            ['char', 'a'],
+            // ['tinytext', 'xyz'],
+            // ['mediumtext', 'Voodoo Lady'],
+            // ['longtext', 'Supercalifragilisticexpialidocious'],
+            // ['text', 'Access denied'],
+            // ['date', '2020-01-01'],
+            // ['time', '23:59:59'],
+            // ['datetime', new Date()],
+            // ['timestamp', new Date()],
+            // ['year', new Date().getFullYear()],
+            // ['enum', 'BB'],
+            // ['set', 'X'],
+            // ['bit', 127],
+            // ['binary', Buffer.from('A')],
+            // ['blob', Buffer.from('Not authorized')],
+            // ['tinyblob', Buffer.from('xyz')],
+            // ['mediumblob', Buffer.from('Voodoo Lady')],
+            // ['longblob', Buffer.from('Supercalifragilisticexpialidocious')],
+            // ['point', geometries.Point],
+            // ['multipoint', geometries.MultiPoint],
+            // ['linestring', geometries.LineString],
+            // ['multilinestring', geometries.MultiLineString],
+            // ['polygon', geometries.Polygon],
+            // ['multipolygon', geometries.MultiPolygon],
+            // ['geometry', geometries.Geometry],
+            // // ['geometrycollection', geometries.GeometryCollection],
+            // ['json', JSON.parse('{"key1": "value1", "key2": "value2"}')],
+        ]
+    },
+};
+
+const testRunner = new TestRunner(testMetadata);
+testRunner.run();

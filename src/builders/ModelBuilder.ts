@@ -27,7 +27,6 @@ export class ModelBuilder extends Builder {
                 ...col.primaryKey && { primaryKey: col.primaryKey },
                 ...col.autoIncrement && { autoIncrement: col.autoIncrement },
                 ...col.allowNull && { allowNull: col.allowNull },
-                // type: col.dataType,
                 ...col.dataType && { type: col.dataType },
             };
 
@@ -39,7 +38,7 @@ export class ModelBuilder extends Builder {
                 name: index.name,
                 ...index.using && { using: index.using },
                 ...index.collation && { order: index.collation === 'A' ? 'ASC' : 'DESC' },
-                ...index.unique && { unique: index.unique },
+                unique: index.unique,
             };
 
             return props;

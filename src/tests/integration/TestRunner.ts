@@ -7,7 +7,7 @@ import { buildSequelizeOptions } from '../environment';
 import { createConnection } from '../../connection';
 import { IConfig } from '../../config';
 import { Dialect } from '../../dialects/Dialect';
-import { DialectMySQL, DialectPostgres } from '../../dialects';
+import { DialectMySQL, DialectPostgres, DialectMSSQL } from '../../dialects';
 import { getTransformer } from '../../dialects/utils';
 import { ModelBuilder } from '../../builders';
 import { TransformCase, TransformCases } from '../../config/IConfig';
@@ -80,6 +80,8 @@ const buildDialect = (testMetadata: ITestMetadata): Dialect => {
             return new DialectMySQL();
         case 'postgres':
             return new DialectPostgres();
+        case 'mssql':
+            return new DialectMSSQL();
         default:
             throw new Error(`Invalid dialect ${testMetadata.dialect}`);
     }
@@ -322,8 +324,9 @@ export class TestRunner {
                         const DataTypes = connection!.model(testMetadata.dataTypes.dataTypesTable);
                         const columnName = `f_${typeName}`;
 
-                        const res = await DataTypes.upsert({ [columnName]: typeValue });
-                        expect(res).toBe(true);
+                        const res = await DataTypes.create({ [columnName]: typeValue });
+                        // expect(res).toBe(true);
+                        expect(res).toBeDefined();
 
                         const rows = await DataTypes.findAll({ order: [['id', 'DESC']], limit: 1 });
                         expect(rows.length).toBe(1);

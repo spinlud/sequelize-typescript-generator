@@ -43,9 +43,7 @@ export const DATA_TYPES_TABLE_CREATE = `
 `;
 
 export const INDICES_TABLE_NAME = 'indices';
-
 export const INDICES_TABLE_DROP = `DROP TABLE IF EXISTS ${INDICES_TABLE_NAME} CASCADE`;
-
 export const INDICES_TABLE_CREATE = `
     CREATE TABLE ${INDICES_TABLE_NAME}
     (

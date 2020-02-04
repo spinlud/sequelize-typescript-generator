@@ -1,18 +1,38 @@
 import { Options, Dialect as DialectType } from 'sequelize';
 
+const checkTestEnv = () => {
+    if (!process.env.TEST_DB_PORT) {
+        throw new Error(`Missing env variable TEST_DB_PORT`);
+    }
+
+    if (!process.env.TEST_DB_DATABASE) {
+        throw new Error(`Missing env variable TEST_DB_DATABASE`);
+    }
+
+    if (!process.env.TEST_DB_USERNAME) {
+        throw new Error(`Missing env variable TEST_DB_USERNAME`);
+    }
+
+    if (!process.env.TEST_DB_PASSWORD) {
+        throw new Error(`Missing env variable TEST_DB_PASSWORD`);
+    }
+}
+
 /**
  * Build sequelize options from environment
  * @param {DialectType}  dialect
  * @returns {Options}
  */
 export const buildSequelizeOptions = (dialect: DialectType): Options => {
+    checkTestEnv();
+
     let sequelizeOptions: Options = {
         dialect: dialect,
-        ...process.env.TEST_DB_HOST && { host: process.env.TEST_DB_HOST },
-        ...process.env.TEST_DB_PORT && { port: parseInt(process.env.TEST_DB_PORT) },
-        ...process.env.TEST_DB_DATABASE && { database: process.env.TEST_DB_DATABASE },
-        ...process.env.TEST_DB_USERNAME && { username: process.env.TEST_DB_USERNAME },
-        ...process.env.TEST_DB_PASSWORD && { password: process.env.TEST_DB_PASSWORD },
+        host: process.env.TEST_DB_HOST ?? 'localhost',
+        port: parseInt(process.env.TEST_DB_PORT!),
+        database: process.env.TEST_DB_DATABASE,
+        username: process.env.TEST_DB_USERNAME,
+        password: process.env.TEST_DB_PASSWORD,
         logging: false,
     };
 
