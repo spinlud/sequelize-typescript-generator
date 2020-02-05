@@ -6,6 +6,7 @@ import {
     DialectMySQL,
     DialectPostgres,
     DialectMSSQL,
+    DialectMariaDB,
 } from '../dialects';
 
 export type ArgvType = { [key: string]: any };
@@ -97,7 +98,7 @@ export const buildDialect = (argv: ArgvType): Dialect => {
             dialect = new DialectMySQL();
             break;
         case 'mariadb':
-            dialect = new DialectMySQL(); // TODO
+            dialect = new DialectMariaDB();
             break;
         case 'sqlite':
             dialect = new DialectMySQL(); // TODO

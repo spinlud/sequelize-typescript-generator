@@ -7,10 +7,15 @@ import { buildSequelizeOptions } from '../environment';
 import { createConnection } from '../../connection';
 import { IConfig } from '../../config';
 import { Dialect } from '../../dialects/Dialect';
-import { DialectMySQL, DialectPostgres, DialectMSSQL } from '../../dialects';
 import { getTransformer } from '../../dialects/utils';
 import { ModelBuilder } from '../../builders';
 import { TransformCase, TransformCases } from '../../config/IConfig';
+import {
+    DialectMySQL,
+    DialectPostgres,
+    DialectMSSQL,
+    DialectMariaDB,
+} from '../../dialects';
 
 /**
  * Workaround: deprecated GeomFromText function for MySQL
@@ -82,6 +87,8 @@ const buildDialect = (testMetadata: ITestMetadata): Dialect => {
             return new DialectPostgres();
         case 'mssql':
             return new DialectMSSQL();
+        case 'mariadb':
+            return new DialectMariaDB();
         default:
             throw new Error(`Invalid dialect ${testMetadata.dialect}`);
     }
@@ -344,8 +351,15 @@ export class TestRunner {
 
                         expect(dialect.jsDataTypesMap).toHaveProperty(nativeType);
 
-                        expect(getObjectType(receivedValue))
-                            .toStrictEqual(dialect.jsDataTypesMap[nativeType].toLowerCase());
+                        const receivedValueType = getObjectType(receivedValue);
+                        const expectedValueType = dialect.jsDataTypesMap[nativeType].toLowerCase();
+
+                        if (receivedValueType === 'array') {
+                            expect(expectedValueType.includes(receivedValueType)).toBe(true);
+                        }
+                        else {
+                            expect(receivedValueType).toStrictEqual(expectedValueType);
+                        }
                         // @ts-ignore-end
                     });
                 }
