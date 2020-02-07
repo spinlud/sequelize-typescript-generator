@@ -12,7 +12,7 @@ import {
 
 export const cli = async (): Promise<void> => {
     const {argv} = yargs
-        .usage(`Usage: sta -d <database> -D <dialect> -u <username> -x [password] -h [host] -p [port] -o [out-dir] -s [schema] -t [tables] -T [skip-tables] -i [indices] -c [case] -s [storage]`)
+        .usage(`Usage: sta -d <database> -D <dialect> -u <username> -x [password] -h [host] -p [port] -o [out-dir] -s [schema] -t [tables] -T [skip-tables] -i [indices] -c [case] -s [storage] -L [lint-file]`)
         .demand(['database', 'username', 'dialect'])
         .option('h', {
             alias: aliasesMap.HOST,
@@ -94,10 +94,14 @@ export const cli = async (): Promise<void> => {
             alias: aliasesMap.STORAGE,
             string: true,
             describe: `SQLite storage. Default: \n - memory`,
+        }).option('L', {
+            alias: aliasesMap.LINT_FILE,
+            string: true,
+            describe: `ES Lint file path`,
         });
 
     // Args validation
-    validateArgs(argv);
+    await validateArgs(argv);
 
     const config = buildConfig(argv);
     const dialect = buildDialect(argv);

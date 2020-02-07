@@ -1,4 +1,5 @@
 import path from 'path';
+import { promises as fs } from 'fs';
 import { Dialect as DialectType } from 'sequelize';
 import { IConfig, TransformCases } from '../config/IConfig';
 import { Dialect } from '../dialects/Dialect';
@@ -30,6 +31,7 @@ export const aliasesMap = {
     TIMESTAMPS: 'timestamps',
     CASE: 'case',
     STORAGE: 'storage',
+    LINT_FILE: 'lint-file',
 }
 
 /**
@@ -87,7 +89,13 @@ export const buildConfig = (argv: ArgvType): IConfig => {
                     : path.join(process.cwd(), argv[aliasesMap.OUTPUT_DIR] as string)
                 : path.join(process.cwd(), defaultOutputDir),
             clean: !!argv[aliasesMap.OUTPUT_DIR_CLEAN],
-        }
+        },
+        ...argv[aliasesMap.LINT_FILE] && {
+            lint: {
+                configFile: argv[aliasesMap.LINT_FILE],
+                fix: true,
+            }
+        },
     };
 
     return config;
@@ -129,7 +137,7 @@ export const buildDialect = (argv: ArgvType): Dialect => {
  * @param { [key: string]: any } argv
  * @returns {void}
  */
-export const validateArgs = (argv: ArgvType): void => {
+export const validateArgs = async (argv: ArgvType): Promise<void> => {
     // Validate dialect
     if (!Dialect.dialects.has(argv[aliasesMap.DIALECT])) {
         error(`Required argument -D <dialect> must be one of (${Array.from(Dialect.dialects).join(', ')})`);
@@ -143,6 +151,15 @@ export const validateArgs = (argv: ArgvType): void => {
     // Validate case if any
     if (argv[aliasesMap.CASE] && !TransformCases.has(argv[aliasesMap.CASE].toUpperCase())) {
         error(`Argument -c [case] must be one of (${Array.from(TransformCases).join(', ').toLowerCase()})`)
+    }
+
+    if (argv[aliasesMap.LINT_FILE]) {
+        try {
+            await fs.access(argv[aliasesMap.LINT_FILE]);
+        }
+        catch(err) {
+            error(`Argument -L [lint-file] '${argv[aliasesMap.LINT_FILE]}' is not a valid path`);
+        }
     }
 
     // TODO Validate schema if dialect is postgres ?

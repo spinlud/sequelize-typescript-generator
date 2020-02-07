@@ -1,22 +1,6 @@
 import { CLIEngine } from 'eslint';
 import { eslintDefaultConfig } from './eslintDefaultConfig';
 
-// const cli = new CLIEngine({
-//     baseConfig: eslintDefaultConfig,
-//     fix: true,
-// });
-//
-// /**
-//  * Lint files using a predefined set of rules
-//  * @param {string[]} paths
-//  */
-// export const lintFiles = (paths: string[]): void => {
-//     console.log('Linting files...');
-//     const report = cli.executeOnFiles(paths);
-//     CLIEngine.outputFixes(report);
-//     console.log('Linting done')
-// }
-
 /**
  * @class Linter
  */

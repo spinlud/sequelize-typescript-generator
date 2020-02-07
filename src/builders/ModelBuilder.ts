@@ -175,7 +175,15 @@ export class ModelBuilder extends Builder {
         await Promise.all(writePromises);
 
         // Lint files
-        const linter = new Linter();
+        let linter: Linter;
+
+        if (this.config.lint) {
+            linter = new Linter(this.config.lint);
+        }
+        else {
+            linter = new Linter();
+        }
+
         linter.lintFiles([path.join(outDir, '*.ts')]);
     }
 }
