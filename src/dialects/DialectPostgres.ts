@@ -94,88 +94,106 @@ const dateTimePrecisionPostgres = (columnMetadataPostgres: IColumnMetadataPostgr
     }
 };
 
+const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
+    int2: DataType.INTEGER,
+    int4: DataType.INTEGER,
+    int8: DataType.BIGINT,
+    numeric: DataType.DECIMAL,
+    float4: DataType.FLOAT,
+    float8: DataType.DOUBLE,
+    money: DataType.NUMBER,
+    varchar: DataType.STRING,
+    bpchar: DataType.STRING,
+    text: DataType.STRING,
+    bytea: DataType.BLOB,
+    timestamp: DataType.DATE,
+    timestamptz: DataType.DATE,
+    date: DataType.STRING,
+    time: DataType.STRING,
+    timetz: DataType.STRING,
+    // interval: DataType.STRING,
+    bool: DataType.BOOLEAN,
+    point: DataType.GEOMETRY,
+    line: DataType.GEOMETRY,
+    lseg: DataType.GEOMETRY,
+    box: DataType.GEOMETRY,
+    path: DataType.GEOMETRY,
+    polygon: DataType.GEOMETRY,
+    circle: DataType.GEOMETRY,
+    cidr: DataType.STRING,
+    inet: DataType.STRING,
+    macaddr: DataType.STRING,
+    macaddr8: DataType.STRING,
+    bit: DataType.STRING,
+    varbit: DataType.STRING,
+    uuid: DataType.STRING,
+    xml: DataType.STRING,
+    json: DataType.JSON,
+    jsonb: DataType.JSONB,
+    jsonpath: DataType.JSON,
+}
+
+const jsDataTypesMap: { [key: string]: string } = {
+    int2: 'number',
+    int4: 'number',
+    int8: 'string',
+    numeric: 'string',
+    float4: 'number',
+    float8: 'number',
+    money: 'string',
+    varchar: 'string',
+    bpchar: 'string',
+    text: 'string',
+    bytea: 'Uint8Array',
+    timestamp: 'Date',
+    timestamptz: 'Date',
+    date: 'string',
+    time: 'string',
+    timetz: 'string',
+    interval: 'object',
+    bool: 'boolean',
+    point: 'object',
+    line: 'object',
+    lseg: 'object',
+    box: 'object',
+    path: 'object',
+    polygon: 'object',
+    circle: 'object',
+    cidr: 'string',
+    inet: 'string',
+    macaddr: 'string',
+    macaddr8: 'string',
+    bit: 'string',
+    varbit: 'string',
+    uuid: 'string',
+    xml: 'string',
+    json: 'object',
+    jsonb: 'object',
+    jsonpath: 'object',
+}
+
 /**
  * Dialect for Postgres
  * @class DialectPostgres
  */
 export class DialectPostgres extends Dialect {
 
-    public readonly sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
-        int2: DataType.INTEGER,
-        int4: DataType.INTEGER,
-        int8: DataType.BIGINT,
-        numeric: DataType.DECIMAL,
-        float4: DataType.FLOAT,
-        float8: DataType.DOUBLE,
-        money: DataType.NUMBER,
-        varchar: DataType.STRING,
-        bpchar: DataType.STRING,
-        text: DataType.STRING,
-        bytea: DataType.BLOB,
-        timestamp: DataType.DATE,
-        timestamptz: DataType.DATE,
-        date: DataType.STRING,
-        time: DataType.STRING,
-        timetz: DataType.STRING,
-        // interval: DataType.STRING,
-        bool: DataType.BOOLEAN,
-        point: DataType.GEOMETRY,
-        line: DataType.GEOMETRY,
-        lseg: DataType.GEOMETRY,
-        box: DataType.GEOMETRY,
-        path: DataType.GEOMETRY,
-        polygon: DataType.GEOMETRY,
-        circle: DataType.GEOMETRY,
-        cidr: DataType.STRING,
-        inet: DataType.STRING,
-        macaddr: DataType.STRING,
-        macaddr8: DataType.STRING,
-        bit: DataType.STRING,
-        varbit: DataType.STRING,
-        uuid: DataType.STRING,
-        xml: DataType.STRING,
-        json: DataType.JSON,
-        jsonb: DataType.JSONB,
-        jsonpath: DataType.JSON,
+    /**
+     * Map database data type to sequelize data type
+     * @param {string} dbType
+     * @returns {string}
+     */
+    public mapDbTypeToSequelize(dbType: string): AbstractDataTypeConstructor {
+        return sequelizeDataTypesMap[dbType];
     }
 
-    public readonly jsDataTypesMap: { [key: string]: string } = {
-        int2: 'number',
-        int4: 'number',
-        int8: 'string',
-        numeric: 'string',
-        float4: 'number',
-        float8: 'number',
-        money: 'string',
-        varchar: 'string',
-        bpchar: 'string',
-        text: 'string',
-        bytea: 'Uint8Array',
-        timestamp: 'Date',
-        timestamptz: 'Date',
-        date: 'string',
-        time: 'string',
-        timetz: 'string',
-        interval: 'object',
-        bool: 'boolean',
-        point: 'object',
-        line: 'object',
-        lseg: 'object',
-        box: 'object',
-        path: 'object',
-        polygon: 'object',
-        circle: 'object',
-        cidr: 'string',
-        inet: 'string',
-        macaddr: 'string',
-        macaddr8: 'string',
-        bit: 'string',
-        varbit: 'string',
-        uuid: 'string',
-        xml: 'string',
-        json: 'object',
-        jsonb: 'object',
-        jsonpath: 'object',
+    /**
+     * Map database data type to javascript data type
+     * @param {string} dbType
+     * @returns {string
+     */
+    public mapDbTypeToJs(dbType: string): string {
+        return jsDataTypesMap[dbType];
     }
 
     /**
@@ -267,7 +285,7 @@ export class DialectPostgres extends Dialect {
 
         for (const column of columns) {
             // Unknown data type
-            if (!this.sequelizeDataTypesMap[column.udt_name]) {
+            if (!this.mapDbTypeToSequelize(column.udt_name)) {
                 warnUnknownMappingForDataType(column.udt_name);
             }
 
@@ -275,9 +293,9 @@ export class DialectPostgres extends Dialect {
                 name: column.column_name,
                 type: column.udt_name,
                 typeExt: column.data_type,
-                ...this.sequelizeDataTypesMap[column.udt_name] && {
+                ...this.mapDbTypeToSequelize(column.udt_name) && {
                     dataType: 'DataType.' +
-                        this.sequelizeDataTypesMap[column.udt_name].key
+                        this.mapDbTypeToSequelize(column.udt_name).key
                             .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
                 },
                 allowNull: !!column.is_nullable && !column.is_primary,

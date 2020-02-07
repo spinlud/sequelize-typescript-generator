@@ -51,14 +51,19 @@ export abstract class Dialect {
     ]);
 
     /**
-     * Maps dialect data type to sequelize data type
+     * Map database data type to sequelize data type
+     * @param {string} dbType
+     * @returns {string}
      */
-    public abstract readonly sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor };
+    public abstract mapDbTypeToSequelize(dbType: string): AbstractDataTypeConstructor;
 
     /**
-     * Maps dialect type to javascript type
+     * Map database data type to javascript data type
+     * @param {string} dbType
+     * @returns {string
      */
-    public abstract readonly jsDataTypesMap: { [key: string]: string };
+    public abstract mapDbTypeToJs(dbType: string): string;
+
 
     /**
      * Fetch table names for the provided database/schema

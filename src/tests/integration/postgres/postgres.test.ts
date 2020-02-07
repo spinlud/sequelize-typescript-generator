@@ -1,6 +1,7 @@
 import { ITestMetadata } from '../ITestMetadata';
 import { Sequelize } from 'sequelize-typescript';
 import { TestRunner } from '../TestRunner';
+import { QueryTypes } from 'sequelize';
 import {
     SCHEMA_DROP,
     SCHEMA_CREATE,
@@ -11,7 +12,6 @@ import {
     INDICES_TABLE_CREATE,
     INDICES_TABLE_DROP,
 } from "./queries";
-import {QueryTypes} from "sequelize";
 
 interface INativeType {
     udt_name: string;

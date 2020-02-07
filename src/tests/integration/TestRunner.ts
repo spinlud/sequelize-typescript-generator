@@ -15,6 +15,7 @@ import {
     DialectPostgres,
     DialectMSSQL,
     DialectMariaDB,
+    DialectSQLite,
 } from '../../dialects';
 
 /**
@@ -89,6 +90,8 @@ const buildDialect = (testMetadata: ITestMetadata): Dialect => {
             return new DialectMSSQL();
         case 'mariadb':
             return new DialectMariaDB();
+        case 'sqlite':
+            return new DialectSQLite();
         default:
             throw new Error(`Invalid dialect ${testMetadata.dialect}`);
     }
@@ -349,10 +352,10 @@ export class TestRunner {
                             columnName
                         );
 
-                        expect(dialect.jsDataTypesMap).toHaveProperty(nativeType);
+                        expect(dialect.mapDbTypeToJs(nativeType)).toBeDefined();
 
                         const receivedValueType = getObjectType(receivedValue);
-                        const expectedValueType = dialect.jsDataTypesMap[nativeType].toLowerCase();
+                        const expectedValueType = dialect.mapDbTypeToJs(nativeType).toLowerCase();
 
                         if (receivedValueType === 'array') {
                             expect(expectedValueType.includes(receivedValueType)).toBe(true);

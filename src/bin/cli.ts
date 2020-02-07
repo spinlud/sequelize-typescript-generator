@@ -12,7 +12,7 @@ import {
 
 export const cli = async (): Promise<void> => {
     const {argv} = yargs
-        .usage(`Usage: sta -d <database> -D <dialect> -u <username> -x [password] -h [host] -p [port] -o [out-dir] -s [schema] -t [tables] -T [skip-tables] -i [indices] -c [case]`)
+        .usage(`Usage: sta -d <database> -D <dialect> -u <username> -x [password] -h [host] -p [port] -o [out-dir] -s [schema] -t [tables] -T [skip-tables] -i [indices] -c [case] -s [storage]`)
         .demand(['database', 'username', 'dialect'])
         .option('h', {
             alias: aliasesMap.HOST,
@@ -90,6 +90,10 @@ export const cli = async (): Promise<void> => {
              - pascal
              - const    
             `,
+        }).option('S', {
+            alias: aliasesMap.STORAGE,
+            string: true,
+            describe: `SQLite storage. Default: \n - memory`,
         });
 
     // Args validation

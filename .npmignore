@@ -1,10 +1,11 @@
 **/src
 **/output
 **/*.tgz
+**/prova.ts
+**/output-models
+**/sqlite-db
+**/memory
 /jest.config.js
-/prova.ts
-/output-models
-/sqlite-db
 
 # Created by https://www.gitignore.io/api/node,macos
 # Edit at https://www.gitignore.io/?templates=node,macos

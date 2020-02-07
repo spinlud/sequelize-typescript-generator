@@ -7,6 +7,7 @@ import {
     DialectPostgres,
     DialectMSSQL,
     DialectMariaDB,
+    DialectSQLite,
 } from '../dialects';
 
 export type ArgvType = { [key: string]: any };
@@ -28,6 +29,7 @@ export const aliasesMap = {
     INDICES: 'indices',
     TIMESTAMPS: 'timestamps',
     CASE: 'case',
+    STORAGE: 'storage',
 }
 
 /**
@@ -54,6 +56,15 @@ export const buildConfig = (argv: ArgvType): IConfig => {
             database: argv[aliasesMap.DATABASE] as string,
             username: argv[aliasesMap.USERNAME] as string,
             ...argv[aliasesMap.PASSWORD] && {password: argv[aliasesMap.PASSWORD] as string},
+
+            ...argv[aliasesMap.DIALECT] === 'mariadb' && { dialectOptions: {
+                    timezone: 'Etc/GMT-3',
+                }
+            },
+
+            ...argv[aliasesMap.DIALECT] === 'sqlite' && {
+                storage: argv[aliasesMap.STORAGE] ?? 'memory',
+            },
         },
         metadata: {
             ...argv[aliasesMap.SCHEMA] && {schema: argv[aliasesMap.SCHEMA] as string},
@@ -101,7 +112,7 @@ export const buildDialect = (argv: ArgvType): Dialect => {
             dialect = new DialectMariaDB();
             break;
         case 'sqlite':
-            dialect = new DialectMySQL(); // TODO
+            dialect = new DialectSQLite();
             break;
         case 'mssql':
             dialect = new DialectMSSQL();

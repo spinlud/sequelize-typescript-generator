@@ -80,72 +80,90 @@ const dateTimePrecisionMSSQL = (columnMetadataMSSQL: IColumnMetadataMSSQL): stri
     }
 };
 
+const jsDataTypesMap: { [key: string]: string } = {
+    int: 'number',
+    bigint: 'string',
+    tinyint: 'number',
+    smallint: 'number',
+    numeric: 'number',
+    decimal: 'number',
+    float: 'number',
+    real: 'number',
+    money: 'number',
+    smallmoney: 'number',
+    char: 'string',
+    nchar: 'string',
+    varchar: 'string',
+    nvarchar: 'string',
+    text: 'string',
+    ntext: 'string',
+    date: 'string',
+    datetime: 'Date',
+    datetime2: 'Date',
+    timestamp: 'Date',
+    datetimeoffset: 'Date',
+    time: 'Date',
+    smalldatetime: 'string',
+    bit: 'boolean',
+    binary: 'Uint8Array',
+    varbinary: 'Uint8Array',
+    uniqueidentifier: 'string',
+    xml: 'string',
+}
+
+const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
+    int: DataType.INTEGER,
+    bigint: DataType.BIGINT,
+    tinyint: DataType.INTEGER,
+    smallint: DataType.INTEGER,
+    numeric: DataType.DECIMAL,
+    decimal: DataType.DECIMAL,
+    float: DataType.FLOAT,
+    real: DataType.REAL,
+    money: DataType.STRING,
+    smallmoney: DataType.STRING,
+    char: DataType.STRING,
+    nchar: DataType.STRING,
+    varchar: DataType.STRING,
+    nvarchar: DataType.STRING,
+    text: DataType.STRING,
+    ntext: DataType.STRING,
+    date: DataType.DATEONLY,
+    datetime: DataType.DATE,
+    datetime2: DataType.DATE,
+    timestamp: DataType.DATE,
+    datetimeoffset: DataType.STRING,
+    time: DataType.TIME,
+    smalldatetime: DataType.DATE,
+    bit: DataType.STRING,
+    binary: DataType.STRING,
+    varbinary: DataType.STRING,
+    uniqueidentifier: DataType.STRING,
+    xml: DataType.STRING,
+}
+
 /**
  * Dialect for Postgres
  * @class DialectPostgres
  */
 export class DialectMSSQL extends Dialect {
 
-    readonly jsDataTypesMap: { [key: string]: string } = {
-        int: 'number',
-        bigint: 'string',
-        tinyint: 'number',
-        smallint: 'number',
-        numeric: 'number',
-        decimal: 'number',
-        float: 'number',
-        real: 'number',
-        money: 'number',
-        smallmoney: 'number',
-        char: 'string',
-        nchar: 'string',
-        varchar: 'string',
-        nvarchar: 'string',
-        text: 'string',
-        ntext: 'string',
-        date: 'string',
-        datetime: 'Date',
-        datetime2: 'Date',
-        timestamp: 'Date',
-        datetimeoffset: 'Date',
-        time: 'Date',
-        smalldatetime: 'string',
-        bit: 'boolean',
-        binary: 'Uint8Array',
-        varbinary: 'Uint8Array',
-        uniqueidentifier: 'string',
-        xml: 'string',
+    /**
+     * Map database data type to sequelize data type
+     * @param {string} dbType
+     * @returns {string}
+     */
+    public mapDbTypeToSequelize(dbType: string): AbstractDataTypeConstructor {
+        return sequelizeDataTypesMap[dbType];
     }
 
-    readonly sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
-        int: DataType.INTEGER,
-        bigint: DataType.BIGINT,
-        tinyint: DataType.INTEGER,
-        smallint: DataType.INTEGER,
-        numeric: DataType.DECIMAL,
-        decimal: DataType.DECIMAL,
-        float: DataType.FLOAT,
-        real: DataType.REAL,
-        money: DataType.STRING,
-        smallmoney: DataType.STRING,
-        char: DataType.STRING,
-        nchar: DataType.STRING,
-        varchar: DataType.STRING,
-        nvarchar: DataType.STRING,
-        text: DataType.STRING,
-        ntext: DataType.STRING,
-        date: DataType.DATEONLY,
-        datetime: DataType.DATE,
-        datetime2: DataType.DATE,
-        timestamp: DataType.DATE,
-        datetimeoffset: DataType.STRING,
-        time: DataType.TIME,
-        smalldatetime: DataType.DATE,
-        bit: DataType.STRING,
-        binary: DataType.STRING,
-        varbinary: DataType.STRING,
-        uniqueidentifier: DataType.STRING,
-        xml: DataType.STRING,
+    /**
+     * Map database data type to javascript data type
+     * @param {string} dbType
+     * @returns {string
+     */
+    public mapDbTypeToJs(dbType: string): string {
+        return jsDataTypesMap[dbType];
     }
 
     /**
@@ -216,7 +234,7 @@ export class DialectMSSQL extends Dialect {
 
         for (const column of columns) {
             // Unknown data type
-            if (!this.sequelizeDataTypesMap[column.DATA_TYPE]) {
+            if (!this.mapDbTypeToSequelize(column.DATA_TYPE)) {
                 warnUnknownMappingForDataType(column.DATA_TYPE);
             }
 
@@ -224,9 +242,9 @@ export class DialectMSSQL extends Dialect {
                 name: column.COLUMN_NAME,
                 type: column.DATA_TYPE,
                 typeExt: column.DATA_TYPE,
-                ...this.sequelizeDataTypesMap[column.DATA_TYPE] && {
+                ...this.mapDbTypeToSequelize(column.DATA_TYPE) && {
                     dataType: 'DataType.' +
-                        this.sequelizeDataTypesMap[column.DATA_TYPE].key
+                        this.mapDbTypeToSequelize(column.DATA_TYPE).key
                             .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
                 },
                 allowNull: column.IS_NULLABLE.toUpperCase() === 'YES' &&

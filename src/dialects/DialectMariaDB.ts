@@ -75,102 +75,106 @@ const dateTimePrecisionMariaDB = (columnMetadataMariaDB: IColumnMetadataMariaDB)
     }
 };
 
+const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
+    bigint: DataType.BIGINT,
+    int: DataType.INTEGER,
+    smallint: DataType.SMALLINT,
+    mediumint: DataType.MEDIUMINT,
+    tinyint: DataType.TINYINT,
+    decimal: DataType.DECIMAL,
+    float: DataType.FLOAT,
+    double: DataType.DOUBLE,
+    bit: DataType.STRING,
+    varchar: DataType.STRING,
+    char: DataType.CHAR,
+    text: DataType.STRING,
+    tinytext: DataType.STRING,
+    mediumtext: DataType.STRING,
+    longtext: DataType.STRING,
+    date: DataType.DATEONLY,
+    datetime: DataType.DATE,
+    time: DataType.TIME,
+    timestamp: DataType.DATE,
+    year: DataType.INTEGER,
+    enum: DataType.ENUM,
+    set: DataType.STRING,
+    binary: DataType.BLOB,
+    blob: DataType.BLOB,
+    tinyblob: DataType.BLOB,
+    mediumblob: DataType.BLOB,
+    longblob: DataType.BLOB,
+    point: DataType.GEOMETRY,
+    multipoint: DataType.GEOMETRY,
+    linestring: DataType.GEOMETRY,
+    multilinestring: DataType.GEOMETRY,
+    polygon: DataType.GEOMETRY,
+    multipolygon: DataType.GEOMETRY,
+    geometry: DataType.GEOMETRY,
+    geometrycollection: DataType.GEOMETRY,
+    json: DataType.JSON,
+};
+
+const jsDataTypesMap: { [key: string]: string } = {
+    bigint: 'object',
+    smallint: 'number',
+    mediumint: 'number',
+    tinyint: 'number',
+    decimal: 'number',
+    float: 'number',
+    double: 'number',
+    int: 'number',
+    bit: 'Uint8Array',
+    varchar: 'string',
+    char: 'string',
+    mediumtext: 'string',
+    tinytext: 'string',
+    longtext: 'string',
+    text: 'string',
+    date: 'string',
+    time: 'string',
+    datetime: 'Date',
+    timestamp: 'Date',
+    year: 'number',
+    enum: 'string',
+    set: 'Array<string>',
+    binary: 'Uint8Array',
+    blob: 'Uint8Array',
+    tinyblob: 'Uint8Array',
+    mediumblob: 'Uint8Array',
+    longblob: 'Uint8Array',
+    point: 'object',
+    multipoint: 'object',
+    linestring: 'object',
+    multilinestring: 'object',
+    polygon: 'object',
+    multipolygon: 'object',
+    geometry: 'object',
+    geometrycollection: 'object',
+    json: 'string',
+}
+
 /**
  * Dialect for MariaDB
  * @class DialectMariaDB
  */
 export class DialectMariaDB extends Dialect {
 
-    public readonly sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
-        bigint: DataType.BIGINT,
-        int: DataType.INTEGER,
-        smallint: DataType.SMALLINT,
-        mediumint: DataType.MEDIUMINT,
-        tinyint: DataType.TINYINT,
-        decimal: DataType.DECIMAL,
-        float: DataType.FLOAT,
-        double: DataType.DOUBLE,
+    /**
+     * Map database data type to sequelize data type
+     * @param {string} dbType
+     * @returns {string}
+     */
+    public mapDbTypeToSequelize(dbType: string): AbstractDataTypeConstructor {
+        return sequelizeDataTypesMap[dbType];
+    }
 
-        bit: DataType.STRING,
-
-        varchar: DataType.STRING,
-        char: DataType.CHAR,
-        text: DataType.STRING,
-        tinytext: DataType.STRING,
-        mediumtext: DataType.STRING,
-        longtext: DataType.STRING,
-
-        date: DataType.DATEONLY,
-        datetime: DataType.DATE,
-        time: DataType.TIME,
-        timestamp: DataType.DATE,
-        year: DataType.INTEGER,
-
-        enum: DataType.ENUM,
-        set: DataType.STRING,
-
-        binary: DataType.BLOB,
-        blob: DataType.BLOB,
-        tinyblob: DataType.BLOB,
-        mediumblob: DataType.BLOB,
-        longblob: DataType.BLOB,
-
-        point: DataType.GEOMETRY,
-        multipoint: DataType.GEOMETRY,
-        linestring: DataType.GEOMETRY,
-        multilinestring: DataType.GEOMETRY,
-        polygon: DataType.GEOMETRY,
-        multipolygon: DataType.GEOMETRY,
-        geometry: DataType.GEOMETRY,
-        geometrycollection: DataType.GEOMETRY,
-
-        json: DataType.JSON,
-    };
-
-    public readonly jsDataTypesMap: { [key: string]: string } = {
-        bigint: 'object',
-        smallint: 'number',
-        mediumint: 'number',
-        tinyint: 'number',
-        decimal: 'number',
-        float: 'number',
-        double: 'number',
-        int: 'number',
-
-        bit: 'Uint8Array',
-
-        varchar: 'string',
-        char: 'string',
-        mediumtext: 'string',
-        tinytext: 'string',
-        longtext: 'string',
-        text: 'string',
-
-        date: 'string',
-        time: 'string',
-        datetime: 'Date',
-        timestamp: 'Date',
-        year: 'number',
-
-        enum: 'string',
-        set: 'Array<string>',
-
-        binary: 'Uint8Array',
-        blob: 'Uint8Array',
-        tinyblob: 'Uint8Array',
-        mediumblob: 'Uint8Array',
-        longblob: 'Uint8Array',
-
-        point: 'object',
-        multipoint: 'object',
-        linestring: 'object',
-        multilinestring: 'object',
-        polygon: 'object',
-        multipolygon: 'object',
-        geometry: 'object',
-        geometrycollection: 'object',
-
-        json: 'string',
+    /**
+     * Map database data type to javascript data type
+     * @param {string} dbType
+     * @returns {string
+     */
+    public mapDbTypeToJs(dbType: string): string {
+        return jsDataTypesMap[dbType];
     }
 
     /**
@@ -247,7 +251,7 @@ export class DialectMariaDB extends Dialect {
 
         for (const column of columns) {
             // Unknown data type
-            if (!this.sequelizeDataTypesMap[column.DATA_TYPE]) {
+            if (!this.mapDbTypeToSequelize(column.DATA_TYPE)) {
                 warnUnknownMappingForDataType(column.DATA_TYPE);
             }
 
@@ -255,8 +259,8 @@ export class DialectMariaDB extends Dialect {
                 name: column.COLUMN_NAME,
                 type: column.DATA_TYPE,
                 typeExt: column.COLUMN_TYPE,
-                ...this.sequelizeDataTypesMap[column.DATA_TYPE] && { dataType: 'DataType.' +
-                        this.sequelizeDataTypesMap[column.DATA_TYPE].key
+                ...this.mapDbTypeToSequelize(column.DATA_TYPE) && { dataType: 'DataType.' +
+                        this.mapDbTypeToSequelize(column.DATA_TYPE).key
                             .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
                 },
                 allowNull: column.IS_NULLABLE === 'YES',

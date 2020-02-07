@@ -1,3 +1,4 @@
+import path from 'path';
 import { Options, Dialect as DialectType } from 'sequelize';
 
 const checkTestEnv = () => {
@@ -33,7 +34,16 @@ export const buildSequelizeOptions = (dialect: DialectType): Options => {
         database: process.env.TEST_DB_DATABASE,
         username: process.env.TEST_DB_USERNAME,
         password: process.env.TEST_DB_PASSWORD,
-        logging: false,
+        // logging: false,
+
+        ...dialect === 'mariadb' && { dialectOptions: {
+                timezone: 'Etc/GMT-3',
+            }
+        },
+
+        ...dialect === 'sqlite' && {
+            storage: 'memory',
+        }
     };
 
     return sequelizeOptions;

@@ -19,7 +19,7 @@ export class ModelBuilder extends Builder {
         super(config, dialect);
     }
 
-    private buildColumnPropertyDecl(col: IColumnMetadata, dataTypeMap: { [key: string]: string }): ts.PropertyDeclaration {
+    private buildColumnPropertyDecl(col: IColumnMetadata, dialect: Dialect): ts.PropertyDeclaration {
 
         const buildColumnDecoratorProps = (col: IColumnMetadata): Partial<ModelAttributeColumnOptions> => {
             const props: Partial<ModelAttributeColumnOptions> = {
@@ -57,7 +57,7 @@ export class ModelBuilder extends Builder {
             col.name,
             (col.autoIncrement || col.allowNull) ?
                 ts.createToken(ts.SyntaxKind.QuestionToken) : ts.createToken(ts.SyntaxKind.ExclamationToken),
-            ts.createTypeReferenceNode(dataTypeMap[col.type] ?? 'any', undefined),
+            ts.createTypeReferenceNode(dialect.mapDbTypeToJs(col.type) ?? 'any', undefined),
             undefined
         );
     }
@@ -97,7 +97,7 @@ export class ModelBuilder extends Builder {
                 )
             ],
             // Columns members
-            columns.map(col => this.buildColumnPropertyDecl(col, this.dialect.jsDataTypesMap))
+            columns.map(col => this.buildColumnPropertyDecl(col, this.dialect))
         );
 
         let generatedCode = '';
