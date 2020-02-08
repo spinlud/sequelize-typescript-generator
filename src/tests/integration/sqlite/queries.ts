@@ -1,7 +1,7 @@
 export const DATA_TYPES_TABLE_NAME = 'data_types';
 export const DATA_TYPES_TABLE_DROP = `DROP TABLE IF EXISTS ${DATA_TYPES_TABLE_NAME};`;
 export const DATA_TYPES_TABLE_CREATE = `
-    CREATE TABLE data_types
+    CREATE TABLE ${DATA_TYPES_TABLE_NAME}
     (
         id INTEGER      CONSTRAINT data_types_pk        PRIMARY KEY         AUTOINCREMENT,
         f_int INTEGER,
