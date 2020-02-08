@@ -32,6 +32,8 @@ export const aliasesMap = {
     CASE: 'case',
     STORAGE: 'storage',
     LINT_FILE: 'lint-file',
+    SSL: 'ssl',
+    PROTOCOL: 'protocol',
 }
 
 /**
@@ -53,11 +55,13 @@ export const buildConfig = (argv: ArgvType): IConfig => {
     const config: IConfig = {
         connection: {
             dialect: argv[aliasesMap.DIALECT] as DialectType,
-            ...argv[aliasesMap.HOST] && {host: argv[aliasesMap.HOST] as string},
-            ...argv[aliasesMap.PORT] && {port: argv[aliasesMap.PORT] as number},
-            database: argv[aliasesMap.DATABASE] as string,
-            username: argv[aliasesMap.USERNAME] as string,
-            ...argv[aliasesMap.PASSWORD] && {password: argv[aliasesMap.PASSWORD] as string},
+            ...argv[aliasesMap.HOST] && { host: argv[aliasesMap.HOST] as string },
+            ...argv[aliasesMap.PORT] && { port: argv[aliasesMap.PORT] as number },
+            ...argv[aliasesMap.DATABASE] && { database: argv[aliasesMap.DATABASE] as string },
+            ...argv[aliasesMap.USERNAME] && { username: argv[aliasesMap.USERNAME] as string },
+            ...argv[aliasesMap.PASSWORD] && { password: argv[aliasesMap.PASSWORD] as string },
+            ...argv[aliasesMap.SSL] && { ssl: true },
+            ...argv[aliasesMap.PROTOCOL] && { protocol: argv[aliasesMap.PROTOCOL] as string },
 
             ...argv[aliasesMap.DIALECT] === 'mariadb' && { dialectOptions: {
                     timezone: 'Etc/GMT-3',
@@ -143,16 +147,22 @@ export const validateArgs = async (argv: ArgvType): Promise<void> => {
         error(`Required argument -D <dialect> must be one of (${Array.from(Dialect.dialects).join(', ')})`);
     }
 
-    // Validate port if any
+    // Validate database
+    if (argv[aliasesMap.DIALECT] !== 'sqlite' && !argv[aliasesMap.DATABASE]) {
+        error(`Argument -d [database] is required for dialect ${argv[aliasesMap.DIALECT]}`);
+    }
+
+    // Validate port
     if (argv[aliasesMap.PORT] && (!Number.isInteger(argv[aliasesMap.PORT]) || argv[aliasesMap.PORT] <= 0)) {
         error(`Argument -p [port] must be a positive integer (${argv[aliasesMap.PORT]})`);
     }
 
-    // Validate case if any
+    // Validate case
     if (argv[aliasesMap.CASE] && !TransformCases.has(argv[aliasesMap.CASE].toUpperCase())) {
         error(`Argument -c [case] must be one of (${Array.from(TransformCases).join(', ').toLowerCase()})`)
     }
 
+    // Validate lint file
     if (argv[aliasesMap.LINT_FILE]) {
         try {
             await fs.access(argv[aliasesMap.LINT_FILE]);

@@ -11,9 +11,15 @@ import {
 } from './utils';
 
 export const cli = async (): Promise<void> => {
+
+    let usage = `Usage: sta -D <dialect> -d [database] -u [username] -x [password] `;
+    usage += `-h [host] -p [port] -o [out-dir] -s [schema] `;
+    usage += `-t [tables] -T [skip-tables] -i [indices] -C [case] -S [storage] -L [lint-file] `;
+    usage += `-l [ssl] -r [protocol] -c [clean]`
+
     const {argv} = yargs
-        .usage(`Usage: sta -d <database> -D <dialect> -u <username> -x [password] -h [host] -p [port] -o [out-dir] -s [schema] -t [tables] -T [skip-tables] -i [indices] -c [case] -s [storage] -L [lint-file]`)
-        .demand(['database', 'username', 'dialect'])
+        .usage(usage)
+        .demand(['dialect'])
         .option('h', {
             alias: aliasesMap.HOST,
             string: true,
@@ -69,17 +75,17 @@ export const cli = async (): Promise<void> => {
             string: true,
             describe: `Output directory. Default: \n - ${defaultOutputDir}`,
         })
-        .option('l', {
+        .option('c', {
             alias: aliasesMap.OUTPUT_DIR_CLEAN,
             boolean: true,
-            describe: `Output directory. Default: \n - ${defaultOutputDir}`,
+            describe: `Clean output directory before running.`,
         })
         .option('m', {
             alias: aliasesMap.TIMESTAMPS,
             boolean: true,
             describe: `Add default timestamps to tables`,
         })
-        .option('c', {
+        .option('C', {
             alias: aliasesMap.CASE,
             string: true,
             describe: `Transform tables and fields names with the specified case. Possible values:
@@ -98,6 +104,14 @@ export const cli = async (): Promise<void> => {
             alias: aliasesMap.LINT_FILE,
             string: true,
             describe: `ES Lint file path`,
+        }).option('l', {
+            alias: aliasesMap.SSL,
+            boolean: true,
+            describe: `Enable SSL`,
+        }).option('r', {
+            alias: aliasesMap.PROTOCOL,
+            string: true,
+            describe: `Protocol used: Default: \n - tcp`,
         });
 
     // Args validation
