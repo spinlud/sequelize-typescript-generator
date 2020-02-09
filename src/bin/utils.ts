@@ -34,6 +34,7 @@ export const aliasesMap = {
     LINT_FILE: 'lint-file',
     SSL: 'ssl',
     PROTOCOL: 'protocol',
+    ASSOCIATIONS_FILE: 'associations-file',
 }
 
 /**
@@ -73,18 +74,19 @@ export const buildConfig = (argv: ArgvType): IConfig => {
             },
         },
         metadata: {
-            ...argv[aliasesMap.SCHEMA] && {schema: argv[aliasesMap.SCHEMA] as string},
-            ...argv[aliasesMap.TABLES] && {tables: (argv[aliasesMap.TABLES] as string)
+            ...argv[aliasesMap.SCHEMA] && { schema: argv[aliasesMap.SCHEMA] as string},
+            ...argv[aliasesMap.TABLES] && { tables: (argv[aliasesMap.TABLES] as string)
                     .split(',')
                     .map(tableName => tableName.toLowerCase())
             },
-            ...argv[aliasesMap.SKIP_TABLES] && {skipTables: (argv[aliasesMap.SKIP_TABLES] as string)
+            ...argv[aliasesMap.SKIP_TABLES] && { skipTables: (argv[aliasesMap.SKIP_TABLES] as string)
                     .split(',')
                     .map(tableName => tableName.toLowerCase())
             },
             indices: !!argv[aliasesMap.INDICES],
             timestamps: !!argv[aliasesMap.TIMESTAMPS],
-            ...argv[aliasesMap.CASE] && {case: argv[aliasesMap.CASE].toUpperCase()},
+            ...argv[aliasesMap.CASE] && { case: argv[aliasesMap.CASE].toUpperCase() },
+            ...argv[aliasesMap.ASSOCIATIONS_FILE] && { associationsFile: argv[aliasesMap.ASSOCIATIONS_FILE] as string },
         },
         output: {
             outDir: argv[aliasesMap.OUTPUT_DIR] ?
@@ -169,6 +171,16 @@ export const validateArgs = async (argv: ArgvType): Promise<void> => {
         }
         catch(err) {
             error(`Argument -L [lint-file] '${argv[aliasesMap.LINT_FILE]}' is not a valid path`);
+        }
+    }
+
+    // Validate associations file
+    if (argv[aliasesMap.ASSOCIATIONS_FILE]) {
+        try {
+            await fs.access(argv[aliasesMap.ASSOCIATIONS_FILE]);
+        }
+        catch(err) {
+            error(`Argument -a [associations-file] '${argv[aliasesMap.ASSOCIATIONS_FILE]}' is not a valid path`);
         }
     }
 

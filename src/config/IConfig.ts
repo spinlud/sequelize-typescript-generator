@@ -19,6 +19,7 @@ export interface IConfigMetadata {
     indices?: boolean;
     timestamps?: boolean;
     case?: TransformCase;
+    associationsFile?: string;
 }
 
 export interface IConfigOutput {

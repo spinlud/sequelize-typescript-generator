@@ -13,7 +13,7 @@ import {
 export const cli = async (): Promise<void> => {
 
     let usage = `Usage: sta -D <dialect> -d [database] -u [username] -x [password] `;
-    usage += `-h [host] -p [port] -o [out-dir] -s [schema] `;
+    usage += `-h [host] -p [port] -o [out-dir] -s [schema] -a [associations-file]`;
     usage += `-t [tables] -T [skip-tables] -i [indices] -C [case] -S [storage] -L [lint-file] `;
     usage += `-l [ssl] -r [protocol] -c [clean]`
 
@@ -88,7 +88,7 @@ export const cli = async (): Promise<void> => {
         .option('C', {
             alias: aliasesMap.CASE,
             string: true,
-            describe: `Transform tables and fields names with the specified case. Possible values:
+            describe: `Transform tables and fields names with one of the following cases:
              - underscore
              - camel
              - upper
@@ -112,6 +112,10 @@ export const cli = async (): Promise<void> => {
             alias: aliasesMap.PROTOCOL,
             string: true,
             describe: `Protocol used: Default: \n - tcp`,
+        }).option('a', {
+            alias: aliasesMap.ASSOCIATIONS_FILE,
+            string: true,
+            describe: `Associations file path`,
         });
 
     // Args validation

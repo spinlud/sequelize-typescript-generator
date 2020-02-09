@@ -1,4 +1,5 @@
-import { IndexType, IndexMethod } from 'sequelize';
+import fs from 'fs';
+import readline from 'readline';
 import { TransformCase } from '../config/IConfig';
 import { ITableMetadata } from './Dialect';
 import {
@@ -22,8 +23,6 @@ interface IAssociations {
         ]
     }
 }
-
-let associations: undefined;
 
 export const toUpperCase = (s: string) => s.toUpperCase();
 export const toLowerCase = (s: string) => s.toLowerCase();
@@ -102,3 +101,27 @@ export const warnUnknownMappingForDataType = (dataType: string) => {
         You should define the data type manually.     
     `);
 }
+
+
+export const associationsParser = (path: string): Promise<any> => {
+
+    const _parse = () => new Promise(resolve => {
+        const readInterface = readline.createInterface({
+            input: fs.createReadStream(path),
+            output: process.stdout
+        });
+
+        // Parse line
+        readInterface.on('line', line => {
+            const tokens = line.split(',').map(t => t.trim());
+
+            // Validate line
+        });
+
+        readInterface.on('close', () => {
+            return resolve();
+        });
+    });
+
+    return _parse()
+};
