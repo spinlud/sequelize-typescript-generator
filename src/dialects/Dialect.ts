@@ -158,6 +158,8 @@ export abstract class Dialect {
                     }
                 }
 
+                // TODO add table associations if required
+
                 // TODO add foreignKey flag if associations are required
 
                 const tableMetadata: ITableMetadata = {
