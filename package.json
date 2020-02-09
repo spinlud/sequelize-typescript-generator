@@ -22,7 +22,7 @@
     "test-sqlite": "npm run docker-remove-containers && jest src/tests/integration/sqlite",
     "test": "npm run test-sqlite && npm run test-mysql && npm run test-mariadb && npm run test-postgres && npm run test-mssql",
     "build": "npm run clean && tsc",
-    "dev": "ts-node-dev src/bin/cli.ts --dialect sqlite --indices --clean --storage sqlite-db/db"
+    "dev": "ts-node-dev src/bin/cli.ts --dialect mysql -u root -x mysql --database dbtest --indices --clean"
   },
   "keywords": [],
   "author": "Ludovico Fabbri",
@@ -39,6 +39,7 @@
     "@types/bluebird": "^3.5.29",
     "@types/eslint": "^6.1.8",
     "@types/jest": "^24.9.1",
+    "@types/pluralize": "0.0.29",
     "@types/validator": "^12.0.1",
     "@types/yargs": "^15.0.3",
     "jest": "^24.9.0",
@@ -63,6 +64,7 @@
     "change-case": "^4.1.1",
     "eslint": "^6.8.0",
     "eslint-plugin-import": "^2.20.1",
+    "pluralize": "^8.0.0",
     "yargs": "^15.1.0"
   }
 }

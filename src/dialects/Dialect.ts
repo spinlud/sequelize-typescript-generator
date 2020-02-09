@@ -105,11 +105,11 @@ export abstract class Dialect {
     ): Promise<IIndexMetadata[]>;
 
     /**
-     * Extract tables metadata for the specific dialect and schema
+     * Build tables metadata for the specific dialect and schema
      * @param {IConfig} config
      * @returns {Promise<ITableMetadata[]>}
      */
-    public async fetchMetadata(config: IConfig): Promise<ITableMetadata[]> {
+    public async buildTablesMetadata(config: IConfig): Promise<ITableMetadata[]> {
         let connection: Sequelize | undefined;
         const tablesMetadata: ITableMetadata[] = [];
 
@@ -146,12 +146,19 @@ export abstract class Dialect {
                     }
                 });
 
+            // TODO parse associations metadata if required (singleton?)
+
             for (const table of tables) {
                 const columnsMetadata = await this.fetchColumnsMetadata(connection, config, table);
 
-                for (const column of columnsMetadata) {
-                    column.indices = await this.fetchColumnIndexMetadata(connection, config, table, column.name);
+                // Fetch indices metadata if required
+                if (config.metadata?.indices) {
+                    for (const column of columnsMetadata) {
+                        column.indices = await this.fetchColumnIndexMetadata(connection, config, table, column.name);
+                    }
                 }
+
+                // TODO add foreignKey flag if associations are required
 
                 const tableMetadata: ITableMetadata = {
                     name: table,

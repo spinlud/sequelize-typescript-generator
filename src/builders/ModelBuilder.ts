@@ -47,10 +47,11 @@ export class ModelBuilder extends Builder {
 
         return ts.createProperty(
             [
+                // TODO Insert ForeignKey decorator if required
                 generateObjectLiteralDecorator('Column', buildColumnDecoratorProps(col)),
                 ...(col.indices && col.indices.length ?
-                    col.indices.map(index => generateObjectLiteralDecorator('Index', buildIndexDecoratorProps(index))) :
-                    []
+                    col.indices.map(index =>
+                        generateObjectLiteralDecorator('Index', buildIndexDecoratorProps(index))) : []
                 )
             ],
             undefined,
@@ -96,8 +97,11 @@ export class ModelBuilder extends Builder {
 
                 )
             ],
-            // Columns members
-            columns.map(col => this.buildColumnPropertyDecl(col, this.dialect))
+            // Class members
+            [
+                ...columns.map(col => this.buildColumnPropertyDecl(col, this.dialect)),
+                // TODO add associations members if required
+            ]
         );
 
         let generatedCode = '';
@@ -113,6 +117,8 @@ export class ModelBuilder extends Builder {
             'sequelize-typescript'
         ));
 
+        // TODO Insert models associations imports if required
+
         generatedCode += '\n';
 
         generatedCode += nodeToString(classDecl);
@@ -127,7 +133,7 @@ export class ModelBuilder extends Builder {
     async build(): Promise<void> {
         const { clean, outDir } = this.config.output;
         const writePromises: Promise<void>[] = [];
-        const tablesMetadata = await this.dialect.fetchMetadata(this.config);
+        const tablesMetadata = await this.dialect.buildTablesMetadata(this.config);
 
         if (tablesMetadata.length === 0) {
             console.warn(`Couldn't find any table for database ${this.config.connection.database} and provided filters`);

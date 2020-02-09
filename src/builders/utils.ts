@@ -1,13 +1,13 @@
 import * as ts from 'typescript';
-import { AbstractDataTypeConstructor } from 'sequelize';
 
 const printer = ts.createPrinter({newLine: ts.NewLineKind.LineFeed});
 
 /**
- *
+ * Returns string representation of typescript node
  * @param node
+ * @returns {string}
  */
-export const nodeToString = (node: ts.Node) => {
+export const nodeToString = (node: ts.Node): string => {
     const sourceFile = ts.createSourceFile(
         `source.ts`,
         ``,
@@ -44,8 +44,9 @@ export const generateNamedImports = (importsSpecifier: string[], moduleSpecifier
 
 /**
  *
- * @param decoratorIdentifier
- * @param props
+ * @param {string} decoratorIdentifier
+ * @param {[key: string]: any} props
+ * @return {ts.Decorator}
  */
 export const generateObjectLiteralDecorator = (
     decoratorIdentifier: string,
@@ -72,24 +73,26 @@ export const generateObjectLiteralDecorator = (
 /**
  *
  * @param decoratorIdentifier
- * @param arrowTargetIdentifier
+ * @param arrowTargetIdentifiers
  */
-const generateSingleArrowDecorator = (decoratorIdentifier: string, arrowTargetIdentifier: string): ts.Decorator => {
+export const generateArrowDecorator = (
+    decoratorIdentifier: string,
+    ...arrowTargetIdentifiers: string[]
+): ts.Decorator => {
     return ts.createDecorator(
         ts.createCall(
             ts.createIdentifier(decoratorIdentifier),
             undefined,
-            [
+            arrowTargetIdentifiers.map(t =>
                 ts.createArrowFunction(
                     undefined,
                     undefined,
                     [],
                     undefined,
                     ts.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-                    ts.createIdentifier(arrowTargetIdentifier)
-                )
-            ]
+                    ts.createIdentifier(t)
+                ),
+            )
         )
     );
 }
-

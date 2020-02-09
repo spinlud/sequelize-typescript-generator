@@ -8,6 +8,23 @@ import {
     snakeCase,
 } from "change-case";
 
+interface IAssociations {
+    [tableName: string]: {
+        foreignKeys?: {
+            [columnName: string]: { target: string; }
+        },
+        associations: [
+            {
+                name: string; // 'books'
+                type: string; // 'BelongsToMany',
+                targets: string[]; // ['Book', 'BookAuthor']
+            }
+        ]
+    }
+}
+
+let associations: undefined;
+
 export const toUpperCase = (s: string) => s.toUpperCase();
 export const toLowerCase = (s: string) => s.toLowerCase();
 
@@ -63,7 +80,13 @@ export const caseTransformer = (tableMetadata: ITableMetadata, transformCase: Tr
     };
 
     for (const col of tableMetadata.columns) {
-        transformed.columns.push(Object.assign({}, col, { name: transformer(col.name), fieldName: col.name }));
+        transformed.columns.push(
+            Object.assign(
+                {},
+                col,
+                { name: transformer(col.name), fieldName: col.name }
+            )
+        );
     }
 
     return transformed;
