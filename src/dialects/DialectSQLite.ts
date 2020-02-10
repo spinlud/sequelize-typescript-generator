@@ -143,6 +143,7 @@ export class DialectSQLite extends Dialect {
                 },
                 allowNull: !!column.notnull,
                 primaryKey: !!column.pk,
+                foreignKey: false,
                 autoIncrement: !!column.pk,
                 indices: [],
                 comment: '', // TODO

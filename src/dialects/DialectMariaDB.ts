@@ -265,6 +265,7 @@ export class DialectMariaDB extends Dialect {
                 },
                 allowNull: column.IS_NULLABLE === 'YES',
                 primaryKey: column.COLUMN_KEY === 'PRI',
+                foreignKey: false,
                 autoIncrement: column.EXTRA === 'auto_increment',
                 indices: [],
                 comment: column.COLUMN_COMMENT,

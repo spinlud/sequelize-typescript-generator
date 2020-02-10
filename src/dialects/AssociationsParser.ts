@@ -7,7 +7,7 @@ const cardinalities = new Set([
     'N:N'
 ]);
 
-export type AssociationRow = [
+type AssociationRow = [
     string, // cardinality
     string, // left key
     string, // right key
@@ -16,16 +16,16 @@ export type AssociationRow = [
     string? // [join table]
 ];
 
-interface IAssociation {
+export interface IAssociationMetadata {
     associationName: 'HasOne' | 'HasMany' | 'BelongsTo' | 'BelongsToMany';
     targetTable: string;
     joinTable?: string;
 }
 
-export interface IAssociationsMetadata {
+export interface IAssociationsParsed {
     [tableName: string]: {
         foreignKeys: string[];
-        associations: IAssociation[];
+        associations: IAssociationMetadata[];
     }
 }
 
@@ -40,7 +40,7 @@ const validateRow = (row: AssociationRow): void => {
     ] = row;
 
     if (!cardinalities.has(cardinality)) {
-        throw new Error(`Cardinality must be one of (${Array.from(cardinalities).join(', ')}). Received ${cardinality}`);
+        throw new Error(`Invalid cardinality: must be one of (${Array.from(cardinalities).join(', ')}). Received ${cardinality}`);
     }
 
     if (!leftkey || !leftkey.length) {
@@ -69,26 +69,30 @@ const validateRow = (row: AssociationRow): void => {
  */
 export class AssociationsParser {
 
-    private static associationsMetadata: IAssociationsMetadata | undefined;
+    private static associationsMetadata: IAssociationsParsed | undefined;
 
-    static parse(path: string): IAssociationsMetadata {
+    /**
+     * Parse associations file
+     * @param {string} path
+     * @returns {IAssociationsParsed}
+     */
+    static parse(path: string): IAssociationsParsed {
         // Return cached value if already set
         if (this.associationsMetadata) {
-            console.log('cached');
             return this.associationsMetadata;
         }
 
-        const associationsMetadata: IAssociationsMetadata = {};
+        const associationsMetadata: IAssociationsParsed = {};
 
         const lines = fs.readFileSync(path)
             .toString()
-            .toUpperCase() // Upper case everything
             .split('\n')
             .filter(line => line.length); // Filter empty lines
 
         for (const line of lines) {
             const row = line
                 .split(',')
+                .map((t, i) => i === 0 ? t.toUpperCase() : t) // Capitalize cardinality
                 .map(t => t.trim()) as AssociationRow;
 
             validateRow(row);
@@ -164,7 +168,9 @@ export class AssociationsParser {
 
         }
 
+        // Cache result
         this.associationsMetadata = associationsMetadata;
+
         return this.associationsMetadata;
     }
 

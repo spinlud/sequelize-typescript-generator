@@ -2,14 +2,23 @@ import { IndexType, IndexMethod, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { IConfig } from '../config';
 import { createConnection } from "../connection";
+import { AssociationsParser, IAssociationsParsed, IAssociationMetadata } from './AssociationsParser'
 import { caseTransformer } from './utils';
+import {parse} from "@typescript-eslint/parser";
+
+export interface ITablesMetadata {
+    [tableName: string]: ITableMetadata;
+}
 
 export interface ITableMetadata {
     name: string; // Table name
     modelName: string; // Model name
     schema?: 'public' | string; // Postgres only
     timestamps?: boolean;
-    columns: IColumnMetadata[];
+    columns: {
+        [columnName: string]: IColumnMetadata;
+    }
+    associations?: IAssociationMetadata[];
     comment?: string;
 }
 
@@ -20,7 +29,7 @@ export interface IColumnMetadata {
     typeExt: string;
     dataType?: string;
     primaryKey: boolean;
-    // foreignKey: boolean;
+    foreignKey: boolean;
     allowNull: boolean;
     autoIncrement: boolean;
     indices?: IIndexMetadata[],
@@ -109,9 +118,9 @@ export abstract class Dialect {
      * @param {IConfig} config
      * @returns {Promise<ITableMetadata[]>}
      */
-    public async buildTablesMetadata(config: IConfig): Promise<ITableMetadata[]> {
+    public async buildTablesMetadata(config: IConfig): Promise<ITablesMetadata> {
         let connection: Sequelize | undefined;
-        const tablesMetadata: ITableMetadata[] = [];
+        const tablesMetadata: ITablesMetadata = {};
 
         try {
             // Set schema for Postgres to 'public' if not provided
@@ -146,8 +155,6 @@ export abstract class Dialect {
                     }
                 });
 
-            // TODO parse associations metadata if required (singleton?)
-
             for (const table of tables) {
                 const columnsMetadata = await this.fetchColumnsMetadata(connection, config, table);
 
@@ -158,21 +165,20 @@ export abstract class Dialect {
                     }
                 }
 
-                // TODO add table associations if required
-
-                // TODO add foreignKey flag if associations are required
-
                 const tableMetadata: ITableMetadata = {
                     name: table,
                     modelName: table,
                     ...config.metadata?.schema && { schema: config.metadata!.schema},
                     timestamps: config.metadata?.timestamps ?? false,
-                    columns: columnsMetadata,
-                    // comment: columnsMetadataMySQL[0].TABLE_COMMENT,
+                    columns: {},
                     comment: '', // TODO
                 };
 
-                tablesMetadata.push(tableMetadata);
+                for (const columnMetadata of columnsMetadata) {
+                    tableMetadata.columns[columnMetadata.name] = columnMetadata;
+                }
+
+                tablesMetadata[tableMetadata.name] = tableMetadata;
             }
         }
         catch(err) {
@@ -183,12 +189,43 @@ export abstract class Dialect {
             connection && await connection.close();
         }
 
-        // Apply transformations (if any)
+        // TODO parse associations metadata if required (singleton?)
+        // TODO add table associations if required
+        // TODO add foreignKey flag if associations are required
+        // Apply associations if required
+        if (config.metadata?.associationsFile) {
+            const parsedAssociations = AssociationsParser.parse(config.metadata?.associationsFile);
+
+            for (const [tableName, association] of Object.entries(parsedAssociations)) {
+                if(!tablesMetadata[tableName]) {
+                    console.warn('[WARNING]', `Associated table ${tableName} not found among (${Object.keys(tablesMetadata).join(', ')})`);
+                    continue;
+                }
+
+                // Attach associations to table
+                tablesMetadata[tableName].associations = association.associations;
+
+                const { columns } = tablesMetadata[tableName];
+
+                // Override foreign keys
+                for (const columnName of association.foreignKeys) {
+                    if (!columns[columnName]) {
+                        console.warn('[WARNING]', `Foreign key column ${columnName} not found among (${Object.keys(columns).join(', ')})`);
+                        continue;
+                    }
+
+                    columns[columnName].foreignKey = true;
+                }
+            }
+        }
+
+        // Apply transformations if required
         if (config.metadata?.case) {
-            return tablesMetadata.map(tableMetadata => caseTransformer(tableMetadata, config.metadata!.case!));
+            for (const [tableName, tableMetadata] of Object.entries(tablesMetadata)) {
+                tablesMetadata[tableName] = caseTransformer(tableMetadata, config.metadata!.case!);
+            }
         }
-        else {
-            return tablesMetadata;
-        }
+
+        return tablesMetadata;
     }
 }

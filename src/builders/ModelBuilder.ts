@@ -99,7 +99,7 @@ export class ModelBuilder extends Builder {
             ],
             // Class members
             [
-                ...columns.map(col => this.buildColumnPropertyDecl(col, this.dialect)),
+                ...Object.values(columns).map(col => this.buildColumnPropertyDecl(col, this.dialect)),
                 // TODO add associations members if required
             ]
         );
@@ -135,7 +135,7 @@ export class ModelBuilder extends Builder {
         const writePromises: Promise<void>[] = [];
         const tablesMetadata = await this.dialect.buildTablesMetadata(this.config);
 
-        if (tablesMetadata.length === 0) {
+        if (Object.keys(tablesMetadata).length === 0) {
             console.warn(`Couldn't find any table for database ${this.config.connection.database} and provided filters`);
             return;
         }
@@ -162,7 +162,7 @@ export class ModelBuilder extends Builder {
         }
 
         // Build files
-        for (const tableMetadata of tablesMetadata) {
+        for (const tableMetadata of Object.values(tablesMetadata)) {
             const tableClassDecl = this.buildTableClassDeclaration(tableMetadata);
 
             writePromises.push((async () => {

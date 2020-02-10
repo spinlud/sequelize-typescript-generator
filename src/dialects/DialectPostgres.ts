@@ -300,6 +300,7 @@ export class DialectPostgres extends Dialect {
                 },
                 allowNull: !!column.is_nullable && !column.is_primary,
                 primaryKey: column.is_primary,
+                foreignKey: false,
                 autoIncrement: column.is_sequence,
                 indices: [],
                 comment: '', // TODO

@@ -67,24 +67,26 @@ export const getTransformer = (transformCase: TransformCase): (s: string) => str
  * @param {TransformCase} transformCase
  * @returns {ITableMetadata}
  */
-export const caseTransformer = (tableMetadata: ITableMetadata, transformCase: TransformCase): ITableMetadata => {
+export const caseTransformer = (
+    tableMetadata: ITableMetadata,
+    transformCase: TransformCase
+): ITableMetadata => {
+
     const transformer = getTransformer(transformCase);
 
     const transformed: ITableMetadata = {
         name: tableMetadata.name,
         modelName: transformer(tableMetadata.name),
         timestamps: tableMetadata.timestamps,
-        columns: [],
+        columns: {},
         comment: tableMetadata.comment,
     };
 
-    for (const col of tableMetadata.columns) {
-        transformed.columns.push(
-            Object.assign(
-                {},
-                col,
-                { name: transformer(col.name), fieldName: col.name }
-            )
+    for (const [columnName, columnMetadata] of Object.entries(tableMetadata.columns)) {
+        transformed.columns[columnName] =  Object.assign(
+            {},
+            columnMetadata,
+            { name: transformer(columnMetadata.name), fieldName: columnMetadata.name }
         );
     }
 
