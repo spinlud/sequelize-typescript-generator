@@ -79,10 +79,31 @@ export const caseTransformer = (
         name: transformer(tableMetadata.originName),
         timestamps: tableMetadata.timestamps,
         columns: {},
+        ...tableMetadata.associations && {
+            associations: tableMetadata.associations.map(a => {
+                a.targetModel = transformer(a.targetModel);
+
+                if (a.joinModel) {
+                    a.joinModel = transformer(a.joinModel);
+                }
+
+                return a;
+            })
+        },
         comment: tableMetadata.comment,
     };
 
     for (const [columnName, columnMetadata] of Object.entries(tableMetadata.columns)) {
+
+        if (columnMetadata.foreignKey) {
+            const { name, targetModel } = columnMetadata.foreignKey;
+
+            columnMetadata.foreignKey = {
+                name: transformer(name),
+                targetModel: transformer(targetModel),
+            }
+        }
+
         transformed.columns[columnName] =  Object.assign(
             {},
             columnMetadata,
@@ -103,27 +124,3 @@ export const warnUnknownMappingForDataType = (dataType: string) => {
         You should define the data type manually.     
     `);
 }
-
-
-export const associationsParser = (path: string): Promise<any> => {
-
-    const _parse = () => new Promise(resolve => {
-        const readInterface = readline.createInterface({
-            input: fs.createReadStream(path),
-            output: process.stdout
-        });
-
-        // Parse line
-        readInterface.on('line', line => {
-            const tokens = line.split(',').map(t => t.trim());
-
-            // Validate line
-        });
-
-        readInterface.on('close', () => {
-            return resolve();
-        });
-    });
-
-    return _parse()
-};

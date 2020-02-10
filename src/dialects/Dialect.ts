@@ -192,9 +192,6 @@ export abstract class Dialect {
             connection && await connection.close();
         }
 
-        // TODO parse associations metadata if required (singleton?)
-        // TODO add table associations if required
-        // TODO add foreignKey flag if associations are required
         // Apply associations if required
         if (config.metadata?.associationsFile) {
             const parsedAssociations = AssociationsParser.parse(config.metadata?.associationsFile);
@@ -228,7 +225,7 @@ export abstract class Dialect {
         // Apply transformations if required
         if (config.metadata?.case) {
             for (const [tableName, tableMetadata] of Object.entries(tablesMetadata)) {
-                tablesMetadata[tableName] = caseTransformer(tableMetadata, config.metadata!.case!);
+                tablesMetadata[tableName] = caseTransformer(tableMetadata, config.metadata.case);
             }
         }
 
