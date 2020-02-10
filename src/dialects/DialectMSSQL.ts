@@ -240,6 +240,7 @@ export class DialectMSSQL extends Dialect {
 
             const columnMetadata: IColumnMetadata = {
                 name: column.COLUMN_NAME,
+                originName: column.COLUMN_NAME,
                 type: column.DATA_TYPE,
                 typeExt: column.DATA_TYPE,
                 ...this.mapDbTypeToSequelize(column.DATA_TYPE) && {

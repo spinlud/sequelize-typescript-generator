@@ -22,7 +22,7 @@
     "test-sqlite": "npm run docker-remove-containers && jest src/tests/integration/sqlite",
     "test": "npm run test-sqlite && npm run test-mysql && npm run test-mariadb && npm run test-postgres && npm run test-mssql",
     "build": "npm run clean && tsc",
-    "dev": "ts-node-dev src/bin/cli.ts --dialect mysql -u root -x mysql --database dbtest --indices -a tmp/associations.csv --clean"
+    "dev": "ts-node-dev src/bin/cli.ts --dialect mysql -u root -x mysql --database dbtest -C camel --indices -a tmp/associations.csv --clean"
   },
   "keywords": [],
   "author": "Ludovico Fabbri",

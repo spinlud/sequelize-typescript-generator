@@ -75,8 +75,8 @@ export const caseTransformer = (
     const transformer = getTransformer(transformCase);
 
     const transformed: ITableMetadata = {
-        name: tableMetadata.name,
-        modelName: transformer(tableMetadata.name),
+        originName: tableMetadata.originName,
+        name: transformer(tableMetadata.originName),
         timestamps: tableMetadata.timestamps,
         columns: {},
         comment: tableMetadata.comment,
@@ -86,7 +86,7 @@ export const caseTransformer = (
         transformed.columns[columnName] =  Object.assign(
             {},
             columnMetadata,
-            { name: transformer(columnMetadata.name), fieldName: columnMetadata.name }
+            { name: transformer(columnMetadata.originName) }
         );
     }
 

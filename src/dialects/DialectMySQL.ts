@@ -257,6 +257,7 @@ export class DialectMySQL extends Dialect {
 
             const columnMetadata: IColumnMetadata = {
                 name: column.COLUMN_NAME,
+                originName: column.COLUMN_NAME,
                 type: column.DATA_TYPE,
                 typeExt: column.COLUMN_TYPE,
                 ...this.mapDbTypeToSequelize(column.DATA_TYPE) && { dataType: 'DataType.' +

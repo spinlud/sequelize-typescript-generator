@@ -11,8 +11,8 @@ export interface ITablesMetadata {
 }
 
 export interface ITableMetadata {
-    name: string; // Table name
-    modelName: string; // Model name
+    name: string; // Model name
+    originName: string; // Database table name
     schema?: 'public' | string; // Postgres only
     timestamps?: boolean;
     columns: {
@@ -24,7 +24,7 @@ export interface ITableMetadata {
 
 export interface IColumnMetadata {
     name: string; // Model field name
-    fieldName?: string; // Map to original table field name in case of a transformation
+    originName: string; // Database column name
     type: string;
     typeExt: string;
     dataType?: string;
@@ -166,8 +166,8 @@ export abstract class Dialect {
                 }
 
                 const tableMetadata: ITableMetadata = {
+                    originName: table,
                     name: table,
-                    modelName: table,
                     ...config.metadata?.schema && { schema: config.metadata!.schema},
                     timestamps: config.metadata?.timestamps ?? false,
                     columns: {},
@@ -178,7 +178,7 @@ export abstract class Dialect {
                     tableMetadata.columns[columnMetadata.name] = columnMetadata;
                 }
 
-                tablesMetadata[tableMetadata.name] = tableMetadata;
+                tablesMetadata[tableMetadata.originName] = tableMetadata;
             }
         }
         catch(err) {

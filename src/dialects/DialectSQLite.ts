@@ -134,6 +134,7 @@ export class DialectSQLite extends Dialect {
 
             const columnMetadata: IColumnMetadata = {
                 name: column.name,
+                originName: column.name,
                 type: column.type,
                 typeExt: column.type,
                 ...this.mapDbTypeToSequelize(column.type) && {

@@ -291,6 +291,7 @@ export class DialectPostgres extends Dialect {
 
             const columnMetadata: IColumnMetadata = {
                 name: column.column_name,
+                originName: column.column_name,
                 type: column.udt_name,
                 typeExt: column.data_type,
                 ...this.mapDbTypeToSequelize(column.udt_name) && {

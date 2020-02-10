@@ -23,7 +23,7 @@ export class ModelBuilder extends Builder {
 
         const buildColumnDecoratorProps = (col: IColumnMetadata): Partial<ModelAttributeColumnOptions> => {
             const props: Partial<ModelAttributeColumnOptions> = {
-                ...col.fieldName && { field: col.fieldName },
+                ...col.originName && { field: col.originName },
                 ...col.primaryKey && { primaryKey: col.primaryKey },
                 ...col.autoIncrement && { autoIncrement: col.autoIncrement },
                 ...col.allowNull && { allowNull: col.allowNull },
@@ -68,7 +68,7 @@ export class ModelBuilder extends Builder {
      * @param tableMetadata
      */
     private buildTableClassDeclaration(tableMetadata: ITableMetadata): string {
-        const { name: tableName, modelName, columns } = tableMetadata;
+        const { originName: tableName, name, columns } = tableMetadata;
 
         const classDecl = ts.createClassDeclaration(
             [
@@ -83,14 +83,14 @@ export class ModelBuilder extends Builder {
             [
                 ts.createToken(ts.SyntaxKind.ExportKeyword),
             ],
-            modelName,
+            name,
             undefined,
             [
                 ts.createHeritageClause(
                     ts.SyntaxKind.ExtendsKeyword,
                     [
                         ts.createExpressionWithTypeArguments(
-                            [ ts.createTypeReferenceNode(modelName, undefined) ],
+                            [ ts.createTypeReferenceNode(name, undefined) ],
                             ts.createIdentifier('Model')
                         )
                     ]
@@ -166,7 +166,7 @@ export class ModelBuilder extends Builder {
             const tableClassDecl = this.buildTableClassDeclaration(tableMetadata);
 
             writePromises.push((async () => {
-                const outPath = path.join(outDir, tableMetadata.modelName + '.ts');
+                const outPath = path.join(outDir, tableMetadata.name + '.ts');
 
                 await fs.writeFile(
                     outPath,
