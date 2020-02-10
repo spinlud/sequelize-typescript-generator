@@ -77,7 +77,7 @@ export const generateObjectLiteralDecorator = (
  */
 export const generateArrowDecorator = (
     decoratorIdentifier: string,
-    ...arrowTargetIdentifiers: string[]
+    arrowTargetIdentifiers: string[]
 ): ts.Decorator => {
     return ts.createDecorator(
         ts.createCall(

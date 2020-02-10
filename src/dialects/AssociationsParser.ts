@@ -18,13 +18,18 @@ type AssociationRow = [
 
 export interface IAssociationMetadata {
     associationName: 'HasOne' | 'HasMany' | 'BelongsTo' | 'BelongsToMany';
-    targetTable: string;
-    joinTable?: string;
+    targetModel: string;
+    joinModel?: string;
+}
+
+export interface IForeignKey {
+    name: string;
+    targetModel: string;
 }
 
 export interface IAssociationsParsed {
     [tableName: string]: {
-        foreignKeys: string[];
+        foreignKeys: IForeignKey[];
         associations: IAssociationMetadata[];
     }
 }
@@ -99,11 +104,11 @@ export class AssociationsParser {
 
             const [
                 cardinality,
-                leftkey,
+                leftKey,
                 rightKey,
-                leftTable,
-                rightTable,
-                joinTable
+                leftModel,
+                rightModel,
+                joinModel
             ] = row;
 
             const [
@@ -112,16 +117,16 @@ export class AssociationsParser {
             ] = cardinality.split(':');
 
             // Add entry for left table
-            if (!associationsMetadata[leftTable]) {
-                associationsMetadata[leftTable] = {
+            if (!associationsMetadata[leftModel]) {
+                associationsMetadata[leftModel] = {
                     foreignKeys: [],
                     associations: [],
                 };
             }
 
             // Add entry for right table
-            if (!associationsMetadata[rightTable]) {
-                associationsMetadata[rightTable] = {
+            if (!associationsMetadata[rightModel]) {
+                associationsMetadata[rightModel] = {
                     foreignKeys: [],
                     associations: [],
                 };
@@ -129,41 +134,52 @@ export class AssociationsParser {
 
             // 1:1 and 1:N association
             if (cardinality !== 'N:N') {
-                associationsMetadata[leftTable].associations.push({
+                associationsMetadata[leftModel].associations.push({
                     associationName: rightCardinality === '1' ? 'HasOne' : 'HasMany',
-                    targetTable: rightTable
+                    targetModel: rightModel
                 });
 
-                associationsMetadata[rightTable].foreignKeys.push(rightKey);
-
-                associationsMetadata[rightTable].associations.push({
+                associationsMetadata[rightModel].associations.push({
                     associationName: 'BelongsTo',
-                    targetTable: leftTable
+                    targetModel: leftModel
+                });
+
+                associationsMetadata[rightModel].foreignKeys.push({
+                    name: rightKey,
+                    targetModel: leftModel,
                 });
             }
             // N:N association
             else {
                 // Add entry for join table
-                if (!associationsMetadata[joinTable!]) {
-                    associationsMetadata[joinTable!] = {
+                if (!associationsMetadata[joinModel!]) {
+                    associationsMetadata[joinModel!] = {
                         foreignKeys: [],
                         associations: [],
                     };
                 }
 
-                associationsMetadata[leftTable].associations.push({
+                associationsMetadata[leftModel].associations.push({
                     associationName: 'BelongsToMany',
-                    targetTable: rightTable,
-                    joinTable: joinTable,
+                    targetModel: rightModel,
+                    joinModel: joinModel,
                 });
 
-                associationsMetadata[rightTable].associations.push({
+                associationsMetadata[rightModel].associations.push({
                     associationName: 'BelongsToMany',
-                    targetTable: leftTable,
-                    joinTable: joinTable,
+                    targetModel: leftModel,
+                    joinModel: joinModel,
                 });
 
-                associationsMetadata[joinTable!].foreignKeys.push(...[leftkey, rightKey]);
+                associationsMetadata[joinModel!].foreignKeys.push({
+                    name: leftKey,
+                    targetModel: leftModel
+                });
+
+                associationsMetadata[joinModel!].foreignKeys.push({
+                    name: rightKey,
+                    targetModel: rightModel
+                });
             }
 
         }

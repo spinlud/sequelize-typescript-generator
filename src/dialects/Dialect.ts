@@ -29,7 +29,10 @@ export interface IColumnMetadata {
     typeExt: string;
     dataType?: string;
     primaryKey: boolean;
-    foreignKey: boolean;
+    foreignKey?: {
+        name: string;
+        targetModel: string;
+    }
     allowNull: boolean;
     autoIncrement: boolean;
     indices?: IIndexMetadata[],
@@ -208,13 +211,16 @@ export abstract class Dialect {
                 const { columns } = tablesMetadata[tableName];
 
                 // Override foreign keys
-                for (const columnName of association.foreignKeys) {
+                for (const { name: columnName, targetModel } of association.foreignKeys) {
                     if (!columns[columnName]) {
                         console.warn('[WARNING]', `Foreign key column ${columnName} not found among (${Object.keys(columns).join(', ')})`);
                         continue;
                     }
 
-                    columns[columnName].foreignKey = true;
+                    columns[columnName].foreignKey = {
+                        name: columnName,
+                        targetModel: targetModel
+                    };
                 }
             }
         }
