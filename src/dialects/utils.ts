@@ -1,5 +1,3 @@
-import fs from 'fs';
-import readline from 'readline';
 import { TransformCase } from '../config/IConfig';
 import { ITableMetadata } from './Dialect';
 import {
@@ -8,21 +6,6 @@ import {
     pascalCase,
     snakeCase,
 } from "change-case";
-
-interface IAssociations {
-    [tableName: string]: {
-        foreignKeys?: {
-            [columnName: string]: { target: string; }
-        },
-        associations: [
-            {
-                name: string; // 'books'
-                type: string; // 'BelongsToMany',
-                targets: string[]; // ['Book', 'BookAuthor']
-            }
-        ]
-    }
-}
 
 export const toUpperCase = (s: string) => s.toUpperCase();
 export const toLowerCase = (s: string) => s.toLowerCase();

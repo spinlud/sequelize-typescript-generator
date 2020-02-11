@@ -251,7 +251,6 @@ export class DialectMSSQL extends Dialect {
                 allowNull: column.IS_NULLABLE.toUpperCase() === 'YES' &&
                     column.CONSTRAINT_TYPE?.toUpperCase() !== 'PRIMARY KEY',
                 primaryKey: column.CONSTRAINT_TYPE?.toUpperCase() === 'PRIMARY KEY',
-                foreignKey: false,
                 autoIncrement: column.IS_IDENTITY === 'YES',
                 indices: [],
                 comment: '', // TODO

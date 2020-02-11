@@ -11,6 +11,15 @@ import {
     INDICES_TABLE_DROP,
     INDICES_TABLE_CREATE,
     INDICES_TABLE_CREATE_INDEX,
+    AUTHORS_TABLE_NAME,
+    AUTHORS_TABLE_DROP,
+    AUTHORS_TABLE_CREATE,
+    BOOKS_TABLE_NAME,
+    BOOKS_TABLE_DROP,
+    BOOKS_TABLE_CREATE,
+    AUTHORS_BOOKS_TABLE_NAME,
+    AUTHORS_BOOKS_TABLE_DROP,
+    AUTHORS_BOOKS_TABLE_CREATE,
 } from './queries';
 
 interface INativeType {
@@ -31,6 +40,21 @@ const testMetadata: ITestMetadata = {
             name: INDICES_TABLE_NAME,
             createQueries: [ INDICES_TABLE_CREATE, INDICES_TABLE_CREATE_INDEX ],
             dropQuery: INDICES_TABLE_DROP,
+        },
+        {
+            name: AUTHORS_TABLE_NAME,
+            createQueries: [ AUTHORS_TABLE_CREATE ],
+            dropQuery: AUTHORS_TABLE_DROP,
+        },
+        {
+            name: BOOKS_TABLE_NAME,
+            createQueries: [ BOOKS_TABLE_CREATE ],
+            dropQuery: BOOKS_TABLE_DROP,
+        },
+        {
+            name: AUTHORS_BOOKS_TABLE_NAME,
+            createQueries: [ AUTHORS_BOOKS_TABLE_CREATE ],
+            dropQuery: AUTHORS_BOOKS_TABLE_DROP,
         },
     ],
     filterTables: [ DATA_TYPES_TABLE_NAME ],

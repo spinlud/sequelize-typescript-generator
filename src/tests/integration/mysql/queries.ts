@@ -60,3 +60,34 @@ export const INDICES_TABLE_CREATE_INDEX = `
     CREATE INDEX indices_f_multi_1_f_multi_2_index
         ON ${INDICES_TABLE_NAME} (f_multi_1, f_multi_2);
 `;
+
+export const AUTHORS_TABLE_NAME = 'authors';
+export const AUTHORS_TABLE_DROP = `DROP TABLE IF EXISTS ${AUTHORS_TABLE_NAME} CASCADE`;
+export const AUTHORS_TABLE_CREATE = `
+    CREATE TABLE ${AUTHORS_TABLE_NAME}
+    (
+        author_id       INT             auto_increment          primary key,
+        full_name       VARCHAR(80)     not null
+    );
+`;
+
+export const BOOKS_TABLE_NAME = 'books';
+export const BOOKS_TABLE_DROP = `DROP TABLE IF EXISTS ${BOOKS_TABLE_NAME} CASCADE`;
+export const BOOKS_TABLE_CREATE = `
+    CREATE TABLE ${BOOKS_TABLE_NAME}
+    (
+        book_id         INT             auto_increment          primary key,
+        title           VARCHAR(80)     not null
+    );
+`;
+
+export const AUTHORS_BOOKS_TABLE_NAME = 'authors_books';
+export const AUTHORS_BOOKS_TABLE_DROP = `DROP TABLE IF EXISTS ${AUTHORS_BOOKS_TABLE_NAME} CASCADE`;
+export const AUTHORS_BOOKS_TABLE_CREATE = `
+    CREATE TABLE ${AUTHORS_BOOKS_TABLE_NAME}
+    (
+        author_id       INT             not null,
+        book_id         INT             not null,
+        PRIMARY KEY (author_id, book_id)
+    );
+`;
