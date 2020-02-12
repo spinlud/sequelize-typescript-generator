@@ -171,7 +171,7 @@ const testMetadata: ITestMetadata = {
         rightTableOneToMany: UNITS_TABLE_NAME,
         leftTableManyToMany: AUTHORS_TABLE_NAME,
         rightTableManyToMany: BOOKS_TABLE_NAME,
-    }
+    },
 };
 
 const testRunner = new TestRunner(testMetadata);
