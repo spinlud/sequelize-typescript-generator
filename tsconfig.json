@@ -65,6 +65,8 @@
   },
   "exclude": [
     "src/tests",
-    "**/output-models"
+    "**/output-models",
+    "**/prova.ts",
+    "tmp"
   ]
 }
