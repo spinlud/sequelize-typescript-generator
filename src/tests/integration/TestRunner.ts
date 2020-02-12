@@ -1,5 +1,6 @@
 import path from 'path';
 import { promises as fs } from 'fs';
+import pluralize from 'pluralize';
 import { ITestMetadata } from './ITestMetadata';
 import { Sequelize } from 'sequelize-typescript';
 import { QueryTypes } from 'sequelize';
@@ -67,11 +68,17 @@ const initTestDatabase = async (testMetadata: ITestMetadata, connection: Sequeli
     }
 
     for (const testTable of testMetadata.testTables) {
-        const { createQueries, dropQuery } = testTable;
+        const { createQueries, insertQueries, dropQuery } = testTable;
         await connection.query(dropQuery);
 
         for (const createQuery of createQueries) {
             await connection.query(createQuery);
+        }
+
+        if (insertQueries) {
+            for (const insertQuery of insertQueries) {
+                await connection.query(insertQuery);
+            }
         }
     }
 };
@@ -106,47 +113,64 @@ export class TestRunner {
         describe(testMetadata.name, () => {
             jest.setTimeout(120000);
             const outDir = path.join(process.cwd(), 'output-models');
+            const associationsFilePath = path.join(process.cwd(), 'src', 'tests', 'integration', 'associations.csv');
             const sequelizeOptions = buildSequelizeOptions(testMetadata.dialect);
 
             describe('Build', () => {
                 const { testTables } = testMetadata;
                 let connection: Sequelize | undefined;
 
-                beforeAll(async () => {
-                    connection = createConnection({ ...sequelizeOptions });
-                    await connection.authenticate();
-                    await initTestDatabase(testMetadata, connection);
-                });
+                const config: IConfig = {
+                    connection: sequelizeOptions,
+                    metadata: {
+                        ...testMetadata.schema && { schema: testMetadata.schema.name },
+                        indices: true,
+                        associationsFile: associationsFilePath,
+                    },
+                    output: {
+                        outDir: outDir,
+                        clean: true,
+                    }
+                };
 
-                afterAll(async () => {
-                    connection && await connection.close();
-                });
-
-                it('should build models', async () => {
-                    const config: IConfig = {
-                        connection: sequelizeOptions,
-                        metadata: {
-                            ...testMetadata.schema && { schema: testMetadata.schema.name },
-                            indices: true,
-                        },
-                        output: {
-                            outDir: outDir,
-                            clean: true,
-                        }
-                    };
-
+                const test = async () => {
                     const dialect = buildDialect(testMetadata);
                     const builder = new ModelBuilder(config, dialect);
                     await builder.build();
-                });
 
-                it('should register models',() => {
                     connection!.addModels([ outDir ]);
 
                     for (const testTable of testTables) {
                         connection!.model(testTable.name);
                         expect(connection!.isDefined(testTable.name)).toBe(true);
                     }
+                }
+
+                beforeEach(async () => {
+                    connection = createConnection({ ...sequelizeOptions });
+                    await connection.authenticate();
+                    await initTestDatabase(testMetadata, connection);
+                });
+
+                afterEach(async () => {
+                    connection && await connection.close();
+                });
+
+                it('should build/register models (indices + associations)', async () => {
+                    await test();
+                });
+
+                it('should build/register models (indices)', async () => {
+                    delete config.metadata!.associationsFile;
+
+                    await test();
+                });
+
+                it('should build/register models', async () => {
+                    delete config.metadata!.associationsFile;
+                    delete config.metadata!.indices;
+
+                    await test();
                 });
             });
 
@@ -180,11 +204,9 @@ export class TestRunner {
                     connection && await connection.close();
                 });
 
-                it('should register models',() => {
+                it('should register only the provided tables', () => {
                     connection!.addModels([ outDir ]);
-                });
 
-                it('should have registered only the provided tables', () => {
                     for (const table of filterTables) {
                         connection!.model(table);
                         expect(connection!.isDefined(table)).toBe(true);
@@ -228,11 +250,9 @@ export class TestRunner {
                     connection && await connection.close();
                 });
 
-                it('should register models',() => {
+                it('should skip the provided tables', () => {
                     connection!.addModels([ outDir ]);
-                });
 
-                it('should have skipped the provided tables', () => {
                     for (const table of filterSkipTables) {
                         expect(() => connection!.model(table)).toThrow();
                     }
@@ -335,7 +355,6 @@ export class TestRunner {
                         const columnName = `f_${typeName}`;
 
                         const res = await DataTypes.create({ [columnName]: typeValue });
-                        // expect(res).toBe(true);
                         expect(res).toBeDefined();
 
                         const rows = await DataTypes.findAll({ order: [['id', 'DESC']], limit: 1 });
@@ -366,6 +385,113 @@ export class TestRunner {
                         // @ts-ignore-end
                     });
                 }
+            });
+
+            describe('Associations', () => {
+                let connection: Sequelize | undefined;
+
+                beforeAll(async () => {
+                    connection = createConnection({ ...sequelizeOptions });
+                    await connection.authenticate();
+                    await initTestDatabase(testMetadata, connection);
+
+                    const config: IConfig = {
+                        connection: sequelizeOptions,
+                        metadata: {
+                            ...testMetadata.schema && { schema: testMetadata.schema.name },
+                            indices: true,
+                            associationsFile: associationsFilePath,
+                        },
+                        output: {
+                            outDir: outDir,
+                            clean: true,
+                        }
+                    };
+
+                    const dialect = buildDialect(testMetadata);
+                    const builder = new ModelBuilder(config, dialect);
+                    await builder.build();
+                    connection!.addModels([ outDir ]);
+                });
+
+                afterAll(async () => {
+                    connection && await connection.close();
+                });
+
+                it('1:1', async () => {
+                    const personModel = connection!.model(testMetadata.associations.leftTableOneToOne);
+                    const passportModel = connection!.model(testMetadata.associations.rightTableOneToOne);
+                    const personField = pluralize.singular(testMetadata.associations.leftTableOneToOne);
+                    const passportField = pluralize.singular(testMetadata.associations.rightTableOneToOne);
+
+                    const people = await personModel.findAll({  include: [ passportModel ] });
+
+                    for (const person of people) {
+                        expect(person).toHaveProperty(passportField);
+                    }
+
+                    const passports = await passportModel.findAll({  include: [ personModel ] });
+
+                    for (const pass of passports) {
+                        expect(pass).toHaveProperty(personField);
+                    }
+                });
+
+                it('1:N', async () => {
+                    const racesModel = connection!.model(testMetadata.associations.leftTableOneToMany);
+                    const unitsModel = connection!.model(testMetadata.associations.rightTableOneToMany);
+                    const raceField = pluralize.singular(testMetadata.associations.leftTableOneToMany);
+                    const unitsField = pluralize.plural(testMetadata.associations.rightTableOneToMany);
+
+                    const races = await racesModel.findAll({  include: [ unitsModel ] });
+
+                    for (const race of races) {
+                        expect(race).toHaveProperty(unitsField);
+
+                        // @ts-ignore
+                        const associatedUnits = race[unitsField];
+
+                        expect(associatedUnits).toHaveProperty('length');
+                        expect(associatedUnits.length).toBeGreaterThanOrEqual(1);
+                    }
+
+                    const units = await unitsModel.findAll({  include: [ racesModel ] });
+
+                    for (const unit of units) {
+                        expect(unit).toHaveProperty(raceField);
+                    }
+                });
+
+                it('N:N', async () => {
+                    const authorsModel = connection!.model(testMetadata.associations.leftTableManyToMany);
+                    const booksModel = connection!.model(testMetadata.associations.rightTableManyToMany);
+                    const authorsField = pluralize.plural(testMetadata.associations.leftTableManyToMany);
+                    const booksField = pluralize.plural(testMetadata.associations.rightTableManyToMany);
+
+                    const authors = await authorsModel.findAll({  include: [ booksModel ] });
+
+                    for (const author of authors) {
+                        expect(author).toHaveProperty(booksField);
+
+                        // @ts-ignore
+                        const associatedBooks = author[booksField];
+
+                        expect(associatedBooks).toHaveProperty('length');
+                        expect(associatedBooks.length).toBeGreaterThanOrEqual(1);
+                    }
+
+                    const books = await booksModel.findAll({  include: [ authorsModel ] });
+
+                    for (const book of books) {
+                        expect(book).toHaveProperty(authorsField);
+
+                        // @ts-ignore
+                        const associatedAuthors = book[authorsField];
+
+                        expect(associatedAuthors).toHaveProperty('length');
+                        expect(associatedAuthors.length).toBeGreaterThanOrEqual(1);
+                    }
+                });
             });
 
         });
