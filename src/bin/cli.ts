@@ -124,9 +124,6 @@ export const cli = async (): Promise<void> => {
     const config = buildConfig(argv);
     const dialect = buildDialect(argv);
 
-    console.log(argv);
-    console.log(config);
-
     const builder = new ModelBuilder(config, dialect);
     await builder.build();
     console.log(`All done!`);
