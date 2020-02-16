@@ -10,6 +10,8 @@ import {
     buildDialect,
 } from './utils';
 
+
+
 export const cli = async (): Promise<void> => {
 
     let usage = `Usage: sta -D <dialect> -d [database] -u [username] -x [password] `;

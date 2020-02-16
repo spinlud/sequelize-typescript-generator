@@ -1,7 +1,6 @@
-# linkedin-jobs-scraper
+# sequelize-typescript-generator
 > Automatically generates typescript models compatible with [sequelize-typescript](https://www.npmjs.com/package/sequelize-typescript) library.  
 > Supported databases: Postgres, MySQL, MariaDB, MSSQL, SQLite.
-
 
 ## Table of Contents
 
@@ -25,37 +24,35 @@ In particular the following peer dependencies must be installed:
 
 - [typescript](https://www.npmjs.com/package/typescript)
 - [@types/validator](https://www.npmjs.com/package/@types/validator)
+- [@types/bluebird](https://www.npmjs.com/package/@types/bluebird)
 - [reflect-metadata](https://www.npmjs.com/package/reflect-metadata)
 - [sequelize](https://www.npmjs.com/package/sequelize)
 - [sequelize-typescript](https://www.npmjs.com/package/sequelize-typescript)
 
+Install:
 ```shell
-npm install -S typescript @types/validator reflect-metadata sequelize sequelize-typescript
+npm install -S typescript @types/validator @types/bluebird reflect-metadata sequelize sequelize-typescript
 ```
 
 ## Installation
-Global install:
-```shell
-npm install -g sequelize-typescript-auto
-```
-
 Local install:
 ```shell
-npm install -S sequelize-typescript-auto
+npm install -S sequelize-typescript-generator
 ```
+
+NB: this library should be used locally since it uses some `eslint` plugins to format the generated models code
+and at the moment there is no support for global `eslint` plugins. 
 
 ## CLI usage
-For a global install:
+If not already available, install `npx`:
 ```shell 
-stg --help
+npm i -g npx
 ```
 
-For a local install:
+Then you can run the main `stg` command to get usage information as follows:
 ```shell 
 npx stg --help
 ```
-
-The above commands will show usage information:
 
 ```shell
 Usage: stg -D <dialect> -d [database] -u [username] -x [password] -h [host] -p
@@ -117,7 +114,7 @@ stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --in
 You can use the library programmatically, as shown in the following example:
 
 ```ts
-import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-auto';
+import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-generator';
 
 (async () => {
     const config: IConfig = {
@@ -217,7 +214,7 @@ stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --in
 Or with code:
 
 ```ts
-import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-auto';
+import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-generator';
 
 (async () => {
     const config: IConfig = {
@@ -689,7 +686,7 @@ stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --li
 Or you can pass `eslint` options programmatically:
 
 ```ts
-import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-auto';
+import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-generator';
 
 (async () => {
     const config: IConfig = {
