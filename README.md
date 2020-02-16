@@ -34,14 +34,24 @@ Install:
 npm install -S typescript @types/validator @types/bluebird reflect-metadata sequelize sequelize-typescript
 ```
 
+You should also install the specific driver library for your database, see 
+[sequelize documentation](https://sequelize.org/v5/manual/getting-started.html):
+```shell
+npm install -S pg pg-hstore # Postgres
+npm install -S mysql2 # MySQL
+npm install -S mariadb # MariaDB
+npm install -S sqlite3 # SQLite
+npm install -S tedious # Microsoft SQL Server
+```
+
 ## Installation
 Local install:
 ```shell
 npm install -S sequelize-typescript-generator
 ```
 
-NB: this library should be used locally since it uses some `eslint` plugins to format the generated models code
-and at the moment there is no support for global `eslint` plugins. 
+NB: this library should be used locally since it depends on some `eslint` plugins to format the code of generated models. 
+At the moment seems there is no support for global `eslint` plugins. 
 
 ## CLI usage
 If not already available, install `npx`:
