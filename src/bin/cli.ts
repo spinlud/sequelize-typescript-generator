@@ -10,10 +10,12 @@ import {
     buildDialect,
 } from './utils';
 
-
+process.on('unhandledRejection', (reason, promise) => {
+    console.error(reason, promise);
+    process.exit(1);
+});
 
 export const cli = async (): Promise<void> => {
-
     let usage = `Usage: sta -D <dialect> -d [database] -u [username] -x [password] `;
     usage += `-h [host] -p [port] -o [out-dir] -s [schema] -a [associations-file]`;
     usage += `-t [tables] -T [skip-tables] -i [indices] -C [case] -S [storage] -L [lint-file] `;
@@ -129,7 +131,7 @@ export const cli = async (): Promise<void> => {
     const builder = new ModelBuilder(config, dialect);
     await builder.build();
     console.log(`All done!`);
-}
+};
 
 (async () => {
     await cli();

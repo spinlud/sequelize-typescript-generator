@@ -107,7 +107,7 @@ Options:
 Example:
 
 ```shell
-stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --case camel --out-dir models --clean 
+npx stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --case camel --out-dir models --clean 
 ```
 
 ## Programmatic usage
@@ -208,7 +208,7 @@ Define a `1:1` association with the following entry in the associations file:
 Then pass the associations file path to the `cli`:
 
 ```shell
-stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
+npx stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
 ```
 
 Or with code:
@@ -379,7 +379,7 @@ Define a `1:N` association with the following entry in the associations file:
 Build models:
 
 ```shell
-stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
+npx stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
 ```
 
 This will generate the following models:
@@ -514,7 +514,7 @@ N:N, author_id, book_id, authors, books, authors_books
 Build models:
 
 ```shell
-stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
+npx stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
 ```
 
 This will generate the following models:
@@ -680,7 +680,7 @@ You can provide your own set of rules that matches your coding style. Just defin
 (see [eslint](https://www.npmjs.com/package/eslint) docs) and pass it to the `cli` like the following:
 
 ```shell
-stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --lint-file path/to/lint-file --out-dir models --clean 
+npx stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --lint-file path/to/lint-file --out-dir models --clean 
 ```
 
 Or you can pass `eslint` options programmatically:

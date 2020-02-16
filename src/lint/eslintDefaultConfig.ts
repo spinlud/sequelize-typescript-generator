@@ -9,7 +9,6 @@ export const eslintDefaultConfig = {
         'eslint-plugin-import',
     ],
     extends:  [
-        // 'plugin:import/errors',
         'plugin:import/warnings',
         'plugin:import/typescript',
     ],
