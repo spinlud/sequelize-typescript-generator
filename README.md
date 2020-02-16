@@ -34,6 +34,18 @@ Install:
 npm install -S typescript @types/validator @types/bluebird reflect-metadata sequelize sequelize-typescript
 ```
 
+Your `tsconfig.json` file needs the following flags:
+
+```json
+{
+    "compilerOptions": {
+        "target": "es6", // or a more recent ecmascript version
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true   
+    }
+}
+```
+
 You should also install the specific driver library for your database, see 
 [sequelize documentation](https://sequelize.org/v5/manual/getting-started.html):
 ```shell
