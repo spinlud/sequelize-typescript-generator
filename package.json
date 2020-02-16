@@ -26,6 +26,10 @@
   },
   "author": "Ludovico Fabbri",
   "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/spinlud/sequelize-typescript-auto.git/issues"
+  },
+  "homepage": "https://github.com/spinlud/sequelize-typescript-auto.git#readme",
   "peerDependencies": {
     "@types/validator": "^12.0.1",
     "reflect-metadata": "^0.1.13",
@@ -64,5 +68,22 @@
     "pluralize": "^8.0.0",
     "yargs": "^15.1.0"
   },
-  "keywords": []
+  "keywords": [
+    "sequelize",
+    "sequelize-typescript",
+    "sequelize-typescript-auto",
+    "knex",
+    "bookshelf",
+    "typescript",
+    "javascript",
+    "sql",
+    "mysql",
+    "postgres",
+    "mariadb",
+    "mssql",
+    "sqlite",
+    "orm",
+    "node",
+    "npm"
+  ]
 }
