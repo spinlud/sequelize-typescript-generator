@@ -1,12 +1,91 @@
 {
-  "name": "sequelize-typescript-auto",
+  "name": "sequelize-typescript-generator",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "description": "Automatically generates typescript models compatible with sequelize-typescript library (https://www.npmjs.com/package/sequelize-typescript).",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "bin": {
+    "stg": "build/bin/cli.js"
   },
-  "keywords": [],
+  "scripts": {
+    "clean": "rm -fr build",
+    "lint": "eslint --fix --ext .ts output/*.ts",
+    "build": "npm run clean && tsc",
+    "docker-remove-containers": "./src/tests/integration/docker-remove-containers.sh",
+    "docker-start-mysql": "./src/tests/integration/mysql/docker-start-mysql.sh",
+    "docker-start-mariadb": "./src/tests/integration/mariadb/docker-start-mariadb.sh",
+    "docker-start-postgres": "./src/tests/integration/postgres/docker-start-postgres.sh",
+    "docker-start-mssql": "./src/tests/integration/mssql/docker-start-mssql.sh",
+    "test-mysql": "npm run docker-remove-containers && npm run docker-start-mysql && jest src/tests/integration/mysql",
+    "test-mariadb": "npm run docker-remove-containers && npm run docker-start-mariadb && jest src/tests/integration/mariadb",
+    "test-postgres": "npm run docker-remove-containers && npm run docker-start-postgres && jest src/tests/integration/postgres",
+    "test-mssql": "npm run docker-remove-containers && npm run docker-start-mssql && jest src/tests/integration/mssql",
+    "test-sqlite": "npm run docker-remove-containers && jest src/tests/integration/sqlite",
+    "test": "npm run test-sqlite && npm run test-mysql && npm run test-mariadb && npm run test-postgres && npm run test-mssql",
+    "dev": "ts-node-dev src/bin/cli.ts --help"
+  },
   "author": "Ludovico Fabbri",
-  "license": "ISC"
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/spinlud/sequelize-typescript-generator.git/issues"
+  },
+  "homepage": "https://github.com/spinlud/sequelize-typescript-generator.git#readme",
+  "peerDependencies": {
+    "@types/validator": "^12.0.1",
+    "reflect-metadata": "^0.1.13",
+    "sequelize": "^5.21.3",
+    "sequelize-typescript": "^1.1.0",
+    "typescript": "^3.7.4"
+  },
+  "devDependencies": {
+    "@types/bluebird": "^3.5.29",
+    "@types/jest": "^25.1.2",
+    "@types/pluralize": "0.0.29",
+    "@types/validator": "^12.0.1",
+    "@types/yargs": "^15.0.3",
+    "jest": "^25.1.0",
+    "mariadb": "^2.2.0",
+    "mysql2": "^2.1.0",
+    "pg": "^7.18.1",
+    "pg-hstore": "^2.3.3",
+    "reflect-metadata": "^0.1.13",
+    "sequelize": "^5.21.4",
+    "sequelize-typescript": "^1.1.0",
+    "sqlite3": "^4.1.1",
+    "tedious": "^8.0.1",
+    "ts-jest": "^25.2.0",
+    "ts-node-dev": "^1.0.0-pre.44",
+    "tsc": "^1.20150623.0",
+    "typescript": "^3.7.5",
+    "wkx": "^0.4.8"
+  },
+  "dependencies": {
+    "@types/eslint": "^6.1.8",
+    "@typescript-eslint/eslint-plugin": "^2.19.2",
+    "@typescript-eslint/parser": "^2.19.2",
+    "change-case": "^4.1.1",
+    "eslint": "^6.8.0",
+    "eslint-plugin-import": "^2.20.1",
+    "pluralize": "^8.0.0",
+    "yargs": "^15.1.0"
+  },
+  "keywords": [
+    "sequelize",
+    "sequelize-typescript",
+    "sequelize-typescript-generator",
+    "sequelize-typescript-auto",
+    "knex",
+    "bookshelf",
+    "typescript",
+    "javascript",
+    "sql",
+    "mysql",
+    "postgres",
+    "mariadb",
+    "mssql",
+    "sqlite",
+    "orm",
+    "node",
+    "npm"
+  ]
 }

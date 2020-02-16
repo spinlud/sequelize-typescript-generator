@@ -1,0 +1,721 @@
+# linkedin-jobs-scraper
+> Automatically generates typescript models compatible with [sequelize-typescript](https://www.npmjs.com/package/sequelize-typescript) library.  
+> Supported databases: Postgres, MySQL, MariaDB, MSSQL, SQLite.
+
+
+## Table of Contents
+
+<!-- toc -->
+
+* [Prerequisites](#prerequisites)
+* [Installation](#installation)
+* [CLI usage](#cli-usage)
+* [Programmatic usage](#programmatic-usage)
+* [Associations](#associations)
+    * [One to One](#one-to-one)
+    * [One to Many](#one-to-many)
+    * [Many to Many](#many-to-many)
+* [Lint](#lint)
+
+<!-- toc stop -->
+
+## Prerequisites
+Prerequisites are the same of the [sequelize-typescript](https://www.npmjs.com/package/sequelize-typescript#installation) library.
+In particular the following peer dependencies must be installed:
+
+- [typescript](https://www.npmjs.com/package/typescript)
+- [@types/validator](https://www.npmjs.com/package/@types/validator)
+- [reflect-metadata](https://www.npmjs.com/package/reflect-metadata)
+- [sequelize](https://www.npmjs.com/package/sequelize)
+- [sequelize-typescript](https://www.npmjs.com/package/sequelize-typescript)
+
+```shell
+npm install -S typescript @types/validator reflect-metadata sequelize sequelize-typescript
+```
+
+## Installation
+Global install:
+```shell
+npm install -g sequelize-typescript-auto
+```
+
+Local install:
+```shell
+npm install -S sequelize-typescript-auto
+```
+
+## CLI usage
+For a global install:
+```shell 
+stg --help
+```
+
+For a local install:
+```shell 
+npx stg --help
+```
+
+The above commands will show usage information:
+
+```shell
+Usage: stg -D <dialect> -d [database] -u [username] -x [password] -h [host] -p
+[port] -o [out-dir] -s [schema] -a [associations-file]-t [tables] -T
+[skip-tables] -i [indices] -C [case] -S [storage] -L [lint-file] -l [ssl] -r
+[protocol] -c [clean]
+
+Options:
+  --help                   Show help                                   [boolean]
+  --version                Show version number                         [boolean]
+  -h, --host               Database IP/hostname                         [string]
+  -p, --port               Database port. Defaults:
+                           - MySQL/MariaDB: 3306
+                           - Postgres: 5432
+                           - MSSQL: 1433                                [number]
+  -d, --database           Database name                                [string]
+  -s, --schema             Schema name (Postgres only)                  [string]
+  -D, --dialect            Dialect:
+                           - postgres
+                           - mysql
+                           - mariadb
+                           - sqlite
+                           - mssql                           [string] [required]
+  -u, --username           Database username                            [string]
+  -x, --password           Database password                            [string]
+  -t, --tables             Comma-separated names of tables to process   [string]
+  -T, --skip-tables        Comma-separated names of tables to skip      [string]
+  -i, --indices            Include index annotations in the generated models
+                                                                       [boolean]
+  -o, --out-dir            Output directory. Default:
+                           - output-models                              [string]
+  -c, --clean              Clean output directory before running       [boolean]
+  -m, --timestamps         Add default timestamps to tables            [boolean]
+  -C, --case               Transform tables and fields names
+                           with one of the following cases:
+                           - underscore
+                           - camel
+                           - upper
+                           - lower
+                           - pascal
+                           - const
+                                                                        [string]
+  -S, --storage            SQLite storage. Default:
+                           - memory                                     [string]
+  -L, --lint-file          ES Lint file path                            [string]
+  -l, --ssl                Enable SSL                                  [boolean]
+  -r, --protocol           Protocol used: Default:
+                           - tcp                                        [string]
+  -a, --associations-file  Associations file path                       [string]
+```
+
+Example:
+
+```shell
+stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --case camel --out-dir models --clean 
+```
+
+## Programmatic usage
+You can use the library programmatically, as shown in the following example:
+
+```ts
+import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-auto';
+
+(async () => {
+    const config: IConfig = {
+        connection: {
+            dialect: 'mysql',
+            database: 'myDatabase',
+            username: 'myUsername',
+            password: 'myPassword'
+        },
+        metadata: {
+            indices: true,
+            case: 'CAMEL',
+        },
+        output: {
+            clean: true,
+            outDir: 'models'
+        }
+    };
+
+    const dialect = new DialectMySQL();
+
+    const builder = new ModelBuilder(config, dialect);
+
+    try {
+        await builder.build();
+    }
+    catch(err) {
+        console.error(err);
+        process.exit(1);
+    }    
+})();
+```
+
+## Associations
+Including associations in the generated models requires a bit of manual work unfortunately, but hopefully 
+it will buy you some time instead of defining them from scratch.  
+  
+First you have to define a csv-like text file, let's call it `associations.csv` (but you can call it however you want).   In this file you have to put an entry for each association you want to define. 
+The following associations are supported:
+
+- `1:1`
+- `1:N`
+- `N:N`
+
+Some rules for the association file:
+
+- Names of tables and columns in the associations file must be the native names on the database, not the 
+transformed names generated when using a custom case transformation with the flag `--case`.
+- Only `,` separator is supported.
+- Do not use enclosing quotes.
+
+Note that fields generated by associations will be pluralized or singularized based on cardinality. 
+
+#### One to One
+In the associations file include an entry with the following structure:
+```
+1:1, left_table_key, right_table_key, left_table, right_table
+```
+
+where:
+
+- `1:1` is the relation cardinality
+- `left_table_key` is the join column of the left table
+- `right_table_key` is the join column of the right table
+- `left_table` is the name of the left table
+- `right_table` is the name of the right table
+
+For example given the following tables:
+
+```sql
+CREATE TABLE person
+(
+    person_id           INT             PRIMARY KEY,
+    name                VARCHAR(80)     NOT NULL,
+    passport_id         INT             NOT NULL
+);
+
+CREATE TABLE passport
+(
+    passport_id         INT             PRIMARY KEY,
+    code                VARCHAR(80)     NOT NULL
+);
+```
+
+Define a `1:1` association with the following entry in the associations file:
+
+```
+1:1, passport_id, passport_id, person, passport
+```
+
+Then pass the associations file path to the `cli`:
+
+```shell
+stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
+```
+
+Or with code:
+
+```ts
+import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-auto';
+
+(async () => {
+    const config: IConfig = {
+        connection: {
+            dialect: 'mysql',
+            database: 'myDatabase',
+            username: 'myUsername',
+            password: 'myPassword'
+        },
+        metadata: {
+            indices: true,
+            associationsFile: 'path/to/associations.csv',            
+        },
+        output: {
+            clean: true,
+            outDir: 'models'
+        }
+    };
+
+    const dialect = new DialectMySQL();
+
+    const builder = new ModelBuilder(config, dialect);
+
+    try {
+        await builder.build();
+    }
+    catch(err) {
+        console.error(err);
+        process.exit(1);
+    }    
+})();
+```
+
+This will generate the following models:
+
+```ts
+import {
+	Model, Table, Column, DataType, Index, ForeignKey, HasOne 
+} from "sequelize-typescript";
+import { passport } from "./passport";
+
+@Table({
+	tableName: "person",
+	timestamps: false,
+	comment: "" 
+})
+export class person extends Model<person> {
+
+    @Column({
+    	field: "person_id",
+    	primaryKey: true,
+    	type: DataType.INTEGER 
+    })
+    @Index({
+    	name: "PRIMARY",
+    	using: "BTREE",
+    	order: "ASC",
+    	unique: true 
+    })
+    person_id!: number;
+
+    @Column({
+    	field: "name",
+    	type: DataType.STRING 
+    })
+    name!: string;
+
+    @Column({
+    	field: "passport_id",
+    	type: DataType.INTEGER 
+    })
+    @Index({
+    	name: "person_passport_passport_id_fk",
+    	using: "BTREE",
+    	order: "ASC",
+    	unique: false 
+    })
+    passport_id!: number;
+
+    @HasOne(() => passport)
+    passport?: passport;
+
+}
+```
+
+```ts
+import {
+	Model, Table, Column, DataType, Index, ForeignKey, BelongsTo 
+} from "sequelize-typescript";
+import { person } from "./person";
+
+@Table({
+	tableName: "passport",
+	timestamps: false,
+	comment: "" 
+})
+export class passport extends Model<passport> {
+
+    @ForeignKey(() => person)
+    @Column({
+    	field: "passport_id",
+    	primaryKey: true,
+    	type: DataType.INTEGER 
+    })
+    @Index({
+    	name: "PRIMARY",
+    	using: "BTREE",
+    	order: "ASC",
+    	unique: true 
+    })
+    passport_id!: number;
+
+    @Column({
+    	field: "code",
+    	type: DataType.STRING 
+    })
+    code!: string;
+
+    @BelongsTo(() => person)
+    person?: person;
+
+}
+```
+
+#### One to Many
+
+```
+1:N, left_table_key, right_table_key, left_table, right_table
+```
+
+where:
+
+- `1:N` is the relation cardinality
+- `left_table_key` is the join column of the left table
+- `right_table_key` is the join column of the right table
+- `left_table` is the name of the left table
+- `right_table` is the name of the right table
+
+For example given the following tables:
+
+```sql
+CREATE TABLE races
+(
+    race_id             INT             PRIMARY KEY,
+    race_name           VARCHAR(80)     NOT NULL
+);
+
+CREATE TABLE units
+(
+    unit_id             INT             PRIMARY KEY,
+    unit_name           VARCHAR(80)     NOT NULL,
+    race_id             INT             NOT NULL
+);
+```
+
+Define a `1:N` association with the following entry in the associations file:
+
+```
+1:N, race_id, race_id, races, units
+```
+
+Build models:
+
+```shell
+stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
+```
+
+This will generate the following models:
+
+```ts
+import {
+	Model, Table, Column, DataType, Index, ForeignKey, HasMany 
+} from "sequelize-typescript";
+import { units } from "./units";
+
+@Table({
+	tableName: "races",
+	timestamps: false,
+	comment: "" 
+})
+export class races extends Model<races> {
+
+    @Column({
+    	field: "race_id",
+    	primaryKey: true,
+    	type: DataType.INTEGER 
+    })
+    @Index({
+    	name: "PRIMARY",
+    	using: "BTREE",
+    	order: "ASC",
+    	unique: true 
+    })
+    race_id!: number;
+
+    @Column({
+    	field: "race_name",
+    	type: DataType.STRING 
+    })
+    race_name!: string;
+
+    @HasMany(() => units)
+    units?: units[];
+
+}
+```
+
+```ts
+import {
+	Model, Table, Column, DataType, Index, ForeignKey, BelongsTo 
+} from "sequelize-typescript";
+import { races } from "./races";
+
+@Table({
+	tableName: "units",
+	timestamps: false,
+	comment: "" 
+})
+export class units extends Model<units> {
+
+    @Column({
+    	field: "unit_id",
+    	primaryKey: true,
+    	type: DataType.INTEGER 
+    })
+    @Index({
+    	name: "PRIMARY",
+    	using: "BTREE",
+    	order: "ASC",
+    	unique: true 
+    })
+    unit_id!: number;
+
+    @Column({
+    	field: "unit_name",
+    	type: DataType.STRING 
+    })
+    unit_name!: string;
+
+    @ForeignKey(() => races)
+    @Column({
+    	field: "race_id",
+    	type: DataType.INTEGER 
+    })
+    race_id!: number;
+
+    @BelongsTo(() => races)
+    race?: races;
+
+}
+```
+
+#### Many to Many
+In the associations file include an entry with the following structure:
+```
+N:N, left_table_key, right_table_key, left_table, right_table, join_table
+```
+
+where:
+
+- `N:N` is the relation cardinality
+- `left_table_key` is the join column of the left table
+- `right_table_key` is the join column of the right table
+- `left_table` is the name of the left table
+- `right_table` is the name of the right table
+- `join_table` is the name of the join table
+
+For example given the following tables:
+
+```sql
+CREATE TABLE authors
+(
+    author_id       INT             primary key,
+    full_name       VARCHAR(80)     not null
+);
+
+CREATE TABLE books
+(
+    book_id         INT             PRIMARY KEY,
+    title           VARCHAR(80)     not null
+);
+
+CREATE TABLE authors_books
+(
+    author_id       INT             not null,
+    book_id         INT             not null,
+    PRIMARY KEY (author_id, book_id)
+);
+```
+
+Define an `N:N` association with the following entry in the associations file:
+
+```
+N:N, author_id, book_id, authors, books, authors_books
+```
+
+Build models:
+
+```shell
+stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
+```
+
+This will generate the following models:
+
+```ts
+import {
+	Model, Table, Column, DataType, Index, ForeignKey, BelongsToMany 
+} from "sequelize-typescript";
+import { books } from "./books";
+import { authors_books } from "./authors_books";
+
+@Table({
+	tableName: "authors",
+	timestamps: false,
+	comment: "" 
+})
+export class authors extends Model<authors> {
+
+    @Column({
+    	field: "author_id",
+    	primaryKey: true,
+    	type: DataType.INTEGER 
+    })
+    @Index({
+    	name: "PRIMARY",
+    	using: "BTREE",
+    	order: "ASC",
+    	unique: true 
+    })
+    author_id!: number;
+
+    @Column({
+    	field: "full_name",
+    	type: DataType.STRING 
+    })
+    full_name!: string;
+
+    @BelongsToMany(() => books, () => authors_books)
+    books?: books[];
+
+}
+```
+
+```ts
+import {
+	Model, Table, Column, DataType, Index, ForeignKey, BelongsToMany 
+} from "sequelize-typescript";
+import { authors } from "./authors";
+import { authors_books } from "./authors_books";
+
+@Table({
+	tableName: "books",
+	timestamps: false,
+	comment: "" 
+})
+export class books extends Model<books> {
+
+    @Column({
+    	field: "book_id",
+    	primaryKey: true,
+    	type: DataType.INTEGER 
+    })
+    @Index({
+    	name: "PRIMARY",
+    	using: "BTREE",
+    	order: "ASC",
+    	unique: true 
+    })
+    book_id!: number;
+
+    @Column({
+    	field: "title",
+    	type: DataType.STRING 
+    })
+    title!: string;
+
+    @BelongsToMany(() => authors, () => authors_books)
+    authors?: authors[];
+
+}
+```
+
+```ts
+import {
+	Model, Table, Column, DataType, Index, ForeignKey 
+} from "sequelize-typescript";
+import { authors } from "./authors";
+import { books } from "./books";
+
+@Table({
+	tableName: "authors_books",
+	timestamps: false,
+	comment: "" 
+})
+export class authors_books extends Model<authors_books> {
+
+    @ForeignKey(() => authors)
+    @Column({
+    	field: "author_id",
+    	primaryKey: true,
+    	type: DataType.INTEGER 
+    })
+    @Index({
+    	name: "PRIMARY",
+    	using: "BTREE",
+    	order: "ASC",
+    	unique: true 
+    })
+    author_id!: number;
+
+    @ForeignKey(() => books)
+    @Column({
+    	field: "book_id",
+    	primaryKey: true,
+    	type: DataType.INTEGER 
+    })
+    @Index({
+    	name: "PRIMARY",
+    	using: "BTREE",
+    	order: "ASC",
+    	unique: true 
+    })
+    book_id!: number;
+
+}
+```
+
+## Lint
+By default each generated model will be linted with a predefined set of rules to improve readability:
+
+```ts
+export const eslintDefaultConfig = {
+    parser:  '@typescript-eslint/parser',
+    parserOptions:  {
+        ecmaVersion:  2018,
+        sourceType:  'module',
+    },
+    plugins: [
+        '@typescript-eslint',
+        'eslint-plugin-import',
+    ],
+    extends:  [        
+        'plugin:import/warnings',
+        'plugin:import/typescript',
+    ],
+    rules:  {
+        'padded-blocks': ['error', { blocks: 'always', classes: 'always', switches: 'always' }],
+        'lines-between-class-members': ['error', 'always' ],
+        'import/newline-after-import': ['error', { 'count': 2 }],
+        'object-curly-newline': ['error', {
+            'ObjectExpression': 'always',
+            'ObjectPattern': { 'multiline': true },
+            'ImportDeclaration': { 'multiline': true, 'minProperties': 3 },
+            'ExportDeclaration': { 'multiline': true, 'minProperties': 3 },
+        }],
+        'object-property-newline': ['error'],
+        'indent': ['error', 'tab'],
+    },
+};
+```
+
+You can provide your own set of rules that matches your coding style. Just define a file with the linting rules 
+(see [eslint](https://www.npmjs.com/package/eslint) docs) and pass it to the `cli` like the following:
+
+```shell
+stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --lint-file path/to/lint-file --out-dir models --clean 
+```
+
+Or you can pass `eslint` options programmatically:
+
+```ts
+import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-auto';
+
+(async () => {
+    const config: IConfig = {
+        connection: {
+            dialect: 'mysql',
+            database: 'myDatabase',
+            username: 'myUsername',
+            password: 'myPassword'
+        },        
+        lintOptions: {
+            configFile: 'path/to/lint-file',
+            fix: true,
+        },
+        output: {
+            clean: true,
+            outDir: 'my-models',
+        },
+    };
+
+    const dialect = new DialectMySQL();
+
+    const builder = new ModelBuilder(config, dialect);
+
+    await builder.build();
+})();
+```
+
+## License
+[MIT License](http://en.wikipedia.org/wiki/MIT_License)
