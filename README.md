@@ -23,15 +23,16 @@ Prerequisites are the same of the [sequelize-typescript](https://www.npmjs.com/p
 In particular the following peer dependencies must be installed:
 
 - [typescript](https://www.npmjs.com/package/typescript)
+- [sequelize](https://www.npmjs.com/package/sequelize)
+- [@types/node](https://www.npmjs.com/package/@types/node)
 - [@types/validator](https://www.npmjs.com/package/@types/validator)
 - [@types/bluebird](https://www.npmjs.com/package/@types/bluebird)
 - [reflect-metadata](https://www.npmjs.com/package/reflect-metadata)
-- [sequelize](https://www.npmjs.com/package/sequelize)
 - [sequelize-typescript](https://www.npmjs.com/package/sequelize-typescript)
 
 Install:
 ```shell
-npm install -S typescript @types/validator @types/bluebird reflect-metadata sequelize sequelize-typescript
+npm install -S typescript @types/node @types/validator @types/bluebird reflect-metadata sequelize sequelize-typescript
 ```
 
 Your `tsconfig.json` file needs the following flags:

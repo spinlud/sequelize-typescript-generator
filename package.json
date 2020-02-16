@@ -1,6 +1,6 @@
 {
   "name": "sequelize-typescript-generator",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Automatically generates typescript models compatible with sequelize-typescript library (https://www.npmjs.com/package/sequelize-typescript).",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -31,11 +31,8 @@
   },
   "homepage": "https://github.com/spinlud/sequelize-typescript-generator.git#readme",
   "peerDependencies": {
-    "@types/validator": "^12.0.1",
-    "reflect-metadata": "^0.1.13",
-    "sequelize": "^5.21.3",
-    "sequelize-typescript": "^1.1.0",
-    "typescript": "^3.7.4"
+    "typescript": "^3.7.5",
+    "sequelize-typescript": "^1.1.0"
   },
   "devDependencies": {
     "@types/bluebird": "^3.5.29",
