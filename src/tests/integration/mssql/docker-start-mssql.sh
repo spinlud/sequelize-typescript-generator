@@ -3,7 +3,7 @@ set -e
 
 IMAGE_NAME="mcr.microsoft.com/mssql/server"
 CONTAINER_NAME="mssql"
-IMAGE_FULL_NAME="$IMAGE_NAME:$DOCKER_MSSQL_VERSION"
+IMAGE_FULL_NAME="$IMAGE_NAME:$DOCKER_MSSQL_TAG"
 
 docker pull "$IMAGE_FULL_NAME"
 

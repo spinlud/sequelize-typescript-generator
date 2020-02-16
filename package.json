@@ -1,11 +1,11 @@
 {
-  "name": "sequelize-typescript-auto",
+  "name": "sequelize-typescript-generator",
   "version": "1.0.0",
   "description": "Automatically generates typescript models compatible with sequelize-typescript library (https://www.npmjs.com/package/sequelize-typescript).",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "bin": {
-    "sta": "build/bin/cli.js"
+    "stg": "build/bin/cli.js"
   },
   "scripts": {
     "clean": "rm -fr build",
@@ -27,9 +27,9 @@
   "author": "Ludovico Fabbri",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/spinlud/sequelize-typescript-auto.git/issues"
+    "url": "https://github.com/spinlud/sequelize-typescript-generator.git/issues"
   },
-  "homepage": "https://github.com/spinlud/sequelize-typescript-auto.git#readme",
+  "homepage": "https://github.com/spinlud/sequelize-typescript-generator.git#readme",
   "peerDependencies": {
     "@types/validator": "^12.0.1",
     "reflect-metadata": "^0.1.13",
@@ -38,6 +38,7 @@
     "typescript": "^3.7.4"
   },
   "devDependencies": {
+    "@types/bluebird": "^3.5.29",
     "@types/jest": "^25.1.2",
     "@types/pluralize": "0.0.29",
     "@types/validator": "^12.0.1",
@@ -71,6 +72,7 @@
   "keywords": [
     "sequelize",
     "sequelize-typescript",
+    "sequelize-typescript-generator",
     "sequelize-typescript-auto",
     "knex",
     "bookshelf",

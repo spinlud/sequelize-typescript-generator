@@ -47,18 +47,18 @@ npm install -S sequelize-typescript-auto
 ## CLI usage
 For a global install:
 ```shell 
-sta --help
+stg --help
 ```
 
 For a local install:
 ```shell 
-npx sta --help
+npx stg --help
 ```
 
 The above commands will show usage information:
 
 ```shell
-Usage: sta -D <dialect> -d [database] -u [username] -x [password] -h [host] -p
+Usage: stg -D <dialect> -d [database] -u [username] -x [password] -h [host] -p
 [port] -o [out-dir] -s [schema] -a [associations-file]-t [tables] -T
 [skip-tables] -i [indices] -C [case] -S [storage] -L [lint-file] -l [ssl] -r
 [protocol] -c [clean]
@@ -110,7 +110,7 @@ Options:
 Example:
 
 ```shell
-sta -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --case camel --out-dir models --clean 
+stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --case camel --out-dir models --clean 
 ```
 
 ## Programmatic usage
@@ -211,7 +211,7 @@ Define a `1:1` association with the following entry in the associations file:
 Then pass the associations file path to the `cli`:
 
 ```shell
-sta -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
+stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
 ```
 
 Or with code:
@@ -382,7 +382,7 @@ Define a `1:N` association with the following entry in the associations file:
 Build models:
 
 ```shell
-sta -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
+stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
 ```
 
 This will generate the following models:
@@ -517,7 +517,7 @@ N:N, author_id, book_id, authors, books, authors_books
 Build models:
 
 ```shell
-sta -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
+stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
 ```
 
 This will generate the following models:
@@ -683,7 +683,7 @@ You can provide your own set of rules that matches your coding style. Just defin
 (see [eslint](https://www.npmjs.com/package/eslint) docs) and pass it to the `cli` like the following:
 
 ```shell
-sta -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --lint-file path/to/lint-file --out-dir models --clean 
+stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --lint-file path/to/lint-file --out-dir models --clean 
 ```
 
 Or you can pass `eslint` options programmatically:
