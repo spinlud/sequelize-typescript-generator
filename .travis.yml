@@ -1,0 +1,30 @@
+language: node_js
+node_js:
+  - 10
+
+services:
+  - docker
+
+install:
+  - npm install
+
+jobs:
+  include:
+    - stage: test
+      script: npm run test
+    - stage: build
+      script: npm run build
+    - stage: deploy
+      script: skip
+      deploy:
+        edge: true
+        provider: npm
+        email: $NPM_EMAIL
+        api_key: $NPM_TOKEN
+        on:
+          branch: master
+
+stages:
+  - test
+  - build
+  - deploy
