@@ -97,7 +97,7 @@ export const buildConfig = (argv: ArgvType): IConfig => {
             clean: !!argv[aliasesMap.OUTPUT_DIR_CLEAN],
         },
         ...argv[aliasesMap.LINT_FILE] && {
-            lint: {
+            lintOptions: {
                 configFile: argv[aliasesMap.LINT_FILE],
                 fix: true,
             }

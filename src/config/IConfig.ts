@@ -31,5 +31,5 @@ export interface IConfig {
     connection: Options;
     metadata?: IConfigMetadata;
     output: IConfigOutput;
-    lint?: CLIEngine.Options;
+    lintOptions?: CLIEngine.Options;
 }

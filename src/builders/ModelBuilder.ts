@@ -251,8 +251,8 @@ export class ModelBuilder extends Builder {
         // Lint files
         let linter: Linter;
 
-        if (this.config.lint) {
-            linter = new Linter(this.config.lint);
+        if (this.config.lintOptions) {
+            linter = new Linter(this.config.lintOptions);
         }
         else {
             linter = new Linter();

@@ -1,7 +1,7 @@
 {
   "name": "sequelize-typescript-auto",
   "version": "1.0.0",
-  "description": "",
+  "description": "Automatically generates typescript models compatible with sequelize-typescript library (https://www.npmjs.com/package/sequelize-typescript).",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "bin": {
@@ -10,6 +10,7 @@
   "scripts": {
     "clean": "rm -fr build",
     "lint": "eslint --fix --ext .ts output/*.ts",
+    "build": "npm run clean && tsc",
     "docker-remove-containers": "./src/tests/integration/docker-remove-containers.sh",
     "docker-start-mysql": "./src/tests/integration/mysql/docker-start-mysql.sh",
     "docker-start-mariadb": "./src/tests/integration/mariadb/docker-start-mariadb.sh",
@@ -21,14 +22,11 @@
     "test-mssql": "npm run docker-remove-containers && npm run docker-start-mssql && jest src/tests/integration/mssql",
     "test-sqlite": "npm run docker-remove-containers && jest src/tests/integration/sqlite",
     "test": "npm run test-sqlite && npm run test-mysql && npm run test-mariadb && npm run test-postgres && npm run test-mssql",
-    "build": "npm run clean && tsc",
-    "dev": "ts-node-dev src/bin/cli.ts --dialect mysql -u root -x mysql --database dbtest --indices -C const -a tmp/associations.csv --clean"
+    "dev": "ts-node-dev src/bin/cli.ts --help"
   },
-  "keywords": [],
   "author": "Ludovico Fabbri",
   "license": "ISC",
   "peerDependencies": {
-    "@types/bluebird": "^3.5.29",
     "@types/validator": "^12.0.1",
     "reflect-metadata": "^0.1.13",
     "sequelize": "^5.21.3",
@@ -36,8 +34,6 @@
     "typescript": "^3.7.4"
   },
   "devDependencies": {
-    "@types/bluebird": "^3.5.29",
-    "@types/eslint": "^6.1.8",
     "@types/jest": "^24.9.1",
     "@types/pluralize": "0.0.29",
     "@types/validator": "^12.0.1",
@@ -59,6 +55,7 @@
     "wkx": "^0.4.8"
   },
   "dependencies": {
+    "@types/eslint": "^6.1.8",
     "@typescript-eslint/eslint-plugin": "^2.19.0",
     "@typescript-eslint/parser": "^2.19.0",
     "change-case": "^4.1.1",
@@ -66,5 +63,6 @@
     "eslint-plugin-import": "^2.20.1",
     "pluralize": "^8.0.0",
     "yargs": "^15.1.0"
-  }
+  },
+  "keywords": []
 }

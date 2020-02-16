@@ -23,7 +23,7 @@ export const cli = async (): Promise<void> => {
         .option('h', {
             alias: aliasesMap.HOST,
             string: true,
-            describe: `Database IP/hostname.`,
+            describe: `Database IP/hostname`,
         })
         .option('p', {
             alias: aliasesMap.PORT,
@@ -33,12 +33,12 @@ export const cli = async (): Promise<void> => {
         .option('d', {
             alias: aliasesMap.DATABASE,
             string: true,
-            describe: `Database name.`,
+            describe: `Database name`,
         })
         .option('s', {
             alias: aliasesMap.SCHEMA,
             string: true,
-            describe: `Schema name (Postgre only?).`,
+            describe: `Schema name (Postgres only)`,
         })
         .option('D', {
             alias: aliasesMap.DIALECT,
@@ -48,27 +48,27 @@ export const cli = async (): Promise<void> => {
         .option('u', {
             alias: aliasesMap.USERNAME,
             string: true,
-            describe: `Database username.`,
+            describe: `Database username`,
         })
         .option('x', {
             alias: aliasesMap.PASSWORD,
             string: true,
-            describe: `Database password.`,
+            describe: `Database password`,
         })
         .option('t', {
             alias: aliasesMap.TABLES,
             string: true,
-            describe: `Comma-separated names of tables to process.`,
+            describe: `Comma-separated names of tables to process`,
         })
         .option('T', {
             alias: aliasesMap.SKIP_TABLES,
             string: true,
-            describe: `Comma-separated names of tables to skip.`,
+            describe: `Comma-separated names of tables to skip`,
         })
         .option('i', {
             alias: aliasesMap.INDICES,
             boolean: true,
-            describe: `Include columns index in the generated models`,
+            describe: `Include index annotations in the generated models`,
         })
         .option('o', {
             alias: aliasesMap.OUTPUT_DIR,
@@ -78,7 +78,7 @@ export const cli = async (): Promise<void> => {
         .option('c', {
             alias: aliasesMap.OUTPUT_DIR_CLEAN,
             boolean: true,
-            describe: `Clean output directory before running.`,
+            describe: `Clean output directory before running`,
         })
         .option('m', {
             alias: aliasesMap.TIMESTAMPS,
