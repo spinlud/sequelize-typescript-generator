@@ -39,7 +39,7 @@ Your `tsconfig.json` file needs the following flags:
 ```json
 {
     "compilerOptions": {
-        "target": "es6", // or a more recent ecmascript version
+        "target": "es6",
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true   
     }
