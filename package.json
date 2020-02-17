@@ -26,6 +26,7 @@
   },
   "author": "Ludovico Fabbri",
   "license": "ISC",
+  "repository": "https://github.com/spinlud/sequelize-typescript-generator.git",
   "bugs": {
     "url": "https://github.com/spinlud/sequelize-typescript-generator.git/issues"
   },
