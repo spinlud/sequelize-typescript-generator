@@ -1,12 +1,12 @@
 import { QueryTypes, AbstractDataTypeConstructor, IndexMethod } from 'sequelize';
 import { Sequelize, DataType } from 'sequelize-typescript';
 import { IConfig } from '../config';
-import { IColumnMetadata, Dialect, IIndexMetadata } from './Dialect';
+import { IColumnMetadata, Dialect, IIndexMetadata, ITable } from './Dialect';
 import { warnUnknownMappingForDataType } from './utils';
 
-interface ITableNameRow {
-    table_name?: string;
-    TABLE_NAME?: string;
+interface ITableRow {
+    table_name: string;
+    table_comment?: string;
 }
 
 interface IColumnMetadataMariaDB {
@@ -183,25 +183,34 @@ export class DialectMariaDB extends Dialect {
      * @param {IConfig} config
      * @returns {Promise<string[]>}
      */
-    protected async fetchTableNames(
+    protected async fetchTables(
         connection: Sequelize,
         config: IConfig
-    ): Promise<string[]> {
+    ): Promise<ITable[]> {
         const query = `
-            SELECT table_name 
+            SELECT
+                table_name      AS table_name, 
+                table_comment   AS table_comment  
             FROM information_schema.tables
             WHERE table_schema = '${config.connection.database}';
         `;
 
-        const tableNames: string[] = (await connection.query(
+        const tables: ITable[] = (await connection.query(
             query,
             {
                 type: QueryTypes.SELECT,
                 raw: true,
             }
-        ) as ITableNameRow[]).map(row => row.table_name ?? row.TABLE_NAME!);
+        ) as ITableRow[]).map(({ table_name, table_comment }) => {
+            const t: ITable = {
+                name: table_name,
+                comment: table_comment ?? undefined,
+            };
 
-        return tableNames;
+            return t;
+        });
+
+        return tables;
     }
 
     /**

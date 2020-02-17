@@ -1,11 +1,12 @@
 import { QueryTypes, AbstractDataTypeConstructor, IndexMethod } from 'sequelize';
 import { Sequelize, DataType } from 'sequelize-typescript';
 import { IConfig } from '../config';
-import { IColumnMetadata, Dialect, IIndexMetadata } from './Dialect';
+import { IColumnMetadata, Dialect, IIndexMetadata, ITable } from './Dialect';
 import { warnUnknownMappingForDataType } from './utils';
 
-interface ITableNameRow {
-    name: string;
+interface ITableRow {
+    table_name: string;
+    table_comment?: string;
 }
 
 interface IColumnMetadataSQLite {
@@ -86,27 +87,35 @@ export class DialectSQLite extends Dialect {
      * Fetch table names for the provided database/schema
      * @param {Sequelize} connection
      * @param {IConfig} config
-     * @returns {Promise<string[]>}
+     * @returns {Promise<ITable[]>}
      */
-    protected async fetchTableNames(
+    protected async fetchTables(
         connection: Sequelize,
         config: IConfig
-    ): Promise<string[]> {
+    ): Promise<ITable[]> {
         const query = `
-            SELECT name
+            SELECT 
+                name    AS table_name
             FROM sqlite_master
             WHERE type ='table' AND name NOT LIKE 'sqlite_%';
         `;
 
-        const tableNames: string[] = (await connection.query(
+        const tables: ITable[] = (await connection.query(
             query,
             {
                 type: QueryTypes.SELECT,
                 raw: true,
             }
-        ) as ITableNameRow[]).map(row => row.name);
+        ) as ITableRow[]).map(({ table_name, table_comment }) => {
+            const t: ITable = {
+                name: table_name,
+                comment: table_comment ?? undefined,
+            };
 
-        return tableNames;
+            return t;
+        });
+
+        return tables;
     }
 
     protected async fetchColumnsMetadata(

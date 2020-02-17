@@ -49,6 +49,11 @@ export interface IIndexMetadata {
     seq?: number;
 }
 
+export interface ITable {
+    name: string;
+    comment?: string;
+}
+
 export abstract class Dialect {
 
     /**
@@ -83,10 +88,10 @@ export abstract class Dialect {
      * @param {IConfig} config
      * @returns {Promise<string[]>}
      */
-    protected abstract async fetchTableNames(
+    protected abstract async fetchTables(
         connection: Sequelize,
         config: IConfig
-    ): Promise<string[]>;
+    ): Promise<ITable[]>;
 
     /**
      * Fetch columns metadata for the provided schema and table
@@ -138,43 +143,43 @@ export abstract class Dialect {
 
             await connection.authenticate();
 
-            let tables = await this.fetchTableNames(connection, config);
+            let tables = await this.fetchTables(connection, config);
 
             // Apply filters
             tables = tables
-                .filter(tableName => {
+                .filter(({ name }) => {
                     if (config.metadata?.tables?.length) {
-                        return config.metadata.tables.includes(tableName.toLowerCase());
+                        return config.metadata.tables.includes(name.toLowerCase());
                     }
                     else {
                         return true;
                     }
-                }).filter(tableName => {
+                }).filter(({ name }) => {
                     if (config.metadata?.skipTables?.length) {
-                        return !(config.metadata.skipTables.includes(tableName.toLowerCase()));
+                        return !(config.metadata.skipTables.includes(name.toLowerCase()));
                     }
                     else {
                         return true;
                     }
                 });
 
-            for (const table of tables) {
-                const columnsMetadata = await this.fetchColumnsMetadata(connection, config, table);
+            for (const { name: tableName, comment: tableComment } of tables) {
+                const columnsMetadata = await this.fetchColumnsMetadata(connection, config, tableName);
 
                 // Fetch indices metadata if required
                 if (config.metadata?.indices) {
                     for (const column of columnsMetadata) {
-                        column.indices = await this.fetchColumnIndexMetadata(connection, config, table, column.name);
+                        column.indices = await this.fetchColumnIndexMetadata(connection, config, tableName, column.name);
                     }
                 }
 
                 const tableMetadata: ITableMetadata = {
-                    originName: table,
-                    name: table,
+                    originName: tableName,
+                    name: tableName,
                     ...config.metadata?.schema && { schema: config.metadata!.schema},
                     timestamps: config.metadata?.timestamps ?? false,
                     columns: {},
-                    comment: '', // TODO
+                    comment: tableComment ?? undefined,
                 };
 
                 for (const columnMetadata of columnsMetadata) {

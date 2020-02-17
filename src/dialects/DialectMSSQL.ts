@@ -1,12 +1,12 @@
 import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize, DataType } from 'sequelize-typescript';
 import { IConfig } from '../config';
-import { IColumnMetadata, IIndexMetadata, Dialect } from './Dialect';
+import { IColumnMetadata, IIndexMetadata, Dialect, ITable } from './Dialect';
 import { warnUnknownMappingForDataType } from './utils';
 
-interface ITableNameRow {
-    table_name?: string;
-    TABLE_NAME?: string;
+interface ITableRow {
+    table_name: string;
+    table_comment?: string;
 }
 
 interface IColumnMetadataMSSQL {
@@ -36,6 +36,7 @@ interface IColumnMetadataMSSQL {
     TABLE_CATALOG: string;
     TABLE_NAME: string;
     TABLE_SCHEMA: string;
+    COLUMN_COMMENT: string | null;
 }
 
 interface IIndexMetadataMSSQL {
@@ -170,27 +171,40 @@ export class DialectMSSQL extends Dialect {
      * Fetch table names for the provided database/schema
      * @param {Sequelize} connection
      * @param {IConfig} config
-     * @returns {Promise<string[]>}
+     * @returns {Promise<ITable[]>}
      */
-    protected async fetchTableNames(
+    protected async fetchTables(
         connection: Sequelize,
         config: IConfig
-    ): Promise<string[]> {
+    ): Promise<ITable[]> {
         const query = `
-            SELECT TABLE_NAME
-            FROM information_schema.tables
-            WHERE TABLE_CATALOG='${config.connection.database}';
+            SELECT
+                t.name               AS [table_name],
+                td.value             AS [table_comment]
+            FROM sysobjects t
+            INNER JOIN sysusers u
+                ON u.uid = t.uid
+            LEFT OUTER JOIN sys.extended_properties td
+                ON td.major_id = t.id AND td.minor_id = 0 AND td.name = 'MS_Description'
+            WHERE t.type = 'u';
         `;
 
-        const tableNames: string[] = (await connection.query(
+        const tables: ITable[] = (await connection.query(
             query,
             {
                 type: QueryTypes.SELECT,
                 raw: true,
             }
-        ) as ITableNameRow[]).map(row => row.table_name ?? row.TABLE_NAME!);
+        ) as ITableRow[]).map(({ table_name, table_comment }) => {
+            const t: ITable = {
+                name: table_name,
+                comment: table_comment ?? undefined,
+            };
 
-        return tableNames;
+            return t;
+        });
+
+        return tables;
     }
 
     /**
@@ -212,7 +226,8 @@ export class DialectMSSQL extends Dialect {
                 c.*,
                 CASE WHEN COLUMNPROPERTY(object_id(c.TABLE_SCHEMA +'.' + c.TABLE_NAME), c.COLUMN_NAME, 'IsIdentity') = 1 THEN 'YES' ELSE 'NO' END AS IS_IDENTITY, 
                 tc.CONSTRAINT_NAME, 
-                tc.CONSTRAINT_TYPE               
+                tc.CONSTRAINT_TYPE,
+                ep.value                AS [COLUMN_COMMENT]               
             FROM information_schema.columns c
             LEFT OUTER JOIN information_schema.key_column_usage ku
                  ON c.TABLE_CATALOG = ku.TABLE_CATALOG AND c.TABLE_NAME = ku.TABLE_NAME AND
@@ -220,6 +235,12 @@ export class DialectMSSQL extends Dialect {
             LEFT OUTER JOIN information_schema.table_constraints tc
                  ON c.TABLE_CATALOG = tc.TABLE_CATALOG AND c.TABLE_NAME = tc.TABLE_NAME AND
                     ku.CONSTRAINT_CATALOG = tc.CONSTRAINT_CATALOG AND ku.CONSTRAINT_NAME = tc.CONSTRAINT_NAME                    
+            INNER JOIN sysobjects t
+                ON c.TABLE_NAME = t.name AND t.type = 'u'
+            INNER JOIN syscolumns sc
+                ON sc.id = t.id AND sc.name = c.COLUMN_NAME
+            LEFT OUTER JOIN sys.extended_properties ep
+                 ON ep.major_id = sc.id AND ep.minor_id = sc.colid AND ep.name = 'MS_Description'                                        
             WHERE c.TABLE_CATALOG = '${config.connection.database}' AND c.TABLE_NAME = '${table}'
             ORDER BY c.ORDINAL_POSITION;
         `;
@@ -253,7 +274,7 @@ export class DialectMSSQL extends Dialect {
                 primaryKey: column.CONSTRAINT_TYPE?.toUpperCase() === 'PRIMARY KEY',
                 autoIncrement: column.IS_IDENTITY === 'YES',
                 indices: [],
-                comment: '', // TODO
+                comment: column.COLUMN_COMMENT ?? undefined,
             };
 
             // Additional data type information

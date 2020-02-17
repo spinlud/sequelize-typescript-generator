@@ -1,12 +1,12 @@
 import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize, DataType } from 'sequelize-typescript';
 import { IConfig } from '../config';
-import { IColumnMetadata, IIndexMetadata, Dialect } from './Dialect';
+import { IColumnMetadata, IIndexMetadata, Dialect, ITable } from './Dialect';
 import { warnUnknownMappingForDataType } from './utils';
 
-interface ITableNameRow {
-    table_name?: string;
-    TABLE_NAME?: string;
+interface ITableRow {
+    table_name: string;
+    table_comment?: string;
 }
 
 interface IColumnMetadataPostgres {
@@ -56,6 +56,7 @@ interface IColumnMetadataPostgres {
     is_generated: string;
     generation_expression: string;
     is_updatable: string;
+    description: string | null;
 }
 
 interface IIndexMetadataPostgres {
@@ -200,27 +201,38 @@ export class DialectPostgres extends Dialect {
      * Fetch table names for the provided database/schema
      * @param {Sequelize} connection
      * @param {IConfig} config
-     * @returns {Promise<string[]>}
+     * @returns {Promise<ITable[]>}
      */
-    protected async fetchTableNames(
+    protected async fetchTables(
         connection: Sequelize,
         config: IConfig
-    ): Promise<string[]> {
+    ): Promise<ITable[]> {
         const query = `
-            SELECT table_name
-            FROM information_schema.tables
-            WHERE table_schema='${config.metadata!.schema}';
+            SELECT 
+                t.table_name             AS table_name,
+                obj_description(oid)     AS table_comment
+            FROM information_schema.tables t
+            JOIN pg_class pc
+                ON t.table_name = pc.relname
+            WHERE t.table_schema='${config.metadata!.schema}' AND pc.relkind = 'r';
         `;
 
-        const tableNames: string[] = (await connection.query(
+        const tables: ITable[] = (await connection.query(
             query,
             {
                 type: QueryTypes.SELECT,
                 raw: true,
             }
-        ) as ITableNameRow[]).map(row => row.table_name ?? row.TABLE_NAME!);
+        ) as ITableRow[]).map(({ table_name, table_comment }) => {
+            const t: ITable = {
+                name: table_name,
+                comment: table_comment ?? undefined,
+            };
 
-        return tableNames;
+            return t;
+        });
+
+        return tables;
     }
 
     /**
@@ -249,8 +261,13 @@ export class DialectPostgres extends Dialect {
                     WHERE a.attrelid = '${config.metadata!.schema}.${table}'::regclass AND a.attnum > 0
                         AND c.ordinal_position = a.attnum AND x.indisprimary IS TRUE
                 ) AS is_primary,
-                c.*
+                c.*,
+                pgd.description
             FROM information_schema.columns c
+            INNER JOIN pg_catalog.pg_statio_all_tables as st
+                ON c.table_schema = st.schemaname AND c.table_name = st.relname
+            LEFT OUTER JOIN pg_catalog.pg_description pgd
+                ON pgd.objoid = st.relid AND pgd.objsubid = c.ordinal_position
             LEFT OUTER JOIN ( -- Sequences (auto increment) metadata
                 SELECT seqclass.relname AS sequence_name,
                        pn.nspname       AS schema_name,
@@ -303,7 +320,7 @@ export class DialectPostgres extends Dialect {
                 primaryKey: column.is_primary,
                 autoIncrement: column.is_sequence,
                 indices: [],
-                comment: '', // TODO
+                comment: column.description ?? undefined,
             };
 
             // Additional data type information

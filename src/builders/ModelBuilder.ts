@@ -42,10 +42,11 @@ export class ModelBuilder extends Builder {
                 ...col.autoIncrement && { autoIncrement: col.autoIncrement },
                 ...col.allowNull && { allowNull: col.allowNull },
                 ...col.dataType && { type: col.dataType },
+                ...col.comment && { comment: col.comment },
             };
 
             return props;
-        }
+        };
 
         const buildIndexDecoratorProps = (index: IIndexMetadata): Partial<IndexOptions & IndexFieldOptions> => {
             const props: Partial<IndexOptions & IndexFieldOptions> = {
@@ -56,7 +57,7 @@ export class ModelBuilder extends Builder {
             };
 
             return props;
-        }
+        };
 
 
         return ts.createProperty(
@@ -121,7 +122,7 @@ export class ModelBuilder extends Builder {
                     tableName: tableName,
                     ...tableMetadata.schema && { schema: tableMetadata.schema },
                     timestamps: tableMetadata.timestamps,
-                    comment: tableMetadata.comment,
+                    ...tableMetadata.comment && { comment: tableMetadata.comment },
                 })
             ],
             [
