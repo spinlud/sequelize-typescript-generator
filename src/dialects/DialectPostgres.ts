@@ -209,8 +209,8 @@ export class DialectPostgres extends Dialect {
     ): Promise<ITable[]> {
         const query = `
             SELECT 
-                t.table_name             AS table_name,
-                obj_description(oid)     AS table_comment
+                t.table_name                AS table_name,
+                obj_description(pc.oid)     AS table_comment
             FROM information_schema.tables t
             JOIN pg_class pc
                 ON t.table_name = pc.relname
