@@ -47,8 +47,7 @@ export const DATA_TYPES_TABLE_CREATES = [
             f_polygon     polygon,
             f_circle      circle,       
             f_json        json,
-            f_jsonb       jsonb,
-            f_jsonpath    jsonpath
+            f_jsonb       jsonb            
         )
     `,
 ];

@@ -29,20 +29,20 @@ const applyGeomFromTextWorkaroundMySQL = (): void => { // Reference: https://git
     // @ts-ignore
     Sequelize.GEOMETRY.prototype._stringify = function _stringify(value, options) {
         return `ST_GeomFromText(${options.escape(wkx.Geometry.parseGeoJSON(value).toWkt())})`;
-    }
+    };
     // @ts-ignore
     Sequelize.GEOMETRY.prototype._bindParam = function _bindParam(value, options) {
         return `ST_GeomFromText(${options.bindParam(wkx.Geometry.parseGeoJSON(value).toWkt())})`;
-    }
+    };
     // @ts-ignore
     Sequelize.GEOGRAPHY.prototype._stringify = function _stringify(value, options) {
         return `ST_GeomFromText(${options.escape(wkx.Geometry.parseGeoJSON(value).toWkt())})`;
-    }
+    };
     // @ts-ignore
     Sequelize.GEOGRAPHY.prototype._bindParam = function _bindParam(value, options) {
         return `ST_GeomFromText(${options.bindParam(wkx.Geometry.parseGeoJSON(value).toWkt())})`;
     }
-}
+};
 
 /**
  *
@@ -53,7 +53,7 @@ const getObjectType = (obj: any): string => {
         .replace(/[\[\]]/g, '')
         .split(' ')[1]
         .toLowerCase();
-}
+};
 
 /**
  *
@@ -102,7 +102,7 @@ const buildDialect = (testMetadata: ITestMetadata): Dialect => {
         default:
             throw new Error(`Invalid dialect ${testMetadata.dialect}`);
     }
-}
+};
 
 export class TestRunner {
     constructor(private testMetadata: ITestMetadata) {}
@@ -144,7 +144,7 @@ export class TestRunner {
                         connection!.model(testTable.name);
                         expect(connection!.isDefined(testTable.name)).toBe(true);
                     }
-                }
+                };
 
                 beforeEach(async () => {
                     connection = createConnection({ ...sequelizeOptions });

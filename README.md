@@ -1,11 +1,11 @@
 # sequelize-typescript-generator
 > Automatically generates typescript models compatible with [sequelize-typescript](https://www.npmjs.com/package/sequelize-typescript) library.  
-> Supported databases: Postgres, MySQL, MariaDB, MSSQL, SQLite.
 
 ## Table of Contents
 
 <!-- toc -->
 
+* [Supported databases](#supported-databases)
 * [Prerequisites](#prerequisites)
 * [Installation](#installation)
 * [CLI usage](#cli-usage)
@@ -17,6 +17,16 @@
 * [Lint](#lint)
 
 <!-- toc stop -->
+
+## Supported databases
+
+Currently tested databases:
+
+- Postgres (10, 11, 12)
+- Mysql (5, 8)
+- MariaDB (10)
+- SQL Server (2017, 2019)
+- SQLite (3)
 
 ## Prerequisites
 Prerequisites are the same of the [sequelize-typescript](https://www.npmjs.com/package/sequelize-typescript#installation) library.
