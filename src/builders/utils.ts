@@ -17,7 +17,7 @@ export const nodeToString = (node: ts.Node): string => {
     );
 
     return printer.printNode(ts.EmitHint.Unspecified, node, sourceFile);
-}
+};
 
 /**
  * Generate named imports code (e.g. `import { Something, Else } from "module"`)
@@ -40,7 +40,7 @@ export const generateNamedImports = (importsSpecifier: string[], moduleSpecifier
         ),
         ts.createLiteral(moduleSpecifier)
     );
-}
+};
 
 /**
  *
@@ -68,7 +68,7 @@ export const generateObjectLiteralDecorator = (
             ]
         )
     );
-}
+};
 
 /**
  *
@@ -95,4 +95,4 @@ export const generateArrowDecorator = (
             )
         )
     );
-}
+};
