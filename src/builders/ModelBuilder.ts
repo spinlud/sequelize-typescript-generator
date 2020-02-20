@@ -37,7 +37,7 @@ export class ModelBuilder extends Builder {
 
         const buildColumnDecoratorProps = (col: IColumnMetadata): Partial<ModelAttributeColumnOptions> => {
             const props: Partial<ModelAttributeColumnOptions> = {
-                ...col.originName && { field: col.originName },
+                ...col.originName && col.name !== col.originName && { field: col.originName },
                 ...col.primaryKey && { primaryKey: col.primaryKey },
                 ...col.autoIncrement && { autoIncrement: col.autoIncrement },
                 ...col.allowNull && { allowNull: col.allowNull },
@@ -94,7 +94,18 @@ export class ModelBuilder extends Builder {
 
         return ts.createProperty(
             [
-                generateArrowDecorator(associationName, targetModels),
+                ...(association.sourceKey ?
+                        [
+                            generateArrowDecorator(
+                                associationName,
+                                targetModels,
+                                { sourceKey: association.sourceKey }
+                            )
+                        ]
+                        : [
+                            generateArrowDecorator(associationName, targetModels)
+                        ]
+                ),
             ],
             undefined,
             associationName.includes('Many') ?

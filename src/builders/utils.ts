@@ -43,7 +43,7 @@ export const generateNamedImports = (importsSpecifier: string[], moduleSpecifier
 };
 
 /**
- *
+ * generateObjectLiteralDecorator
  * @param {string} decoratorIdentifier
  * @param {[key: string]: any} props
  * @return {ts.Decorator}
@@ -71,28 +71,39 @@ export const generateObjectLiteralDecorator = (
 };
 
 /**
- *
+ * generateArrowDecorator
  * @param decoratorIdentifier
  * @param arrowTargetIdentifiers
  */
 export const generateArrowDecorator = (
     decoratorIdentifier: string,
-    arrowTargetIdentifiers: string[]
+    arrowTargetIdentifiers: string[],
+    objectLiteralProps?: object
 ): ts.Decorator => {
+    const argumentsArray: ts.Expression[] = arrowTargetIdentifiers.map(t =>
+        ts.createArrowFunction(
+            undefined,
+            undefined,
+            [],
+            undefined,
+            ts.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+            ts.createIdentifier(t)
+        ),
+    );
+
+    objectLiteralProps && argumentsArray.push(
+        ts.createObjectLiteral([
+            ...Object.entries(objectLiteralProps).map(e =>
+                ts.createPropertyAssignment(e[0], ts.createLiteral(e[1]))
+            )
+        ])
+    );
+
     return ts.createDecorator(
         ts.createCall(
             ts.createIdentifier(decoratorIdentifier),
             undefined,
-            arrowTargetIdentifiers.map(t =>
-                ts.createArrowFunction(
-                    undefined,
-                    undefined,
-                    [],
-                    undefined,
-                    ts.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-                    ts.createIdentifier(t)
-                ),
-            )
+            argumentsArray
         )
     );
 };

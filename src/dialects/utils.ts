@@ -70,6 +70,10 @@ export const caseTransformer = (
                     a.joinModel = transformer(a.joinModel);
                 }
 
+                if (a.sourceKey) {
+                    a.sourceKey = transformer(a.sourceKey);
+                }
+
                 return a;
             })
         },
