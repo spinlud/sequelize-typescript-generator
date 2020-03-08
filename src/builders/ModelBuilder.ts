@@ -6,14 +6,15 @@ import { Linter } from '../lint';
 import { ModelAttributeColumnOptions } from 'sequelize';
 import { IndexOptions, IndexFieldOptions } from 'sequelize-typescript';
 import { IConfig } from '../config';
-import { IColumnMetadata, ITableMetadata, IIndexMetadata, Dialect } from '../dialects/Dialect';
+import {IColumnMetadata, ITableMetadata, IIndexMetadata, Dialect, ITablesMetadata} from '../dialects/Dialect';
 import { IAssociationMetadata } from '../dialects/AssociationsParser';
 import { Builder } from './Builder';
 import {
+    nodeToString,
     generateArrowDecorator,
     generateNamedImports,
     generateObjectLiteralDecorator,
-    nodeToString
+    generateIndexExport,
 } from './utils';
 
 const foreignKeyDecorator = 'ForeignKey';
@@ -207,6 +208,17 @@ export class ModelBuilder extends Builder {
     }
 
     /**
+     * Build main index file
+     * @param {ITableMetadata[]} tablesMetadata
+     * @returns {string}
+     */
+    private static buildIndexExports(tablesMetadata: ITablesMetadata): string {
+        return Object.values(tablesMetadata)
+            .map(t =>  nodeToString(generateIndexExport(t.name)))
+            .join('\n');
+    }
+
+    /**
      * Build models files using the given configuration and dialect
      * @returns {Promise<void>}
      */
@@ -241,12 +253,12 @@ export class ModelBuilder extends Builder {
             }
         }
 
-        // Build files
+        // Build model files
         for (const tableMetadata of Object.values(tablesMetadata)) {
             const tableClassDecl = ModelBuilder.buildTableClassDeclaration(tableMetadata, this.dialect);
 
             writePromises.push((async () => {
-                const outPath = path.join(outDir, tableMetadata.name + '.ts');
+                const outPath = path.join(outDir, `${tableMetadata.name}.ts`);
 
                 await fs.writeFile(
                     outPath,
@@ -257,6 +269,19 @@ export class ModelBuilder extends Builder {
                 console.log(`Generated file ${outPath}`);
             })());
         }
+
+        // Build index file
+        writePromises.push((async () => {
+            const indexPath = path.join(outDir, 'index.ts');
+            const indexContent = ModelBuilder.buildIndexExports(tablesMetadata);
+
+            await fs.writeFile(
+                indexPath,
+                indexContent
+            );
+
+            console.log(`Generated file ${indexPath}`);
+        })());
 
         await Promise.all(writePromises);
 

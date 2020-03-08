@@ -21,8 +21,8 @@ export const nodeToString = (node: ts.Node): string => {
 
 /**
  * Generate named imports code (e.g. `import { Something, Else } from "module"`)
- * @param importsSpecifier {string[]}
- * @param moduleSpecifier {string}
+ * @param {string[]} importsSpecifier
+ * @param {string} moduleSpecifier
  * @returns {string} Named import code
  */
 export const generateNamedImports = (importsSpecifier: string[], moduleSpecifier: string): ts.ImportDeclaration => {
@@ -43,7 +43,21 @@ export const generateNamedImports = (importsSpecifier: string[], moduleSpecifier
 };
 
 /**
- * generateObjectLiteralDecorator
+ * Generate model export for index file
+ * @param {string} modelFileName
+ * @returns {ts.ExportDeclaration}
+ */
+export const generateIndexExport = (modelFileName: string): ts.ExportDeclaration => {
+    return ts.createExportDeclaration(
+        [],
+        undefined,
+        undefined,
+        ts.createLiteral(`./${modelFileName}`)
+    );
+};
+
+/**
+ * Generate object literal decorator
  * @param {string} decoratorIdentifier
  * @param {[key: string]: any} props
  * @return {ts.Decorator}
@@ -71,9 +85,11 @@ export const generateObjectLiteralDecorator = (
 };
 
 /**
- * generateArrowDecorator
- * @param decoratorIdentifier
- * @param arrowTargetIdentifiers
+ * Generate arrow decorator
+ * @param {string} decoratorIdentifier
+ * @param {string[]} arrowTargetIdentifiers
+ * @param {object} objectLiteralProps
+ * @returns {ts.Decorator}
  */
 export const generateArrowDecorator = (
     decoratorIdentifier: string,
