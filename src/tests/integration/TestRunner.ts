@@ -113,6 +113,7 @@ export class TestRunner {
         describe(testMetadata.name, () => {
             jest.setTimeout(120000);
             const outDir = path.join(process.cwd(), 'output-models');
+            const indexDir = path.join(outDir, 'index.ts');
             const associationsFilePath = path.join(process.cwd(), 'src', 'tests', 'integration', 'associations.csv');
             const sequelizeOptions = buildSequelizeOptions(testMetadata.dialect);
 
@@ -138,7 +139,10 @@ export class TestRunner {
                     const builder = new ModelBuilder(config, dialect);
                     await builder.build();
 
-                    connection!.addModels([ outDir ]);
+                    const models = await import(path.join(outDir, 'index.ts'));
+
+                    // @ts-ignore
+                    connection!.addModels([ ...Object.values(models) ]);
 
                     for (const testTable of testTables) {
                         connection!.model(testTable.name);
@@ -198,6 +202,7 @@ export class TestRunner {
                     const dialect = buildDialect(testMetadata);
                     const builder = new ModelBuilder(config, dialect);
                     await builder.build();
+                    await fs.unlink(indexDir);
                 });
 
                 afterAll(async () => {
@@ -244,6 +249,7 @@ export class TestRunner {
                     const dialect = buildDialect(testMetadata);
                     const builder = new ModelBuilder(config, dialect);
                     await builder.build();
+                    await fs.unlink(indexDir);
                 });
 
                 afterAll(async () => {
@@ -341,7 +347,10 @@ export class TestRunner {
                     const builder = new ModelBuilder(config, dialect);
                     await builder.build();
 
-                    connection!.addModels([ outDir ]);
+                    const models = await import(indexDir);
+
+                    // @ts-ignore
+                    connection!.addModels([ ...Object.values(models) ]);
                 });
 
                 afterAll(async () => {
@@ -411,7 +420,11 @@ export class TestRunner {
                     const dialect = buildDialect(testMetadata);
                     const builder = new ModelBuilder(config, dialect);
                     await builder.build();
-                    connection!.addModels([ outDir ]);
+
+                    const models = await import(indexDir);
+
+                    // @ts-ignore
+                    connection!.addModels([ ...Object.values(models) ]);
                 });
 
                 afterAll(async () => {
