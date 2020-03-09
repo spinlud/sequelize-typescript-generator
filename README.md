@@ -340,7 +340,7 @@ export class person extends Model<person> {
 
     @Column({
     	field: "name",
-    	type: DataType.STRING 
+    	type: DataType.STRING(80) 
     })
     name!: string;
 
@@ -391,7 +391,7 @@ export class passport extends Model<passport> {
 
     @Column({
     	field: "code",
-    	type: DataType.STRING 
+    	type: DataType.STRING(80) 
     })
     code!: string;
 
@@ -474,7 +474,7 @@ export class races extends Model<races> {
 
     @Column({
     	field: "race_name",
-    	type: DataType.STRING 
+    	type: DataType.STRING(80) 
     })
     race_name!: string;
 
@@ -512,7 +512,7 @@ export class units extends Model<units> {
 
     @Column({
     	field: "unit_name",
-    	type: DataType.STRING 
+    	type: DataType.STRING(80) 
     })
     unit_name!: string;
 
@@ -610,7 +610,7 @@ export class authors extends Model<authors> {
 
     @Column({
     	field: "full_name",
-    	type: DataType.STRING 
+    	type: DataType.STRING(80) 
     })
     full_name!: string;
 
@@ -649,7 +649,7 @@ export class books extends Model<books> {
 
     @Column({
     	field: "title",
-    	type: DataType.STRING 
+    	type: DataType.STRING(80) 
     })
     title!: string;
 
@@ -716,16 +716,11 @@ export const eslintDefaultConfig = {
     },
     plugins: [
         '@typescript-eslint',
-        'eslint-plugin-import',
     ],
-    extends:  [        
-        'plugin:import/warnings',
-        'plugin:import/typescript',
-    ],
+    extends:  [],
     rules:  {
         'padded-blocks': ['error', { blocks: 'always', classes: 'always', switches: 'always' }],
         'lines-between-class-members': ['error', 'always' ],
-        'import/newline-after-import': ['error', { 'count': 2 }],
         'object-curly-newline': ['error', {
             'ObjectExpression': 'always',
             'ObjectPattern': { 'multiline': true },
