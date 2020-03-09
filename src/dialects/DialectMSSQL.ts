@@ -2,7 +2,7 @@ import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize, DataType } from 'sequelize-typescript';
 import { IConfig } from '../config';
 import { IColumnMetadata, IIndexMetadata, Dialect, ITable } from './Dialect';
-import { warnUnknownMappingForDataType } from './utils';
+import { generatePrecisionSignature, warnUnknownMappingForDataType } from './utils';
 
 interface ITableRow {
     table_name: string;
@@ -55,32 +55,6 @@ interface IIndexMetadataMSSQL {
     type_desc: string;
 }
 
-/**
- * Compute precision/scale signature for numeric types: FLOAT(4, 2), DECIMAL(5, 2) etc
- * @param {IColumnMetadataMSSQL} columnMetadataMSSQL
- * @returns {string} '(5, 2)'
- */
-const numericPrecisionScaleMSSQL = (columnMetadataMSSQL: IColumnMetadataMSSQL): string => {
-    let res = `(${columnMetadataMSSQL.NUMERIC_PRECISION}`;
-    res +=  columnMetadataMSSQL.NUMERIC_SCALE ?
-        `, ${columnMetadataMSSQL.NUMERIC_SCALE})` : `)`;
-    return res;
-};
-
-/**
- * Compute date time precision signature: TIMESTAMP(3), DATETIME(6)
- * @param {IColumnMetadataMSSQL} columnMetadataMSSQL
- * @returns {string} '(3)'
- */
-const dateTimePrecisionMSSQL = (columnMetadataMSSQL: IColumnMetadataMSSQL): string => {
-    if (columnMetadataMSSQL.DATETIME_PRECISION) {
-        return `(${columnMetadataMSSQL.DATETIME_PRECISION})`;
-    }
-    else {
-        return '';
-    }
-};
-
 const jsDataTypesMap: { [key: string]: string } = {
     int: 'number',
     bigint: 'string',
@@ -110,7 +84,7 @@ const jsDataTypesMap: { [key: string]: string } = {
     varbinary: 'Uint8Array',
     uniqueidentifier: 'string',
     xml: 'string',
-}
+};
 
 const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
     int: DataType.INTEGER,
@@ -141,7 +115,7 @@ const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
     varbinary: DataType.STRING,
     uniqueidentifier: DataType.STRING,
     xml: DataType.STRING,
-}
+};
 
 /**
  * Dialect for Postgres
@@ -283,11 +257,19 @@ export class DialectMSSQL extends Dialect {
                 case 'numeric':
                 case 'float':
                 case 'double':
-                    columnMetadata.dataType += numericPrecisionScaleMSSQL(column);
+                    columnMetadata.dataType +=
+                        generatePrecisionSignature(column.NUMERIC_PRECISION, column.NUMERIC_SCALE);
                     break;
 
                 case 'datetime2':
-                    columnMetadata.dataType += dateTimePrecisionMSSQL(column);
+                    columnMetadata.dataType += generatePrecisionSignature(column.DATETIME_PRECISION);
+                    break;
+
+                case 'char':
+                case 'nchar':
+                case 'varchar':
+                case 'nvarchar':
+                    columnMetadata.dataType += generatePrecisionSignature(column.CHARACTER_MAXIMUM_LENGTH);
                     break;
             }
 

@@ -18,7 +18,7 @@ export const DATA_TYPES_TABLE_CREATES = [
             f_money            MONEY,
             f_char             CHAR(1),
             f_character        CHARACTER(1),
-            f_nchar            NCHAR(1),
+            f_nchar            NCHAR,
             f_varchar          VARCHAR(80),
             f_nvarchar         NVARCHAR(80),
             f_text             TEXT,

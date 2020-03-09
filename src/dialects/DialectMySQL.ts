@@ -2,7 +2,7 @@ import { QueryTypes, AbstractDataTypeConstructor, IndexMethod } from 'sequelize'
 import { Sequelize, DataType } from 'sequelize-typescript';
 import { IConfig } from '../config';
 import { IColumnMetadata, Dialect, IIndexMetadata, ITable } from './Dialect';
-import { warnUnknownMappingForDataType } from './utils';
+import { warnUnknownMappingForDataType, generatePrecisionSignature } from './utils';
 
 interface ITableRow {
     table_name: string;
@@ -18,7 +18,7 @@ interface IColumnMetadataMySQL {
     COLUMN_DEFAULT?: string;
     IS_NULLABLE: string;
     DATA_TYPE: string;
-    CHARACTER_MAXIMUM_LENGTH?: string;
+    CHARACTER_MAXIMUM_LENGTH: number;
     CHARACTER_OCTET_LENGTH?: string;
     NUMERIC_PRECISION?: number;
     NUMERIC_SCALE?: number;
@@ -48,32 +48,6 @@ interface IIndexMetadataMySQL {
     COMMENT: string | null;
     INDEX_COMMENT: string | null;
 }
-
-/**
- * Compute precision/scale signature for numeric types: FLOAT(4, 2), DECIMAL(5, 2) etc
- * @param {IColumnMetadataMySQL} columnMetadataMySQL
- * @returns {string} '(5, 2)'
- */
-const numericPrecisionScaleMySQL = (columnMetadataMySQL: IColumnMetadataMySQL): string => {
-    let res = `(${columnMetadataMySQL.NUMERIC_PRECISION}`;
-    res +=  columnMetadataMySQL.NUMERIC_SCALE ?
-        `, ${columnMetadataMySQL.NUMERIC_SCALE})` : `)`;
-    return res;
-};
-
-/**
- * Compute date time precision signature: TIMESTAMP(3), DATETIME(6)
- * @param {IColumnMetadataMySQL} columnMetadataMySQL
- * @returns {string} '(3)'
- */
-const dateTimePrecisionMySQL = (columnMetadataMySQL: IColumnMetadataMySQL): string => {
-    if (columnMetadataMySQL.DATETIME_PRECISION) {
-        return `(${columnMetadataMySQL.DATETIME_PRECISION})`;
-    }
-    else {
-        return '';
-    }
-};
 
 const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
     bigint: DataType.BIGINT,
@@ -151,7 +125,7 @@ const jsDataTypesMap: { [key: string]: string } = {
     geometry: 'object',
     geometrycollection: 'object',
     json: 'object',
-}
+};
 
 /**
  * Dialect for MySQL
@@ -235,6 +209,7 @@ export class DialectMySQL extends Dialect {
                 c.COLUMN_NAME,
                 c.DATA_TYPE,
                 c.COLUMN_TYPE,
+                c.CHARACTER_MAXIMUM_LENGTH,
                 c.NUMERIC_PRECISION,
                 c.NUMERIC_SCALE,
                 c.DATETIME_PRECISION,                                             
@@ -286,12 +261,18 @@ export class DialectMySQL extends Dialect {
                 case 'numeric':
                 case 'float':
                 case 'double':
-                    columnMetadata.dataType += numericPrecisionScaleMySQL(column);
+                    columnMetadata.dataType +=
+                        generatePrecisionSignature(column.NUMERIC_PRECISION, column.NUMERIC_SCALE);
                     break;
 
                 case 'datetime':
                 case 'timestamp':
-                    columnMetadata.dataType += dateTimePrecisionMySQL(column);
+                    columnMetadata.dataType += generatePrecisionSignature(column.DATETIME_PRECISION);
+                    break;
+
+                case 'char':
+                case 'varchar':
+                    columnMetadata.dataType += generatePrecisionSignature(column.CHARACTER_MAXIMUM_LENGTH);
                     break;
             }
 

@@ -42,7 +42,7 @@ export const getTransformer = (transformCase: TransformCase): (s: string) => str
     }
 
     return transformer;
-}
+};
 
 /**
  * Transform ITableMetadata object using the provided case
@@ -99,15 +99,27 @@ export const caseTransformer = (
     }
 
     return transformed;
-}
+};
 
 /**
- *
- * @param dataType
+ * Unknown mapping warning
+ * @param {string} dataType
+ * @returns {string}
  */
 export const warnUnknownMappingForDataType = (dataType: string) => {
     console.warn(`[Warning]`,
 `Unknown data type mapping for type '${dataType}'. 
         You should define the data type manually.     
     `);
-}
+};
+
+/**
+ * Generates precision signature
+ * @param {Array<string|number>} args
+ * @returns {string} (80) or (10,4) or ...
+ */
+export const generatePrecisionSignature = (...args: Array<string|number|undefined|null>): string => {
+    const tokens = args.filter(arg => !!arg);
+
+    return tokens.length ? `(${tokens.join(',')})` : '';
+};
