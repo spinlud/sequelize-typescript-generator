@@ -2,7 +2,7 @@ import { QueryTypes, AbstractDataTypeConstructor, IndexMethod } from 'sequelize'
 import { Sequelize, DataType } from 'sequelize-typescript';
 import { IConfig } from '../config';
 import { IColumnMetadata, Dialect, IIndexMetadata, ITable } from './Dialect';
-import { warnUnknownMappingForDataType } from './utils';
+import { generatePrecisionSignature, warnUnknownMappingForDataType } from './utils';
 
 interface ITableRow {
     table_name: string;
@@ -18,7 +18,7 @@ interface IColumnMetadataMariaDB {
     COLUMN_DEFAULT?: string;
     IS_NULLABLE: string;
     DATA_TYPE: string;
-    CHARACTER_MAXIMUM_LENGTH?: string;
+    CHARACTER_MAXIMUM_LENGTH: number;
     CHARACTER_OCTET_LENGTH?: string;
     NUMERIC_PRECISION?: number;
     NUMERIC_SCALE?: number;
@@ -48,32 +48,6 @@ interface IIndexMetadataMariaDB {
     COMMENT: string | null;
     INDEX_COMMENT: string | null;
 }
-
-/**
- * Compute precision/scale signature for numeric types: FLOAT(4, 2), DECIMAL(5, 2) etc
- * @param {IColumnMetadataMariaDB} columnMetadataMariaDB
- * @returns {string} '(5, 2)'
- */
-const numericPrecisionScaleMariaDB = (columnMetadataMariaDB: IColumnMetadataMariaDB): string => {
-    let res = `(${columnMetadataMariaDB.NUMERIC_PRECISION}`;
-    res +=  columnMetadataMariaDB.NUMERIC_SCALE ?
-        `, ${columnMetadataMariaDB.NUMERIC_SCALE})` : `)`;
-    return res;
-};
-
-/**
- * Compute date time precision signature: TIMESTAMP(3), DATETIME(6)
- * @param {IColumnMetadataMariaDB} columnMetadataMariaDB
- * @returns {string} '(3)'
- */
-const dateTimePrecisionMariaDB = (columnMetadataMariaDB: IColumnMetadataMariaDB): string => {
-    if (columnMetadataMariaDB.DATETIME_PRECISION) {
-        return `(${columnMetadataMariaDB.DATETIME_PRECISION})`;
-    }
-    else {
-        return '';
-    }
-};
 
 const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
     bigint: DataType.BIGINT,
@@ -235,6 +209,7 @@ export class DialectMariaDB extends Dialect {
                 c.COLUMN_NAME,
                 c.DATA_TYPE,
                 c.COLUMN_TYPE,
+                c.CHARACTER_MAXIMUM_LENGTH,
                 c.NUMERIC_PRECISION,
                 c.NUMERIC_SCALE,
                 c.DATETIME_PRECISION,                                             
@@ -286,12 +261,18 @@ export class DialectMariaDB extends Dialect {
                 case 'numeric':
                 case 'float':
                 case 'double':
-                    columnMetadata.dataType += numericPrecisionScaleMariaDB(column);
+                    columnMetadata.dataType +=
+                        generatePrecisionSignature(column.NUMERIC_PRECISION, column.NUMERIC_SCALE);
                     break;
 
                 case 'datetime':
                 case 'timestamp':
-                    columnMetadata.dataType += dateTimePrecisionMariaDB(column);
+                    columnMetadata.dataType += generatePrecisionSignature(column.DATETIME_PRECISION);
+                    break;
+
+                case 'char':
+                case 'varchar':
+                    columnMetadata.dataType += generatePrecisionSignature(column.CHARACTER_MAXIMUM_LENGTH);
                     break;
             }
 

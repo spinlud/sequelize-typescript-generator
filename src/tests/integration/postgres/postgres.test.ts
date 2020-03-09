@@ -142,7 +142,7 @@ const testMetadata: ITestMetadata = {
             ['money', '$100,000.00'],
             ['varchar', 'Hello world'],
             ['char', 'A'],
-            ['character', 'A'],
+            ['character', 'AB'],
             ['text', 'xYz'],
             ['cidr', '10.0.0.0/16'],
             ['inet', '192.168.100.128/25'],

@@ -2,7 +2,7 @@ import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize, DataType } from 'sequelize-typescript';
 import { IConfig } from '../config';
 import { IColumnMetadata, IIndexMetadata, Dialect, ITable } from './Dialect';
-import { warnUnknownMappingForDataType } from './utils';
+import { generatePrecisionSignature, warnUnknownMappingForDataType } from './utils';
 
 interface ITableRow {
     table_name: string;
@@ -68,32 +68,6 @@ interface IIndexMetadataPostgres {
     column_name: string;
     ordinal_position: string;
 }
-
-/**
- * Compute precision/scale signature for numeric types: FLOAT(4, 2), DECIMAL(5, 2) etc
- * @param {IColumnMetadataPostgres} columnMetadataPostgres
- * @returns {string} '(5, 2)'
- */
-const numericPrecisionScalePostgres = (columnMetadataPostgres: IColumnMetadataPostgres): string => {
-    let res = `(${columnMetadataPostgres.numeric_precision}`;
-    res +=  columnMetadataPostgres.numeric_scale ?
-        `, ${columnMetadataPostgres.numeric_scale})` : `)`;
-    return res;
-};
-
-/**
- * Compute date time precision signature: TIMESTAMP(3), DATETIME(6)
- * @param {IColumnMetadataPostgres} columnMetadataPostgres
- * @returns {string} '(3)'
- */
-const dateTimePrecisionPostgres = (columnMetadataPostgres: IColumnMetadataPostgres): string => {
-    if (columnMetadataPostgres.datetime_precision) {
-        return `(${columnMetadataPostgres.datetime_precision})`;
-    }
-    else {
-        return '';
-    }
-};
 
 const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
     int2: DataType.INTEGER,
@@ -329,12 +303,18 @@ export class DialectPostgres extends Dialect {
                 case 'numeric':
                 case 'float':
                 case 'double':
-                    columnMetadata.dataType += numericPrecisionScalePostgres(column);
+                    columnMetadata.dataType +=
+                        generatePrecisionSignature(column.numeric_precision, column.numeric_scale);
                     break;
 
                 case 'timestamp':
                 case 'timestampz':
-                    columnMetadata.dataType += dateTimePrecisionPostgres(column);
+                    columnMetadata.dataType += generatePrecisionSignature(column.datetime_precision);
+                    break;
+
+                case 'bpchar':
+                case 'varchar':
+                    columnMetadata.dataType += generatePrecisionSignature(column.character_maximum_length);
                     break;
             }
 
