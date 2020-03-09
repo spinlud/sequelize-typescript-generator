@@ -40,9 +40,14 @@ In particular the following peer dependencies must be installed:
 - [reflect-metadata](https://www.npmjs.com/package/reflect-metadata)
 - [sequelize-typescript](https://www.npmjs.com/package/sequelize-typescript)
 
-Install:
+Local install:
 ```shell
 npm install -S typescript @types/node @types/validator @types/bluebird reflect-metadata sequelize sequelize-typescript
+```
+
+Or if you intend to use the library globally:
+```shell
+npm install -g typescript @types/node @types/validator @types/bluebird reflect-metadata sequelize sequelize-typescript
 ```
 
 Your `tsconfig.json` file needs the following flags:
@@ -67,24 +72,40 @@ npm install -S sqlite3 # SQLite
 npm install -S tedious # Microsoft SQL Server
 ```
 
+Or if you intend to use the library globally:
+```shell
+npm install -g pg pg-hstore # Postgres
+npm install -g mysql2 # MySQL
+npm install -g mariadb # MariaDB
+npm install -g sqlite3 # SQLite
+npm install -g tedious # Microsoft SQL Server
+```
+
 ## Installation
 Local install:
 ```shell
 npm install -S sequelize-typescript-generator
 ```
 
-NB: this library should be used locally since it depends on some `eslint` plugins to format the code of generated models. 
-At the moment seems there is no support for global `eslint` plugins. 
+Global install (you must install also the peer dependencies globally, see [Prerequisites](#prerequisites)):
+```shell
+npm install -g sequelize-typescript-generator
+``` 
 
 ## CLI usage
-If not already available, install `npx`:
+To use the library locally, install `npx` if not already available in the path:
 ```shell 
 npm i -g npx
 ```
 
-Then you can run the main `stg` command to get usage information as follows:
+Then to get usage information type:
 ```shell 
 npx stg --help
+```
+
+For a global usage simply type:
+```shell 
+stg --help
 ```
 
 ```shell
@@ -137,10 +158,14 @@ Options:
   -a, --associations-file  Associations file path                       [string]
 ```
 
-Example:
-
+Local usage example:
 ```shell
 npx stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --case camel --out-dir models --clean 
+```
+
+Global usage example:
+```shell
+stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --case camel --out-dir models --clean 
 ```
 
 ## Programmatic usage
@@ -239,12 +264,16 @@ Define a `1:1` association with the following entry in the associations file:
 ```
 
 Then pass the associations file path to the `cli`:
-
 ```shell
 npx stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
 ```
 
-Or with code:
+Global:
+```shell
+stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
+```
+
+Or programmatically:
 
 ```ts
 import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-generator';
@@ -711,9 +740,13 @@ export const eslintDefaultConfig = {
 
 You can provide your own set of rules that matches your coding style. Just define a file with the linting rules 
 (see [eslint](https://www.npmjs.com/package/eslint) docs) and pass it to the `cli` like the following:
-
 ```shell
 npx stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --lint-file path/to/lint-file --out-dir models --clean 
+```
+
+Globally:
+```shell
+stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --lint-file path/to/lint-file --out-dir models --clean 
 ```
 
 Or you can pass `eslint` options programmatically:
