@@ -6,16 +6,11 @@ export const eslintDefaultConfig = {
     },
     plugins: [
         '@typescript-eslint',
-        'eslint-plugin-import',
     ],
-    extends:  [
-        'plugin:import/warnings',
-        'plugin:import/typescript',
-    ],
+    extends:  [],
     rules:  {
         'padded-blocks': ['error', { blocks: 'always', classes: 'always', switches: 'always' }],
         'lines-between-class-members': ['error', 'always' ],
-        'import/newline-after-import': ['error', { 'count': 2 }],
         'object-curly-newline': ['error', {
             'ObjectExpression': 'always',
             'ObjectPattern': { 'multiline': true },

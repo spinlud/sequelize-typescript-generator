@@ -202,6 +202,7 @@ export class ModelBuilder extends Builder {
             generatedCode += '\n';
         });
 
+        generatedCode += '\n';
         generatedCode += nodeToString(classDecl);
 
         return generatedCode;

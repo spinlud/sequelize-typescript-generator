@@ -12,6 +12,9 @@ install:
 
 jobs:
   include:
+    - stage: audit
+      script: npm run audit
+
     - stage: test
       name: MySQL 5
       script: npm run test-mysql
@@ -62,6 +65,7 @@ jobs:
           branch: master
 
 stages:
+  - audit
   - test
   - build
   - deploy
