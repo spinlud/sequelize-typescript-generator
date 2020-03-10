@@ -1,6 +1,6 @@
 {
   "name": "sequelize-typescript-generator",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "Automatically generates typescript models compatible with sequelize-typescript library (https://www.npmjs.com/package/sequelize-typescript).",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -23,7 +23,7 @@
     "test-mssql": "npm run docker-remove-containers && npm run docker-start-mssql && jest src/tests/integration/mssql",
     "test-sqlite": "npm run docker-remove-containers && jest src/tests/integration/sqlite",
     "test": "npm run test-sqlite && npm run test-mysql && npm run test-mariadb && npm run test-postgres && npm run test-mssql",
-    "dev": "ts-node-dev src/bin/cli.ts --help"
+    "dev": "npx ts-node-dev src/bin/cli.ts -D mysql -u root -x mysql -d dbtest --clean"
   },
   "author": "Ludovico Fabbri",
   "license": "ISC",
@@ -60,8 +60,7 @@
   },
   "dependencies": {
     "@types/eslint": "^6.1.8",
-    "@typescript-eslint/eslint-plugin": "^2.22.0",
-    "@typescript-eslint/parser": "^2.22.0",
+    "@typescript-eslint/parser": "^2.23.0",
     "change-case": "^4.1.1",
     "eslint": "^6.8.0",
     "pluralize": "^8.0.0",

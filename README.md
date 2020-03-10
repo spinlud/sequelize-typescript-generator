@@ -90,12 +90,20 @@ npm install -S sequelize-typescript-generator
 Global install (you must install also the peer dependencies globally, see [Prerequisites](#prerequisites)):
 ```shell
 npm install -g sequelize-typescript-generator
-``` 
+```
+
+NB -  Linting models globally is not supported (`eslint` library does not support global plugins). 
+If you plan to use the library globally and you want your models to be automatically linted, you need
+to install the following packages locally:
+
+```shell
+npm install -S typescript eslint @typescript-eslint/parser
+```
 
 ## CLI usage
 To use the library locally, install `npx` if not already available in the path:
 ```shell 
-npm i -g npx
+npm install -g npx
 ```
 
 Then to get usage information type:

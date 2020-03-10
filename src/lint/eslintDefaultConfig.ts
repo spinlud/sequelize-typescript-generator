@@ -4,9 +4,7 @@ export const eslintDefaultConfig = {
         ecmaVersion:  2018,
         sourceType:  'module',
     },
-    plugins: [
-        '@typescript-eslint',
-    ],
+    plugins: [],
     extends:  [],
     rules:  {
         'padded-blocks': ['error', { blocks: 'always', classes: 'always', switches: 'always' }],

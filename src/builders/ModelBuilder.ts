@@ -287,15 +287,32 @@ export class ModelBuilder extends Builder {
         await Promise.all(writePromises);
 
         // Lint files
-        let linter: Linter;
+        try {
+            let linter: Linter;
 
-        if (this.config.lintOptions) {
-            linter = new Linter(this.config.lintOptions);
+            if (this.config.lintOptions) {
+                linter = new Linter(this.config.lintOptions);
+            }
+            else {
+                linter = new Linter();
+            }
+
+            linter.lintFiles([path.join(outDir, '*.ts')]);
         }
-        else {
-            linter = new Linter();
+        catch(err) {
+            // Handle unsupported global eslint usage
+            if (err.code && err.code === 'MODULE_NOT_FOUND') {
+                let msg = `\n[WARNING] Linting models skipped: dependency not found.\n`;
+                msg += `Linting models globally is not supported (eslint library does not support global plugins).\n`;
+                msg += `If you have installed the library globally (--global flag) and you want to automatically lint your generated models,\n`;
+                msg += `please install the following packages locally: npm install -S typescript eslint @typescript-eslint/parser\n`;
+
+                console.warn(msg);
+            }
+            else {
+                throw err;
+            }
         }
 
-        linter.lintFiles([path.join(outDir, '*.ts')]);
     }
 }
