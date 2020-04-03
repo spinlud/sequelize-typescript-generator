@@ -20,9 +20,7 @@ export class Linter {
     }
 
     lintFiles(paths: string[]): void {
-        console.log('Linting files...');
         const report = this.engine.executeOnFiles(paths);
         CLIEngine.outputFixes(report);
-        console.log('Linting done')
     }
 }

@@ -35,7 +35,8 @@ export const aliasesMap = {
     SSL: 'ssl',
     PROTOCOL: 'protocol',
     ASSOCIATIONS_FILE: 'associations-file',
-}
+    ENABLE_SEQUELIZE_LOGS: 'sequelize-logs',
+};
 
 /**
  * Diplay error message and exit
@@ -45,7 +46,7 @@ export const aliasesMap = {
 export const error = (msg: string): void => {
     console.error('[ValidationError]', msg);
     process.exit(1);
-}
+};
 
 /**
  * Build config object from parsed arguments
@@ -72,6 +73,8 @@ export const buildConfig = (argv: ArgvType): IConfig => {
             ...argv[aliasesMap.DIALECT] === 'sqlite' && {
                 storage: argv[aliasesMap.STORAGE] ?? 'memory',
             },
+
+            logging: argv[aliasesMap.ENABLE_SEQUELIZE_LOGS],
         },
         metadata: {
             ...argv[aliasesMap.SCHEMA] && { schema: argv[aliasesMap.SCHEMA] as string},
@@ -105,7 +108,7 @@ export const buildConfig = (argv: ArgvType): IConfig => {
     };
 
     return config;
-}
+};
 
 /**
  * Build dialect object from parsed arguments
@@ -136,7 +139,7 @@ export const buildDialect = (argv: ArgvType): Dialect => {
     }
 
     return dialect!;
-}
+};
 
 /**
  * Validate arguments
@@ -185,4 +188,4 @@ export const validateArgs = async (argv: ArgvType): Promise<void> => {
     }
 
     // TODO Validate schema if dialect is postgres ?
-}
+};

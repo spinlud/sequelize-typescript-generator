@@ -226,6 +226,8 @@ export class ModelBuilder extends Builder {
     async build(): Promise<void> {
         const { clean, outDir } = this.config.output;
         const writePromises: Promise<void>[] = [];
+
+        console.log(`Fetching metadata from source`);
         const tablesMetadata = await this.dialect.buildTablesMetadata(this.config);
 
         if (Object.keys(tablesMetadata).length === 0) {
@@ -249,6 +251,7 @@ export class ModelBuilder extends Builder {
 
         // Clean files if required
         if (clean) {
+            console.log(`Cleaning output dir`);
             for (const file of await fs.readdir(outDir)) {
                 await fs.unlink(path.join(outDir, file));
             }
@@ -256,6 +259,7 @@ export class ModelBuilder extends Builder {
 
         // Build model files
         for (const tableMetadata of Object.values(tablesMetadata)) {
+            console.log(`Processing table ${tableMetadata.originName}`);
             const tableClassDecl = ModelBuilder.buildTableClassDeclaration(tableMetadata, this.dialect);
 
             writePromises.push((async () => {
@@ -267,7 +271,7 @@ export class ModelBuilder extends Builder {
                     { flag: 'w' }
                 );
 
-                console.log(`Generated file ${outPath}`);
+                console.log(`Generated model file at ${outPath}`);
             })());
         }
 
@@ -281,7 +285,7 @@ export class ModelBuilder extends Builder {
                 indexContent
             );
 
-            console.log(`Generated file ${indexPath}`);
+            console.log(`Generated index file at ${indexPath}`);
         })());
 
         await Promise.all(writePromises);
@@ -297,6 +301,7 @@ export class ModelBuilder extends Builder {
                 linter = new Linter();
             }
 
+            console.log(`Linting files`);
             linter.lintFiles([path.join(outDir, '*.ts')]);
         }
         catch(err) {

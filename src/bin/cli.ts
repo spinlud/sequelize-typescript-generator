@@ -120,6 +120,10 @@ export const cli = async (): Promise<void> => {
             alias: aliasesMap.ASSOCIATIONS_FILE,
             string: true,
             describe: `Associations file path`,
+        }).option('g', {
+            alias: aliasesMap.ENABLE_SEQUELIZE_LOGS,
+            boolean: true,
+            describe: `Enable Sequelize logs`,
         });
 
     // Args validation

@@ -1,5 +1,5 @@
 # sequelize-typescript-generator
-> Automatically generates typescript models compatible with [sequelize-typescript](https://www.npmjs.com/package/sequelize-typescript) library.  
+> Automatically generates typescript models compatible with [sequelize-typescript](https://www.npmjs.com/package/sequelize-typescript) library directly from your source database.  
 
 ## Table of Contents
 
@@ -164,6 +164,7 @@ Options:
   -r, --protocol           Protocol used: Default:
                            - tcp                                        [string]
   -a, --associations-file  Associations file path                       [string]
+  -g, --sequelize-logs     Enable Sequelize logs                       [boolean]
 ```
 
 Local usage example:

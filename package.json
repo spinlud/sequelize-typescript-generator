@@ -1,7 +1,7 @@
 {
   "name": "sequelize-typescript-generator",
-  "version": "2.0.5",
-  "description": "Automatically generates typescript models compatible with sequelize-typescript library (https://www.npmjs.com/package/sequelize-typescript).",
+  "version": "2.1.0",
+  "description": "Automatically generates typescript models compatible with sequelize-typescript library (https://www.npmjs.com/package/sequelize-typescript) directly from your source database.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "bin": {
@@ -23,7 +23,8 @@
     "test-mssql": "npm run docker-remove-containers && npm run docker-start-mssql && jest src/tests/integration/mssql",
     "test-sqlite": "npm run docker-remove-containers && jest src/tests/integration/sqlite",
     "test": "npm run test-sqlite && npm run test-mysql && npm run test-mariadb && npm run test-postgres && npm run test-mssql",
-    "dev": "npx ts-node-dev src/bin/cli.ts -D mysql -u root -x mysql -d dbtest --clean"
+    "dev": "npx ts-node-dev src/bin/cli.ts -D mysql -u root -x mysql -d dbtest --clean",
+    "usage": "npx ts-node-dev src/bin/cli.ts --help"
   },
   "author": "Ludovico Fabbri",
   "license": "ISC",
@@ -38,11 +39,11 @@
   },
   "devDependencies": {
     "@types/bluebird": "^3.5.30",
-    "@types/jest": "^25.1.4",
+    "@types/jest": "^25.1.5",
     "@types/pluralize": "0.0.29",
     "@types/validator": "^12.0.1",
     "@types/yargs": "^15.0.4",
-    "jest": "^25.1.0",
+    "jest": "^25.2.7",
     "mariadb": "^2.3.1",
     "mysql2": "^2.1.0",
     "pg": "^7.18.2",
@@ -52,15 +53,15 @@
     "sequelize-typescript": "^1.1.0",
     "sqlite3": "^4.1.1",
     "tedious": "^8.2.0",
-    "ts-jest": "^25.2.1",
+    "ts-jest": "^25.3.0",
     "ts-node-dev": "^1.0.0-pre.44",
     "tsc": "^1.20150623.0",
     "typescript": "^3.8.3",
     "wkx": "^0.4.8"
   },
   "dependencies": {
-    "@types/eslint": "^6.1.8",
-    "@typescript-eslint/parser": "^2.25.0",
+    "@types/eslint": "^6.1.9",
+    "@typescript-eslint/parser": "^2.26.0",
     "change-case": "^4.1.1",
     "eslint": "^6.8.0",
     "pluralize": "^8.0.0",

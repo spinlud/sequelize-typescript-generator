@@ -8,4 +8,4 @@ import { Sequelize } from 'sequelize-typescript';
  */
 export const createConnection = (options: Options): Sequelize => {
     return new Sequelize(options);
-}
+};
