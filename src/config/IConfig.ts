@@ -2,6 +2,14 @@ import { Options } from 'sequelize';
 import { CLIEngine } from 'eslint';
 
 export type TransformCase = 'UPPER' | 'LOWER' | 'UNDERSCORE' | 'CAMEL' | 'PASCAL' | 'CONST';
+export enum TransformType {
+    MODEL = 'model',
+    COLUMN = 'column'
+};
+export type TransformCollection = {
+    [key in TransformType]: TransformCase;
+};
+export type TransformFunction = (value: string, type: TransformType) => string;
 
 export const TransformCases = new Set<TransformCase>([
     'UPPER',
@@ -18,7 +26,7 @@ export interface IConfigMetadata {
     skipTables?: string[];
     indices?: boolean;
     timestamps?: boolean;
-    case?: TransformCase;
+    case?: TransformCase | TransformCollection | TransformFunction;
     associationsFile?: string;
 }
 

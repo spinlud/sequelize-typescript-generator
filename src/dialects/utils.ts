@@ -1,4 +1,4 @@
-import { TransformCase } from '../config/IConfig';
+import { TransformCase, TransformFunction, TransformType, TransformCollection } from '../config/IConfig';
 import { ITableMetadata } from './Dialect';
 import {
     camelCase,
@@ -10,38 +10,50 @@ import {
 export const toUpperCase = (s: string) => s.toUpperCase();
 export const toLowerCase = (s: string) => s.toLowerCase();
 
-/**
- * Return transformer for the provided case
- * @param  {TransformCase} transformCase
- * @returns {function(s: string): string}
- */
-export const getTransformer = (transformCase: TransformCase): (s: string) => string => {
-    let transformer: (s: string) => string;
+const getPredicateForCase = (transformCase: TransformCase) => {
+    let predicate: (s: string) => string;
 
     switch(transformCase) {
         case "CAMEL":
-            transformer = camelCase;
+            predicate = camelCase;
             break;
         case "UPPER":
-            transformer = toUpperCase;
+            predicate = toUpperCase;
             break;
         case "LOWER":
-            transformer = toLowerCase;
+            predicate = toLowerCase;
             break;
         case "PASCAL":
-            transformer = pascalCase;
+            predicate = pascalCase;
             break;
         case "UNDERSCORE":
-            transformer = snakeCase;
+            predicate = snakeCase;
             break;
         case "CONST":
-            transformer = constantCase;
+            predicate = constantCase;
             break;
         default:
-            transformer = (s: string) => s;
+            predicate = (s: string) => s;
     }
 
-    return transformer;
+    return predicate;
+}
+
+/**
+ * Return transformer for the provided case
+ * @param  {TransformCase | TransformCollection | TransformFunction} transformCase
+ * @returns {function(s: string, type: TransformType): string}
+ */
+export const getTransformer = (transformCase: TransformCase | TransformCollection | TransformFunction): TransformFunction => {
+    if(typeof transformCase === "function") {
+        return transformCase as TransformFunction;
+    }
+    if(typeof transformCase === "object") {
+        return (value: string, type: TransformType) => {
+            return getPredicateForCase(transformCase[type])(value);
+        }
+    }
+    return getPredicateForCase(transformCase);
 };
 
 /**
@@ -52,26 +64,26 @@ export const getTransformer = (transformCase: TransformCase): (s: string) => str
  */
 export const caseTransformer = (
     tableMetadata: ITableMetadata,
-    transformCase: TransformCase
+    transformCase: TransformCase | TransformCollection | TransformFunction
 ): ITableMetadata => {
 
     const transformer = getTransformer(transformCase);
 
     const transformed: ITableMetadata = {
         originName: tableMetadata.originName,
-        name: transformer(tableMetadata.originName),
+        name: transformer(tableMetadata.originName, TransformType.MODEL),
         timestamps: tableMetadata.timestamps,
         columns: {},
         ...tableMetadata.associations && {
             associations: tableMetadata.associations.map(a => {
-                a.targetModel = transformer(a.targetModel);
+                a.targetModel = transformer(a.targetModel, TransformType.MODEL);
 
                 if (a.joinModel) {
-                    a.joinModel = transformer(a.joinModel);
+                    a.joinModel = transformer(a.joinModel, TransformType.MODEL);
                 }
 
                 if (a.sourceKey) {
-                    a.sourceKey = transformer(a.sourceKey);
+                    a.sourceKey = transformer(a.sourceKey, TransformType.COLUMN);
                 }
 
                 return a;
@@ -86,15 +98,15 @@ export const caseTransformer = (
             const { name, targetModel } = columnMetadata.foreignKey;
 
             columnMetadata.foreignKey = {
-                name: transformer(name),
-                targetModel: transformer(targetModel),
+                name: transformer(name, TransformType.COLUMN),
+                targetModel: transformer(targetModel, TransformType.MODEL),
             }
         }
 
         transformed.columns[columnName] =  Object.assign(
             {},
             columnMetadata,
-            { name: transformer(columnMetadata.originName) }
+            { name: transformer(columnMetadata.originName, TransformType.COLUMN) }
         );
     }
 
