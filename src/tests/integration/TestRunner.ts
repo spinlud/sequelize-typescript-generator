@@ -10,7 +10,7 @@ import { IConfig } from '../../config';
 import { Dialect } from '../../dialects/Dialect';
 import { getTransformer } from '../../dialects/utils';
 import { ModelBuilder } from '../../builders';
-import { TransformCase, TransformCases } from '../../config/IConfig';
+import { TransformCase, TransformCases, TransformType } from '../../config/IConfig';
 import {
     DialectMySQL,
     DialectPostgres,
@@ -307,7 +307,7 @@ export class TestRunner {
                         const transformer = getTransformer(transformCase);
 
                         for (const { name: tableName } of testTables) {
-                            await fs.access(path.join(outDir, transformer(tableName) + '.ts'));
+                            await fs.access(path.join(outDir, transformer(tableName, TransformType.MODEL) + '.ts'));
                         }
 
                         // TODO problem with models registration due to 'require(path/to/module)'
