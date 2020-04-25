@@ -98,7 +98,9 @@ export const cli = async (): Promise<void> => {
              - upper
              - lower
              - pascal
-             - const    
+             - const
+             You can also specify a different case for model and columns using the following format:
+               <model case>:<column case>    
             `,
         }).option('S', {
             alias: aliasesMap.STORAGE,

@@ -157,6 +157,11 @@ Options:
                            - lower
                            - pascal
                            - const
+                           You can also specify a different
+                           case for model and columns using the
+                           following format:
+                           <model case>:<column case>
+
                                                                         [string]
   -S, --storage            SQLite storage. Default:
                            - memory                                     [string]
@@ -225,6 +230,45 @@ You can transform table name and fields with one of the following cases:
 - lower
 - pascal
 - const
+
+You can provide a different case for the model name and columns:
+
+```shell
+npx stg -D mysql --case const:camel 
+```
+
+```ts
+const config: IConfig = {
+    // [...]
+    metadata: {        
+        case: {
+            model: 'CONST',
+            column: 'CAMEL'    
+        },
+    },
+    // [...]
+};
+```
+
+You can also provide your custom transformer function (code only):
+
+```ts
+const config: IConfig = {
+    // [...]
+    metadata: {        
+        case: (value, target) => {
+            // Model transformer
+            if (target === 'model') {
+                return value.toUpperCase();
+            }
+    
+            // Column transformer
+            return value.toLowerCase();
+        }
+    },
+    // [...]
+};
+```
 
 NB: please note that currently case transformation is not supported for non ASCII strings.
 
