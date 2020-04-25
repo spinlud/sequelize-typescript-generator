@@ -10,7 +10,7 @@ import { IConfig } from '../../config';
 import { Dialect } from '../../dialects/Dialect';
 import { getTransformer } from '../../dialects/utils';
 import { ModelBuilder } from '../../builders';
-import { TransformCase, TransformCases } from '../../config/IConfig';
+import { TransformCases, TransformTarget, TransformFn } from '../../config/IConfig';
 import {
     DialectMySQL,
     DialectPostgres,
@@ -287,7 +287,7 @@ export class TestRunner {
                 });
 
                 for (const transformCase of TransformCases) {
-                    it(`${transformCase.toLowerCase()} case`, async () => {
+                    it(`${transformCase} case`, async () => {
                         const config: IConfig = {
                             connection: sequelizeOptions,
                             metadata: {
@@ -307,7 +307,7 @@ export class TestRunner {
                         const transformer = getTransformer(transformCase);
 
                         for (const { name: tableName } of testTables) {
-                            await fs.access(path.join(outDir, transformer(tableName) + '.ts'));
+                            await fs.access(path.join(outDir, transformer(tableName, TransformTarget.MODEL) + '.ts'));
                         }
 
                         // TODO problem with models registration due to 'require(path/to/module)'
@@ -317,6 +317,66 @@ export class TestRunner {
                         // expect(connection!.isDefined(transformer(INDICES_TABLE_NAME))).toBe(true);
                     });
                 }
+
+                it(`Different case for model and column`, async () => {
+                    const modelCase = 'CONST';
+                    const columnCase = 'CAMEL';
+
+                    const config: IConfig = {
+                        connection: sequelizeOptions,
+                        metadata: {
+                            ...testMetadata.schema && { schema: testMetadata.schema.name },
+                            case: {
+                                [TransformTarget.MODEL]: modelCase,
+                                [TransformTarget.COLUMN]: columnCase
+                            },
+                        },
+                        output: {
+                            outDir: outDir,
+                            clean: true,
+                        }
+                    };
+
+                    const dialect = buildDialect(testMetadata);
+                    const builder = new ModelBuilder(config, dialect);
+                    await builder.build();
+
+                    const modelTransformer = getTransformer(modelCase);
+
+                    for (const { name: tableName } of testTables) {
+                        await fs.access(path.join(outDir, modelTransformer(tableName, TransformTarget.MODEL) + '.ts'));
+                    }
+                });
+
+                it(`Custom transformer`, async () => {
+                    const transformer: TransformFn = (value, target) => {
+                        if (target === TransformTarget.MODEL) {
+                            return value.toUpperCase();
+                        }
+
+                        return value.toLowerCase();
+                    }
+
+                    const config: IConfig = {
+                        connection: sequelizeOptions,
+                        metadata: {
+                            ...testMetadata.schema && { schema: testMetadata.schema.name },
+                            case: transformer,
+                        },
+                        output: {
+                            outDir: outDir,
+                            clean: true,
+                        }
+                    };
+
+                    const dialect = buildDialect(testMetadata);
+                    const builder = new ModelBuilder(config, dialect);
+                    await builder.build();
+
+                    for (const { name: tableName } of testTables) {
+                        await fs.access(path.join(outDir, transformer(tableName, TransformTarget.MODEL) + '.ts'));
+                    }
+                });
             });
 
             describe('Data Types', () => {

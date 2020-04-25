@@ -1,8 +1,8 @@
 import path from 'path';
 import { promises as fs } from 'fs';
 import { Dialect as DialectType } from 'sequelize';
-import { IConfig, TransformCases } from '../config/IConfig';
 import { Dialect } from '../dialects/Dialect';
+
 import {
     DialectMySQL,
     DialectPostgres,
@@ -10,6 +10,14 @@ import {
     DialectMariaDB,
     DialectSQLite,
 } from '../dialects';
+
+import {
+    IConfig,
+    TransformCases,
+    TransformCase,
+    TransformMap,
+    TransformTarget
+} from '../config/IConfig';
 
 export type ArgvType = { [key: string]: any };
 
@@ -47,6 +55,26 @@ export const error = (msg: string): void => {
     console.error('[ValidationError]', msg);
     process.exit(1);
 };
+
+/**
+ * Parse case argument
+ * @param {string} arg
+ * @returns { TransformCase | TransformMap }
+ */
+export const parseCase = (arg: string): TransformCase | TransformMap => {
+    if (arg.includes(':')) {
+        const tokens = arg.split(':');
+        const modelCase = tokens[0].toUpperCase() as TransformCase;
+        const columnCase = tokens[1].toUpperCase() as TransformCase;
+
+        return {
+            [TransformTarget.MODEL]: modelCase,
+            [TransformTarget.COLUMN]: columnCase
+        };
+    }
+
+    return arg.toUpperCase() as TransformCase;
+}
 
 /**
  * Build config object from parsed arguments
@@ -89,7 +117,7 @@ export const buildConfig = (argv: ArgvType): IConfig => {
             },
             indices: !!argv[aliasesMap.INDICES],
             timestamps: !!argv[aliasesMap.TIMESTAMPS],
-            ...argv[aliasesMap.CASE] && { case: argv[aliasesMap.CASE].toUpperCase() },
+            ...argv[aliasesMap.CASE] && { case: parseCase(argv[aliasesMap.CASE]) },
             ...argv[aliasesMap.ASSOCIATIONS_FILE] && { associationsFile: argv[aliasesMap.ASSOCIATIONS_FILE] as string },
         },
         output: {
@@ -164,8 +192,23 @@ export const validateArgs = async (argv: ArgvType): Promise<void> => {
     }
 
     // Validate case
-    if (argv[aliasesMap.CASE] && !TransformCases.has(argv[aliasesMap.CASE].toUpperCase())) {
-        error(`Argument -c [case] must be one of (${Array.from(TransformCases).join(', ').toLowerCase()})`)
+    if (argv[aliasesMap.CASE]) {
+        if (argv[aliasesMap.CASE].includes(':')) {
+            const tokens = argv[aliasesMap.CASE].split(':');
+            const modelCase = tokens[0].toUpperCase();
+            const columnCase = tokens[1].toUpperCase();
+
+            if (!TransformCases.has(modelCase)) {
+                error(`Unknown case '${modelCase}': must be one of (${Array.from(TransformCases).join(', ').toLowerCase()})`);
+            }
+
+            if (!TransformCases.has(columnCase)) {
+                error(`Unknown case '${columnCase}': must be one of (${Array.from(TransformCases).join(', ').toLowerCase()})`);
+            }
+        }
+        else if (!TransformCases.has(argv[aliasesMap.CASE].toUpperCase())) {
+            error(`Argument -c [case] must be one of (${Array.from(TransformCases).join(', ').toLowerCase()})`);
+        }
     }
 
     // Validate lint file

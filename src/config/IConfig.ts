@@ -3,6 +3,17 @@ import { CLIEngine } from 'eslint';
 
 export type TransformCase = 'UPPER' | 'LOWER' | 'UNDERSCORE' | 'CAMEL' | 'PASCAL' | 'CONST';
 
+export enum TransformTarget {
+    MODEL = 'model',
+    COLUMN = 'column'
+}
+
+export type TransformMap = {
+    [key in TransformTarget]: TransformCase;
+}
+
+export type TransformFn = (value: string, target: TransformTarget) => string;
+
 export const TransformCases = new Set<TransformCase>([
     'UPPER',
     'LOWER',
@@ -18,7 +29,7 @@ export interface IConfigMetadata {
     skipTables?: string[];
     indices?: boolean;
     timestamps?: boolean;
-    case?: TransformCase;
+    case?: TransformCase | TransformMap | TransformFn;
     associationsFile?: string;
 }
 

@@ -1,13 +1,8 @@
-import { TransformCase } from '../config/IConfig';
 import { ITableMetadata } from './Dialect';
-import {
-    camelCase,
-    constantCase,
-    pascalCase,
-    snakeCase,
-} from "change-case";
+import { TransformCase, TransformFn, TransformMap, TransformTarget } from '../config/IConfig';
+import { camelCase, constantCase, pascalCase, snakeCase } from "change-case";
 
-export type CaseTransformer = (s: string) => string;
+type CaseTransformer = (s: string) => string;
 
 export const toUpperCase = (s: string) => s.toUpperCase();
 export const toLowerCase = (s: string) => s.toLowerCase();
@@ -20,27 +15,11 @@ export const toLowerCase = (s: string) => s.toLowerCase();
 export const isASCII = (s: string): boolean => (/^[\x00-\xFF]*$/).test(s);
 
 /**
- * Wrapper for case transformer. Returns unprocessed string for non ASCII characters
- * @param {CaseTransformer} transformer
+ * Get transformer for case
+ * @param {TransformCase} transformCase
  * @returns {CaseTransformer}
  */
-export const transformerFactory = (transformer: CaseTransformer): CaseTransformer => {
-    return function(s: string) {
-        if (!isASCII(s)) {
-            console.warn(`Unsupported case transformation for non ASCII characters:`, s);
-            return s;
-        }
-
-        return transformer(s);
-    }
-};
-
-/**
- * Return transformer for the provided case
- * @param  {TransformCase} transformCase
- * @returns {function(s: string): string}
- */
-export const getTransformer = (transformCase: TransformCase): (s: string) => string => {
+const getTransformerForCase = (transformCase: TransformCase): CaseTransformer => {
     let transformer: CaseTransformer;
 
     switch(transformCase) {
@@ -66,8 +45,54 @@ export const getTransformer = (transformCase: TransformCase): (s: string) => str
             transformer = (s: string) => s;
     }
 
-    return transformerFactory(transformer);
+    return transformer;
+}
+
+/**
+ * Wrapper for case transformer. Returns unprocessed string for non ASCII characters
+ * @param {TransformCase | TransformMap} transformCase
+ * @returns {TransformFn}
+ */
+export const transformerFactory = (transformCase: TransformCase | TransformMap): TransformFn => {
+    let modelTransformer: CaseTransformer;
+    let columnTransformer: CaseTransformer;
+
+    if (typeof transformCase === 'string') {
+        const transformer = getTransformerForCase(transformCase as TransformCase);
+        modelTransformer = transformer;
+        columnTransformer = transformer;
+    }
+    else {
+        modelTransformer = getTransformerForCase(transformCase.model);
+        columnTransformer = getTransformerForCase(transformCase.column);
+    }
+
+    return function(value: string, target: TransformTarget) {
+        if (!isASCII(value)) {
+            console.warn(`Unsupported case transformation for non ASCII characters:`, value);
+            return value;
+        }
+
+        if (target === TransformTarget.MODEL) {
+            return modelTransformer(value);
+        }
+
+        return columnTransformer(value);
+    }
 };
+
+/**
+ * Get transformer
+ * @param {TransformCase | TransformMap | TransformFn} transformCase
+ * @returns {TransformFn}
+ */
+export const getTransformer = (transformCase: TransformCase | TransformMap | TransformFn): TransformFn => {
+    if (typeof transformCase === 'function') {
+        return transformCase;
+    }
+
+    return transformerFactory(transformCase);
+}
 
 /**
  * Transform ITableMetadata object using the provided case
@@ -77,26 +102,26 @@ export const getTransformer = (transformCase: TransformCase): (s: string) => str
  */
 export const caseTransformer = (
     tableMetadata: ITableMetadata,
-    transformCase: TransformCase
+    transformCase: TransformCase | TransformMap | TransformFn
 ): ITableMetadata => {
 
-    const transformer = getTransformer(transformCase);
+    const transformer: TransformFn = getTransformer(transformCase);
 
     const transformed: ITableMetadata = {
         originName: tableMetadata.originName,
-        name: transformer(tableMetadata.originName),
+        name: transformer(tableMetadata.originName, TransformTarget.MODEL),
         timestamps: tableMetadata.timestamps,
         columns: {},
         ...tableMetadata.associations && {
             associations: tableMetadata.associations.map(a => {
-                a.targetModel = transformer(a.targetModel);
+                a.targetModel = transformer(a.targetModel, TransformTarget.MODEL);
 
                 if (a.joinModel) {
-                    a.joinModel = transformer(a.joinModel);
+                    a.joinModel = transformer(a.joinModel, TransformTarget.MODEL);
                 }
 
                 if (a.sourceKey) {
-                    a.sourceKey = transformer(a.sourceKey);
+                    a.sourceKey = transformer(a.sourceKey, TransformTarget.COLUMN);
                 }
 
                 return a;
@@ -111,15 +136,15 @@ export const caseTransformer = (
             const { name, targetModel } = columnMetadata.foreignKey;
 
             columnMetadata.foreignKey = {
-                name: transformer(name),
-                targetModel: transformer(targetModel),
+                name: transformer(name, TransformTarget.COLUMN),
+                targetModel: transformer(targetModel, TransformTarget.MODEL),
             }
         }
 
         transformed.columns[columnName] =  Object.assign(
             {},
             columnMetadata,
-            { name: transformer(columnMetadata.originName) }
+            { name: transformer(columnMetadata.originName, TransformTarget.COLUMN) }
         );
     }
 
