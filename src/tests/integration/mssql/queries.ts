@@ -1,4 +1,4 @@
-export const DATA_TYPES_TABLE_NAME = 'data_types';
+export const DATA_TYPES_TABLE_NAME = 'データ型'; // 'data types' in japanese, for testing non ASCII string on MSSQL
 export const DATA_TYPES_TABLE_DROP = `DROP TABLE IF EXISTS ${DATA_TYPES_TABLE_NAME}`;
 export const DATA_TYPES_TABLE_CREATES = [
     `
@@ -6,7 +6,7 @@ export const DATA_TYPES_TABLE_CREATES = [
         (
             id                 INT identity         constraint data_types_pk        primary key nonclustered,
             f_int              INT,
-            f_integer          INTEGER,
+            f_整数              INTEGER,
             f_bigint           BIGINT,
             f_tinyint          TINYINT,
             f_smallint         SMALLINT,       

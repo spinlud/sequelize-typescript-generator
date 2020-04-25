@@ -74,6 +74,7 @@ export const buildConfig = (argv: ArgvType): IConfig => {
                 storage: argv[aliasesMap.STORAGE] ?? 'memory',
             },
 
+            logQueryParameters: true,
             logging: argv[aliasesMap.ENABLE_SEQUELIZE_LOGS],
         },
         metadata: {

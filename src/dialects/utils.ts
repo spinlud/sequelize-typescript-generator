@@ -7,8 +7,33 @@ import {
     snakeCase,
 } from "change-case";
 
+export type CaseTransformer = (s: string) => string;
+
 export const toUpperCase = (s: string) => s.toUpperCase();
 export const toLowerCase = (s: string) => s.toLowerCase();
+
+/**
+ * Check if provided string is ASCII
+ * @param {string} s
+ * @returns {boolean}
+ */
+export const isASCII = (s: string): boolean => (/^[\x00-\xFF]*$/).test(s);
+
+/**
+ * Wrapper for case transformer. Returns unprocessed string for non ASCII characters
+ * @param {CaseTransformer} transformer
+ * @returns {CaseTransformer}
+ */
+export const transformerFactory = (transformer: CaseTransformer): CaseTransformer => {
+    return function(s: string) {
+        if (!isASCII(s)) {
+            console.warn(`Unsupported case transformation for non ASCII characters:`, s);
+            return s;
+        }
+
+        return transformer(s);
+    }
+};
 
 /**
  * Return transformer for the provided case
@@ -16,7 +41,7 @@ export const toLowerCase = (s: string) => s.toLowerCase();
  * @returns {function(s: string): string}
  */
 export const getTransformer = (transformCase: TransformCase): (s: string) => string => {
-    let transformer: (s: string) => string;
+    let transformer: CaseTransformer;
 
     switch(transformCase) {
         case "CAMEL":
@@ -41,7 +66,7 @@ export const getTransformer = (transformCase: TransformCase): (s: string) => str
             transformer = (s: string) => s;
     }
 
-    return transformer;
+    return transformerFactory(transformer);
 };
 
 /**
@@ -108,7 +133,7 @@ export const caseTransformer = (
  */
 export const warnUnknownMappingForDataType = (dataType: string) => {
     console.warn(`[Warning]`,
-`Unknown data type mapping for type '${dataType}'. 
+        `Unknown data type mapping for type '${dataType}'. 
         You should define the data type manually.     
     `);
 };

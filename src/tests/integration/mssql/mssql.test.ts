@@ -114,7 +114,7 @@ const testMetadata: ITestMetadata = {
             const query = `
                 SELECT DATA_TYPE
                 FROM information_schema.columns
-                WHERE table_catalog='${schema}' AND table_name='${table}' AND column_name='${column}';
+                WHERE table_catalog=N'${schema}' AND table_name=N'${table}' AND column_name=N'${column}';
             `;
 
             const res = await connection.query(query, {
@@ -126,7 +126,7 @@ const testMetadata: ITestMetadata = {
         },
         testValues: [
             ['int', 2147483647],
-            ['integer', 2147483647],
+            ['整数', 2147483647],
             ['bigint', 9007199254740991],
             ['tinyint', 127],
             ['smallint', 32767],

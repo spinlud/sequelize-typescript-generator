@@ -34,7 +34,8 @@ export const buildSequelizeOptions = (dialect: DialectType): Options => {
         database: process.env.TEST_DB_DATABASE,
         username: process.env.TEST_DB_USERNAME,
         password: process.env.TEST_DB_PASSWORD,
-        // logging: false,
+        logQueryParameters: true,
+        logging: true,
 
         ...dialect === 'mariadb' && { dialectOptions: {
                 timezone: 'Etc/GMT-3',

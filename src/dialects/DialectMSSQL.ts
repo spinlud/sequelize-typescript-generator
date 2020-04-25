@@ -215,7 +215,7 @@ export class DialectMSSQL extends Dialect {
                 ON sc.id = t.id AND sc.name = c.COLUMN_NAME
             LEFT OUTER JOIN sys.extended_properties ep
                  ON ep.major_id = sc.id AND ep.minor_id = sc.colid AND ep.name = 'MS_Description'                                        
-            WHERE c.TABLE_CATALOG = '${config.connection.database}' AND c.TABLE_NAME = '${table}'
+            WHERE c.TABLE_CATALOG = N'${config.connection.database}' AND c.TABLE_NAME = N'${table}'
             ORDER BY c.ORDINAL_POSITION;
         `;
 
@@ -309,7 +309,7 @@ export class DialectMSSQL extends Dialect {
                     ON ic.object_id = c.object_id AND ic.column_id = c.column_id
                 JOIN sys.tables t
                     ON t.object_id = c.object_id
-            WHERE t.object_id = object_id('${table}') AND c.name='${column}'
+            WHERE t.object_id = object_id(N'${table}') AND c.name=N'${column}'
             ORDER BY ic.column_id;
         `;
 

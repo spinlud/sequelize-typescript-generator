@@ -10,6 +10,7 @@
 * [Installation](#installation)
 * [CLI usage](#cli-usage)
 * [Programmatic usage](#programmatic-usage)
+* [Transform case](#transform-case)
 * [Associations](#associations)
     * [One to One](#one-to-one)
     * [One to Many](#one-to-many)
@@ -214,6 +215,18 @@ import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-genera
     }    
 })();
 ```
+
+## Transform case
+You can transform table name and fields with one of the following cases:
+
+- underscore
+- camel
+- upper
+- lower
+- pascal
+- const
+
+NB: please note that currently case transformation is not supported for non ASCII strings.
 
 ## Associations
 Including associations in the generated models requires a bit of manual work unfortunately, but hopefully 
