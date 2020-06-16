@@ -1,9 +1,20 @@
 #!/usr/bin/env sh
 set -e
 
+DIR="${BASH_SOURCE%/*}"
+if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
+. "$DIR/../test-env.sh"
+
 IMAGE_NAME="postgres"
 CONTAINER_NAME="postgres"
-IMAGE_FULL_NAME="$IMAGE_NAME:$DOCKER_POSTGRES_TAG"
+
+if [[ -z "${DOCKER_POSTGRES_TAG}" ]]; then
+  IMAGE_TAG="12.1"
+else
+  IMAGE_TAG="${DOCKER_POSTGRES_TAG}"
+fi
+
+IMAGE_FULL_NAME="$IMAGE_NAME:$IMAGE_TAG"
 
 docker pull "$IMAGE_FULL_NAME"
 

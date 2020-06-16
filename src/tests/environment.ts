@@ -1,21 +1,24 @@
-import path from 'path';
 import { Options, Dialect as DialectType } from 'sequelize';
 
-const checkTestEnv = () => {
-    if (!process.env.TEST_DB_PORT) {
-        throw new Error(`Missing env variable TEST_DB_PORT`);
+const setEnv = (): void => {
+    if (!process.env['TEST_DB_HOST']) {
+        process.env['TEST_DB_HOST'] = 'localhost';
     }
 
-    if (!process.env.TEST_DB_DATABASE) {
-        throw new Error(`Missing env variable TEST_DB_DATABASE`);
+    if (!process.env['TEST_DB_PORT']) {
+        process.env['TEST_DB_PORT'] = '1234';
     }
 
-    if (!process.env.TEST_DB_USERNAME) {
-        throw new Error(`Missing env variable TEST_DB_USERNAME`);
+    if (!process.env['TEST_DB_DATABASE']) {
+        process.env['TEST_DB_DATABASE'] = 'testdb';
     }
 
-    if (!process.env.TEST_DB_PASSWORD) {
-        throw new Error(`Missing env variable TEST_DB_PASSWORD`);
+    if (!process.env['TEST_DB_USERNAME']) {
+        process.env['TEST_DB_USERNAME'] = 'sa';
+    }
+
+    if (!process.env['TEST_DB_PASSWORD']) {
+        process.env['TEST_DB_PASSWORD'] = 'Passw0rd88!';
     }
 }
 
@@ -25,11 +28,11 @@ const checkTestEnv = () => {
  * @returns {Options}
  */
 export const buildSequelizeOptions = (dialect: DialectType): Options => {
-    checkTestEnv();
+    setEnv();
 
     let sequelizeOptions: Options = {
         dialect: dialect,
-        host: process.env.TEST_DB_HOST ?? 'localhost',
+        host: process.env.TEST_DB_HOST,
         port: parseInt(process.env.TEST_DB_PORT!),
         database: process.env.TEST_DB_DATABASE,
         username: process.env.TEST_DB_USERNAME,

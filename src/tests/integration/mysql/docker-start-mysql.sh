@@ -1,9 +1,20 @@
 #!/usr/bin/env sh
 set -e
 
+DIR="${BASH_SOURCE%/*}"
+if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
+. "$DIR/../test-env.sh"
+
 IMAGE_NAME="mysql"
 CONTAINER_NAME="mysql"
-IMAGE_FULL_NAME="$IMAGE_NAME:$DOCKER_MYSQL_TAG"
+
+if [[ -z "${DOCKER_MYSQL_TAG}" ]]; then
+  IMAGE_TAG="5.7"
+else
+  IMAGE_TAG="${DOCKER_MYSQL_TAG}"
+fi
+
+IMAGE_FULL_NAME="$IMAGE_NAME:$IMAGE_TAG"
 
 docker pull "$IMAGE_FULL_NAME"
 

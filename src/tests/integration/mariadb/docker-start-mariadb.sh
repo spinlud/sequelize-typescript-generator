@@ -1,9 +1,20 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 set -e
+
+DIR="${BASH_SOURCE%/*}"
+if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
+. "$DIR/../test-env.sh"
 
 IMAGE_NAME="mariadb"
 CONTAINER_NAME="mariadb"
-IMAGE_FULL_NAME="$IMAGE_NAME:$DOCKER_MARIADB_TAG"
+
+if [[ -z "${DOCKER_MARIADB_TAG}" ]]; then
+  IMAGE_TAG="10.5"
+else
+  IMAGE_TAG="${DOCKER_MARIADB_TAG}"
+fi
+
+IMAGE_FULL_NAME="$IMAGE_NAME:$IMAGE_TAG"
 
 docker pull "$IMAGE_FULL_NAME"
 
