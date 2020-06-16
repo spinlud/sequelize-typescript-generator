@@ -101,7 +101,7 @@ const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
     macaddr8: DataType.STRING,
     bit: DataType.STRING,
     varbit: DataType.STRING,
-    uuid: DataType.STRING,
+    uuid: DataType.UUID,
     xml: DataType.STRING,
     json: DataType.JSON,
     jsonb: DataType.JSONB,
@@ -295,6 +295,7 @@ export class DialectPostgres extends Dialect {
                 autoIncrement: column.is_sequence,
                 indices: [],
                 comment: column.description ?? undefined,
+                defaultValue: column.column_default
             };
 
             // Additional data type information

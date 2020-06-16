@@ -44,6 +44,7 @@ export class ModelBuilder extends Builder {
                 ...col.allowNull && { allowNull: col.allowNull },
                 ...col.dataType && { type: col.dataType },
                 ...col.comment && { comment: col.comment },
+                ...col.defaultValue && { defaultValue: col.defaultValue },
             };
 
             return props;
