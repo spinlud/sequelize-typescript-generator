@@ -448,6 +448,12 @@ export class TestRunner {
                         if (receivedValueType === 'array') {
                             expect(expectedValueType.includes(receivedValueType)).toBe(true);
                         }
+                        else if (receivedValueType === 'object' &&
+                            sequelizeOptions.dialect === 'mariadb' &&
+                            typeName === 'json'
+                        ) {
+                            expect(JSON.stringify(receivedValue)).toStrictEqual(typeValue);
+                        }
                         else {
                             expect(receivedValueType).toStrictEqual(expectedValueType);
                         }
