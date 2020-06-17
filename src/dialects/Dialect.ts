@@ -37,7 +37,7 @@ export interface IColumnMetadata {
     autoIncrement: boolean;
     indices?: IIndexMetadata[],
     comment?: string;
-    defaultValue?: string;
+    defaultValue?: any;
 }
 
 export interface IIndexMetadata {
