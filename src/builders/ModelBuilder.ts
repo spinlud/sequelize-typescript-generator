@@ -172,6 +172,7 @@ export class ModelBuilder extends Builder {
                 'Column',
                 'DataType',
                 'Index',
+                'Sequelize',
                 foreignKeyDecorator,
                 ...new Set(tableMetadata.associations?.map(a => a.associationName)),
             ],
