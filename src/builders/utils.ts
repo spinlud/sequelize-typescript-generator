@@ -75,8 +75,9 @@ export const generateObjectLiteralDecorator = (
                     [
                         ...Object.entries(props)
                             .map(e => ts.createPropertyAssignment(e[0],
-                                typeof e[1] === 'string' && e[1].startsWith('DataType.') ?
-                                    ts.createIdentifier(e[1]) : ts.createLiteral(e[1])))
+                                typeof e[1] === 'string' && (
+                                  e[1].startsWith('DataType.') || e[1].startsWith('Sequelize.')
+                                ) ? ts.createIdentifier(e[1]) : ts.createLiteral(e[1])))
                     ]
                 )
             ]
