@@ -297,9 +297,7 @@ export class DialectPostgres extends Dialect {
                 comment: column.description ?? undefined,
             };
             if (column.column_default) {
-                if (column.column_default.match(/^[a-z_0-9]+\(.{0,}?\)$/)) {
-                    columnMetadata.defaultValue = `Sequelize.literal("${column.column_default}")`;
-                }
+                columnMetadata.defaultValue = `Sequelize.literal("${column.column_default}")`;
             }
 
             // Additional data type information
