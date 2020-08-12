@@ -11,6 +11,7 @@
     "clean": "rm -fr build",
     "lint": "eslint --fix --ext .ts output/*.ts",
     "build": "npm run clean && tsc",
+    "prepare": "npm run build",
     "audit": "npm audit",
     "docker-remove-containers": "./src/tests/integration/docker-remove-containers.sh",
     "docker-start-mysql": "./src/tests/integration/mysql/docker-start-mysql.sh",
