@@ -1,7 +1,13 @@
 import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize, DataType } from 'sequelize-typescript';
 import { IConfig } from '../config';
-import { IColumnMetadata, IIndexMetadata, Dialect, ITable } from './Dialect';
+import {
+    IColumnMetadata,
+    IIndexMetadata,
+    Dialect,
+    ITable,
+    CONSTRAINT_TYPES
+} from './Dialect';
 import { generatePrecisionSignature, warnUnknownMappingForDataType } from './utils';
 
 interface ITableRow {
@@ -57,6 +63,12 @@ interface IColumnMetadataPostgres {
     generation_expression: string;
     is_updatable: string;
     description: string | null;
+    confdeltype: string | null;
+    confupdtype: string | null;
+    condeferrable: boolean;
+    condeferred: boolean;
+    foreign_table_name: string | null;
+    foreign_column_name: string | null;
 }
 
 interface IIndexMetadataPostgres {
@@ -235,6 +247,12 @@ export class DialectPostgres extends Dialect {
                     WHERE a.attrelid = '${config.metadata!.schema}.${table}'::regclass AND a.attnum > 0
                         AND c.ordinal_position = a.attnum AND x.indisprimary IS TRUE
                 ) AS is_primary,
+                isc_f.table_name as foreign_table_name,
+                isc_f.column_name as foreign_column_name,
+                pgc.confdeltype,
+                pgc.confupdtype,
+                pgc.condeferrable,
+                pgc.condeferred,
                 c.*,
                 pgd.description
             FROM information_schema.columns c
@@ -242,6 +260,12 @@ export class DialectPostgres extends Dialect {
                 ON c.table_schema = st.schemaname AND c.table_name = st.relname
             LEFT OUTER JOIN pg_catalog.pg_description pgd
                 ON pgd.objoid = st.relid AND pgd.objsubid = c.ordinal_position
+            LEFT OUTER JOIN pg_catalog.pg_constraint pgc
+                ON pgc.conrelid = st.relid AND pgc.conkey[1] = c.ordinal_position
+            LEFT OUTER JOIN pg_catalog.pg_class pgc_f
+                ON pgc_f.oid = pgc.confrelid AND pgc.conkey[1] = c.ordinal_position
+            LEFT OUTER JOIN  information_schema.columns isc_f ON isc_f.table_name = pgc_f.relname
+                AND isc_f.ordinal_position = pgc.confkey[1]
             LEFT OUTER JOIN ( -- Sequences (auto increment) metadata
                 SELECT seqclass.relname AS sequence_name,
                        pn.nspname       AS schema_name,
@@ -290,12 +314,35 @@ export class DialectPostgres extends Dialect {
                         this.mapDbTypeToSequelize(column.udt_name).key
                             .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
                 },
-                allowNull: !!column.is_nullable && !column.is_primary,
+                allowNull: column.is_nullable === 'YES' && !column.is_primary,
                 primaryKey: column.is_primary,
                 autoIncrement: column.is_sequence,
                 indices: [],
                 comment: column.description ?? undefined,
             };
+
+            if (CONSTRAINT_TYPES[column.confdeltype as keyof typeof CONSTRAINT_TYPES]) {
+                columnMetadata.onDelete = CONSTRAINT_TYPES[column.confdeltype as keyof typeof CONSTRAINT_TYPES];
+            }
+            if (CONSTRAINT_TYPES[column.confupdtype as keyof typeof CONSTRAINT_TYPES]) {
+                columnMetadata.onUpdate = CONSTRAINT_TYPES[column.confupdtype as keyof typeof CONSTRAINT_TYPES];
+            }
+
+            if (column.condeferrable || column.condeferred) {
+                let deferrable = 'Deferrable.NOT()';
+                if (column.condeferrable && column.condeferred) {
+                    deferrable = 'Deferrable.INITIALLY_DEFERRED()';
+                }
+                if (column.condeferrable && !column.condeferred) {
+                    deferrable = 'Deferrable.INITIALLY_IMMEDIATE()';
+                }
+                columnMetadata.references = {
+                    model: column.foreign_table_name,
+                    key: column.foreign_column_name,
+                    deferrable,
+                }
+            }
+
             if (column.column_default) {
                 columnMetadata.defaultValue = `Sequelize.literal("${column.column_default}")`;
             }

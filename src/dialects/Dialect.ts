@@ -1,10 +1,10 @@
 import { IndexType, IndexMethod, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
+import { Deferrable } from 'sequelize/types/lib/deferrable';
 import { IConfig } from '../config';
 import { createConnection } from "../connection";
-import { AssociationsParser, IAssociationsParsed, IAssociationMetadata } from './AssociationsParser'
+import { AssociationsParser, IAssociationMetadata } from './AssociationsParser'
 import { caseTransformer } from './utils';
-import {parse} from "@typescript-eslint/parser";
 
 export interface ITablesMetadata {
     [tableName: string]: ITableMetadata;
@@ -20,6 +20,20 @@ export interface ITableMetadata {
     }
     associations?: IAssociationMetadata[];
     comment?: string;
+}
+
+export enum CONSTRAINT_TYPES {
+    c = 'CASCADE',
+    d = 'SET DEFAULT',
+    n = 'SET NULL',
+    r = 'RESTRICT',
+    a = 'NO ACTION',
+}
+
+export interface IColumnMetadataReference {
+    model: string | null;
+    key: string | null;
+    deferrable: string | Deferrable | null;
 }
 
 export interface IColumnMetadata {
@@ -38,6 +52,9 @@ export interface IColumnMetadata {
     indices?: IIndexMetadata[],
     comment?: string;
     defaultValue?: any;
+    onDelete?: CONSTRAINT_TYPES;
+    onUpdate?: CONSTRAINT_TYPES;
+    references?: IColumnMetadataReference;
 }
 
 export interface IIndexMetadata {

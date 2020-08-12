@@ -45,6 +45,10 @@ export class ModelBuilder extends Builder {
                 ...col.dataType && { type: col.dataType },
                 ...col.comment && { comment: col.comment },
                 ...col.defaultValue && { defaultValue: col.defaultValue },
+                ...col.onUpdate && { onUpdate: col.onUpdate },
+                ...col.onDelete && { onDelete: col.onDelete },
+                // @TODO fix this by creating a typescript definition for model
+                // ...col.references && { references: col.references as ModelAttributeColumnReferencesOptions },
             };
 
             return props;
@@ -177,6 +181,14 @@ export class ModelBuilder extends Builder {
                 ...new Set(tableMetadata.associations?.map(a => a.associationName)),
             ],
             'sequelize-typescript'
+        ));
+
+        generatedCode += '\n';
+        generatedCode += nodeToString(generateNamedImports(
+            [
+                'Deferrable',
+            ],
+            'sequelize'
         ));
 
         generatedCode += '\n';

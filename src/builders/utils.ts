@@ -25,7 +25,9 @@ export const nodeToString = (node: ts.Node): string => {
  * @param {string} moduleSpecifier
  * @returns {string} Named import code
  */
-export const generateNamedImports = (importsSpecifier: string[], moduleSpecifier: string): ts.ImportDeclaration => {
+export const generateNamedImports = (
+    importsSpecifier: string[],
+    moduleSpecifier: string): ts.ImportDeclaration => {
     return ts.createImportDeclaration(
         /* decorators */ undefined,
         /* modifiers */ undefined,
@@ -34,7 +36,10 @@ export const generateNamedImports = (importsSpecifier: string[], moduleSpecifier
             ts.createNamedImports(
                 [
                     ...importsSpecifier
-                        .map(is => ts.createImportSpecifier(undefined, ts.createIdentifier(is)))
+                        .map(is => ts.createImportSpecifier(
+                            undefined,
+                            ts.createIdentifier(is)
+                        ))
                 ]
             )
         ),
@@ -71,13 +76,16 @@ export const generateObjectLiteralDecorator = (
             ts.createIdentifier(decoratorIdentifier),
             undefined,
             [
-                ts.createObjectLiteral(
-                    [
+                ts.createObjectLiteral([
                         ...Object.entries(props)
-                            .map(e => ts.createPropertyAssignment(e[0],
+                            .map(e => ts.createPropertyAssignment(
+                                e[0],
                                 typeof e[1] === 'string' && (
-                                  e[1].startsWith('DataType.') || e[1].startsWith('Sequelize.')
-                                ) ? ts.createIdentifier(e[1]) : ts.createLiteral(e[1])))
+                                    e[1].startsWith('DataType.') ||
+                                    e[1].startsWith('Sequelize.') ||
+                                    e[1].startsWith('Deferrable.')
+                                ) ? ts.createIdentifier(e[1]) : ts.createLiteral(e[1])
+                            ))
                     ]
                 )
             ]
