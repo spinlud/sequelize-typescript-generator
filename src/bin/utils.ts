@@ -44,6 +44,7 @@ export const aliasesMap = {
     PROTOCOL: 'protocol',
     ASSOCIATIONS_FILE: 'associations-file',
     ENABLE_SEQUELIZE_LOGS: 'sequelize-logs',
+    DIALECT_OPTIONS: 'dialect-options',
 };
 
 /**
@@ -74,7 +75,40 @@ export const parseCase = (arg: string): TransformCase | TransformMap => {
     }
 
     return arg.toUpperCase() as TransformCase;
-}
+};
+
+/**
+ *
+ * @param {string[]} options
+ */
+const buildDialectOptions = (options: string[]): object => {
+    const dialectOptions: {[key: string]: any} = {};
+
+    for (const arg of options) {
+        let [k, v]: Array<string | number | boolean> = arg.split('=');
+
+        if (!k || !v) {
+            throw new Error(`Invalid option ${arg} for dialectOptions. Format must be key=value.`);
+        }
+
+        // Try to cast value to the proper type
+        v = v.toLowerCase();
+
+        if (v === 'true') {
+            v = true;
+        }
+        else if (v === 'false') {
+            v = false;
+        }
+        else if (!isNaN(v as any)) {
+            v = Number(v);
+        }
+
+        dialectOptions[k] = v;
+    }
+
+    return dialectOptions;
+};
 
 /**
  * Build config object from parsed arguments
@@ -100,6 +134,10 @@ export const buildConfig = (argv: ArgvType): IConfig => {
 
             ...argv[aliasesMap.DIALECT] === 'sqlite' && {
                 storage: argv[aliasesMap.STORAGE] ?? 'memory',
+            },
+
+            ...argv[aliasesMap.DIALECT_OPTIONS] && {
+                dialectOptions: buildDialectOptions(argv[aliasesMap.DIALECT_OPTIONS]),
             },
 
             logQueryParameters: true,

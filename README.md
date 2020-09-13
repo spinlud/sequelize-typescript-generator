@@ -169,18 +169,21 @@ Options:
   -l, --ssl                Enable SSL                                  [boolean]
   -r, --protocol           Protocol used: Default:
                            - tcp                                        [string]
+  -n, --dialect-options    Dialect native options. Each argument mush 
+                           have format key=value.                       [array]
+
   -a, --associations-file  Associations file path                       [string]
   -g, --sequelize-logs     Enable Sequelize logs                       [boolean]
 ```
 
 Local usage example:
 ```shell
-npx stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --case camel --out-dir models --clean 
+npx stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --dialect-options encrypt=true --case camel --out-dir models --clean 
 ```
 
 Global usage example:
 ```shell
-stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --case camel --out-dir models --clean 
+stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --dialect-options encrypt=true --case camel --out-dir models --clean 
 ```
 
 ## Programmatic usage
