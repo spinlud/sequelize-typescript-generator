@@ -19,7 +19,7 @@ export const cli = async (): Promise<void> => {
     let usage = `Usage: sta -D <dialect> -d [database] -u [username] -x [password] `;
     usage += `-h [host] -p [port] -o [out-dir] -s [schema] -a [associations-file]`;
     usage += `-t [tables] -T [skip-tables] -i [indices] -C [case] -S [storage] -L [lint-file] `;
-    usage += `-l [ssl] -r [protocol] -n [dialect-options] -c [clean]`;
+    usage += `-l [ssl] -r [protocol] -n [dialect-options] -c [clean] -g [logs]`;
 
     const {argv} = yargs
         .usage(usage)
@@ -128,12 +128,15 @@ export const cli = async (): Promise<void> => {
             describe: `Enable Sequelize logs`,
         }).option('n', {
             alias: aliasesMap.DIALECT_OPTIONS,
-            type: 'array',
-            describe: `Dialect native options. Each argument mush have format key=value.`,
+            type: 'string',
+            describe: `Dialect native options passed as json string.`,
+        }).option('f', {
+            alias: aliasesMap.DIALECT_OPTIONS_FILE,
+            type: 'string',
+            describe: `Dialect native options passed as json file path.`,
         });
 
-    // Args validation
-    await validateArgs(argv);
+    validateArgs(argv);
 
     const config = buildConfig(argv);
     const dialect = buildDialect(argv);

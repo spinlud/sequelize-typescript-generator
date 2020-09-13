@@ -1,6 +1,6 @@
 {
   "name": "sequelize-typescript-generator",
-  "version": "2.7.0",
+  "version": "2.7.1",
   "description": "Automatically generates typescript models compatible with sequelize-typescript library (https://www.npmjs.com/package/sequelize-typescript) directly from your source database.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -23,7 +23,7 @@
     "test-mssql": "npm run docker-remove-containers && npm run docker-start-mssql && jest src/tests/integration/mssql",
     "test-sqlite": "npm run docker-remove-containers && jest src/tests/integration/sqlite",
     "test": "npm run test-sqlite && npm run test-mysql && npm run test-mariadb && npm run test-postgres && npm run test-mssql",
-    "dev": "npx ts-node-dev src/bin/cli.ts -D mysql -u root -x mysql -d dbtest --dialect-options encrypt=true --case const:camel --clean ",
+    "dev": "npx ts-node-dev src/bin/cli.ts -D mysql -u root -x mysql -d dbtest --dialect-options '{\"timezone\": \"local\"}' --case const:camel --clean --logs",
     "usage": "npx ts-node-dev src/bin/cli.ts --help"
   },
   "author": "Ludovico Fabbri",

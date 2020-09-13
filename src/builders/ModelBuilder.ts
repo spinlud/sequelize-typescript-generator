@@ -229,6 +229,10 @@ export class ModelBuilder extends Builder {
         const { clean, outDir } = this.config.output;
         const writePromises: Promise<void>[] = [];
 
+        if (this.config.connection.logging) {
+            console.log('CONFIGURATION', this.config);
+        }
+
         console.log(`Fetching metadata from source`);
         const tablesMetadata = await this.dialect.buildTablesMetadata(this.config);
 
