@@ -16,7 +16,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 export const cli = async (): Promise<void> => {
-    let usage = `Usage: sta -D <dialect> -d [database] -u [username] -x [password] `;
+    let usage = `Usage: stg -D <dialect> -d [database] -u [username] -x [password] `;
     usage += `-h [host] -p [port] -o [out-dir] -s [schema] -a [associations-file]`;
     usage += `-t [tables] -T [skip-tables] -i [indices] -C [case] -S [storage] -L [lint-file] `;
     usage += `-l [ssl] -r [protocol] -n [dialect-options] -c [clean] -g [logs]`;
