@@ -34,10 +34,9 @@ Prerequisites are the same of the [sequelize-typescript](https://www.npmjs.com/p
 In particular the following peer dependencies must be installed:
 
 - [typescript](https://www.npmjs.com/package/typescript)
-- [sequelize](https://www.npmjs.com/package/sequelize)
+- [sequelize](https://www.npmjs.com/package/sequelize) (version 5.x.x, version 6 is currently not supported)
 - [@types/node](https://www.npmjs.com/package/@types/node)
 - [@types/validator](https://www.npmjs.com/package/@types/validator)
-- [@types/bluebird](https://www.npmjs.com/package/@types/bluebird)
 - [reflect-metadata](https://www.npmjs.com/package/reflect-metadata)
 - [sequelize-typescript](https://www.npmjs.com/package/sequelize-typescript)
 
