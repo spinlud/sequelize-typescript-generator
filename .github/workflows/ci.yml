@@ -1,0 +1,78 @@
+name: ci
+on: [push, workflow_dispatch]
+
+jobs:
+  job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+
+      - name: Setup node
+        uses: actions/setup-node@v2
+        with:
+          node-version: '12'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      # Tests ------------------------
+
+      - name: Test MySQL 5
+        run: npm run test-mysql
+        env:
+          DOCKER_MYSQL_TAG=5
+
+      - name: Test MySQL 8
+        run: npm run test-mysql
+        env:
+          DOCKER_MYSQL_TAG=8
+
+      - name: Test MariaDB 10.4
+        run: npm run test-mariadb
+        env:
+          DOCKER_MARIADB_TAG=10.4.12
+
+      - name: Test Postgres 10
+        run: npm run test-postgres
+        env:
+          DOCKER_POSTGRES_TAG=10
+
+      - name: Test Postgres 11
+        run: npm run test-postgres
+        env:
+          DOCKER_POSTGRES_TAG=11
+
+      - name: Test Postgres 12
+        run: npm run test-postgres
+        env:
+          DOCKER_POSTGRES_TAG=12
+
+      - name: Test MSSQL 2017
+        run: npm run test-mssql
+        env:
+          DOCKER_MSSQL_TAG=2017-CU17-ubuntu
+
+      - name: Test MSSQL 2019
+        run: npm run test-mssql
+        env:
+          DOCKER_MSSQL_TAG=2019-latest
+
+      - name: Test SQLite
+        run: npm run test-sqlite
+
+      # End tests ------------------------
+
+      - name: Check version changes
+        uses: EndBug/version-check@v1
+        id: check
+
+      - name: Publish
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          npm set registry "https://registry.npmjs.org"
+          npm set //registry.npmjs.org/:_authToken ${{ secrets.NPM_PUBLISH_TOKEN }}
+          npm publish

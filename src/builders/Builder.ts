@@ -36,5 +36,5 @@ export abstract class Builder {
      * Build files with the given configuration and dialect
      * @returns {Promise<void>}
      */
-    abstract async build(): Promise<void>;
+    abstract build(): Promise<void>;
 }
