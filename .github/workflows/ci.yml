@@ -71,7 +71,7 @@ jobs:
         id: check
 
       - name: Publish
-        if: steps.check.outputs.changed == 'true'
+        if: steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/master'
         run: |
           npm set registry "https://registry.npmjs.org"
           npm set //registry.npmjs.org/:_authToken ${{ secrets.NPM_PUBLISH_TOKEN }}
