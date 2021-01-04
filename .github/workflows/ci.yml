@@ -35,7 +35,7 @@ jobs:
         with:
           node-version: '12'
 
-      - name: Cache node_modules
+      - name: Restore node_modules
         id: cache-node-modules
         uses: actions/cache@v2
         with:
@@ -64,7 +64,7 @@ jobs:
         with:
           node-version: '12'
 
-      - name: Cache node_modules
+      - name: Restore node_modules
         id: cache-node-modules
         uses: actions/cache@v2
         with:
@@ -98,7 +98,7 @@ jobs:
         with:
           node-version: '12'
 
-      - name: Cache node_modules
+      - name: Restore node_modules
         id: cache-node-modules
         uses: actions/cache@v2
         with:
@@ -122,7 +122,7 @@ jobs:
         with:
           node-version: '12'
 
-      - name: Cache node_modules
+      - name: Restore node_modules
         id: cache-node-modules
         uses: actions/cache@v2
         with:
@@ -151,7 +151,7 @@ jobs:
         with:
           node-version: '12'
 
-      - name: Cache node_modules
+      - name: Restore node_modules
         id: cache-node-modules
         uses: actions/cache@v2
         with:
@@ -173,7 +173,7 @@ jobs:
         with:
           node-version: '12'
 
-      - name: Cache node_modules
+      - name: Restore node_modules
         id: cache-node-modules
         uses: actions/cache@v2
         with:
