@@ -186,6 +186,8 @@ jobs:
       - name: Check version changes
         uses: EndBug/version-check@v1
         id: check
+        with:
+          diff-search: true
 
       - name: Publish
         if: steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/master'
