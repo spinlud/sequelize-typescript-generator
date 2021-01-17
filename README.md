@@ -30,15 +30,7 @@ Currently tested databases:
 - SQLite (3)
 
 ## Prerequisites
-Prerequisites are the same of the [sequelize-typescript](https://www.npmjs.com/package/sequelize-typescript#installation) library.
-In particular the following peer dependencies must be installed:
-
-- [typescript](https://www.npmjs.com/package/typescript)
-- [sequelize](https://www.npmjs.com/package/sequelize) (version 5.x.x, version 6 is currently not supported)
-- [@types/node](https://www.npmjs.com/package/@types/node)
-- [@types/validator](https://www.npmjs.com/package/@types/validator)
-- [reflect-metadata](https://www.npmjs.com/package/reflect-metadata)
-- [sequelize-typescript](https://www.npmjs.com/package/sequelize-typescript)
+See [sequelize-typescript installation](https://www.npmjs.com/package/sequelize-typescript#installation).
 
 Local install:
 ```shell
@@ -391,7 +383,7 @@ import { passport } from "./passport";
 	timestamps: false,
 	comment: "" 
 })
-export class person extends Model<person> {
+export class person extends Model {
 
     @Column({
     	field: "person_id",
@@ -441,7 +433,7 @@ import { person } from "./person";
 	timestamps: false,
 	comment: "" 
 })
-export class passport extends Model<passport> {
+export class passport extends Model {
 
     @ForeignKey(() => person)
     @Column({
@@ -525,7 +517,7 @@ import { units } from "./units";
 	timestamps: false,
 	comment: "" 
 })
-export class races extends Model<races> {
+export class races extends Model {
 
     @Column({
     	field: "race_id",
@@ -563,7 +555,7 @@ import { races } from "./races";
 	timestamps: false,
 	comment: "" 
 })
-export class units extends Model<units> {
+export class units extends Model {
 
     @Column({
     	field: "unit_id",
@@ -661,7 +653,7 @@ import { authors_books } from "./authors_books";
 	timestamps: false,
 	comment: "" 
 })
-export class authors extends Model<authors> {
+export class authors extends Model {
 
     @Column({
     	field: "author_id",
@@ -700,7 +692,7 @@ import { authors_books } from "./authors_books";
 	timestamps: false,
 	comment: "" 
 })
-export class books extends Model<books> {
+export class books extends Model {
 
     @Column({
     	field: "book_id",
@@ -739,7 +731,7 @@ import { books } from "./books";
 	timestamps: false,
 	comment: "" 
 })
-export class authors_books extends Model<authors_books> {
+export class authors_books extends Model {
 
     @ForeignKey(() => authors)
     @Column({

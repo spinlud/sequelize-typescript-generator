@@ -1,6 +1,6 @@
 {
   "name": "sequelize-typescript-generator",
-  "version": "2.9.1",
+  "version": "3.0.0",
   "description": "Automatically generates typescript models compatible with sequelize-typescript library (https://www.npmjs.com/package/sequelize-typescript) directly from your source database.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -33,15 +33,10 @@
     "url": "https://github.com/spinlud/sequelize-typescript-generator.git/issues"
   },
   "homepage": "https://github.com/spinlud/sequelize-typescript-generator.git#readme",
-  "peerDependencies": {
-    "typescript": "^4.0.3",
-    "sequelize": "^5.22.3",
-    "sequelize-typescript": "^1.1.0"
-  },
   "devDependencies": {
     "@types/bluebird": "^3.5.33",
-    "@types/jest": "^26.0.19",
-    "@types/node": "^14.14.19",
+    "@types/jest": "^26.0.20",
+    "@types/node": "^14.14.20",
     "@types/pluralize": "0.0.29",
     "@types/validator": "^13.1.2",
     "@types/yargs": "^15.0.12",
@@ -51,8 +46,6 @@
     "pg": "^8.5.1",
     "pg-hstore": "^2.3.3",
     "reflect-metadata": "^0.1.13",
-    "sequelize": "^5.22.3",
-    "sequelize-typescript": "^1.1.0",
     "sqlite3": "^5.0.1",
     "tedious": "^9.2.3",
     "ts-jest": "^26.4.4",
@@ -67,6 +60,8 @@
     "change-case": "^4.1.2",
     "eslint": "^7.17.0",
     "pluralize": "^8.0.0",
+    "sequelize": "^6.3.5",
+    "sequelize-typescript": "^2.0.0",
     "yargs": "^16.2.0"
   },
   "keywords": [

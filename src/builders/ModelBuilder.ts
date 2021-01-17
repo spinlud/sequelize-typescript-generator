@@ -148,7 +148,7 @@ export class ModelBuilder extends Builder {
                     ts.SyntaxKind.ExtendsKeyword,
                     [
                         ts.createExpressionWithTypeArguments(
-                            [ ts.createTypeReferenceNode(name, undefined) ],
+                            [],
                             ts.createIdentifier('Model')
                         )
                     ]
