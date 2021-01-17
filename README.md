@@ -32,28 +32,6 @@ Currently tested databases:
 ## Prerequisites
 See [sequelize-typescript installation](https://www.npmjs.com/package/sequelize-typescript#installation).
 
-Local install:
-```shell
-npm install -S typescript @types/node @types/validator @types/bluebird reflect-metadata sequelize sequelize-typescript
-```
-
-Or if you intend to use the library globally:
-```shell
-npm install -g typescript @types/node @types/validator @types/bluebird reflect-metadata sequelize sequelize-typescript
-```
-
-Your `tsconfig.json` file needs the following flags:
-
-```json
-{
-    "compilerOptions": {
-        "target": "es6",
-        "experimentalDecorators": true,
-        "emitDecoratorMetadata": true   
-    }
-}
-```
-
 You should also install the specific driver library for your database, see 
 [sequelize documentation](https://sequelize.org/v5/manual/getting-started.html):
 ```shell
@@ -64,17 +42,8 @@ npm install -S sqlite3 # SQLite
 npm install -S tedious # Microsoft SQL Server
 ```
 
-Or if you intend to use the library globally:
-```shell
-npm install -g pg pg-hstore # Postgres
-npm install -g mysql2 # MySQL
-npm install -g mariadb # MariaDB
-npm install -g sqlite3 # SQLite
-npm install -g tedious # Microsoft SQL Server
-```
-
 ## Installation
-Local install:
+Local install
 ```shell
 npm install -S sequelize-typescript-generator
 ```

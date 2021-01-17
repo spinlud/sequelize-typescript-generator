@@ -1,6 +1,6 @@
 {
   "name": "sequelize-typescript-generator",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "Automatically generates typescript models compatible with sequelize-typescript library (https://www.npmjs.com/package/sequelize-typescript) directly from your source database.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
