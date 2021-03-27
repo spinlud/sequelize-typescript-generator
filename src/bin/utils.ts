@@ -185,7 +185,7 @@ export const buildConfig = (argv: ArgvType): IConfig => {
                 : path.join(process.cwd(), defaultOutputDir),
             clean: !!argv[aliasesMap.OUTPUT_DIR_CLEAN],
         },
-        strict: !!argv[aliasesMap.DISABLE_STRICT],
+        strict: !(!!argv[aliasesMap.DISABLE_STRICT]),
         ...argv[aliasesMap.LINT_FILE] && {
             lintOptions: {
                 configFile: argv[aliasesMap.LINT_FILE],
