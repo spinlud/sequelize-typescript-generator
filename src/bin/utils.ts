@@ -46,6 +46,7 @@ export const aliasesMap = {
     ENABLE_SEQUELIZE_LOGS: 'logs',
     DIALECT_OPTIONS: 'dialect-options',
     DIALECT_OPTIONS_FILE: 'dialect-options-file',
+    DISABLE_STRICT: 'no-strict',
 };
 
 /**
@@ -184,6 +185,7 @@ export const buildConfig = (argv: ArgvType): IConfig => {
                 : path.join(process.cwd(), defaultOutputDir),
             clean: !!argv[aliasesMap.OUTPUT_DIR_CLEAN],
         },
+        strict: !!argv[aliasesMap.DISABLE_STRICT],
         ...argv[aliasesMap.LINT_FILE] && {
             lintOptions: {
                 configFile: argv[aliasesMap.LINT_FILE],

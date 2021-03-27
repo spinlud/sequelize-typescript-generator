@@ -43,4 +43,5 @@ export interface IConfig {
     metadata?: IConfigMetadata;
     output: IConfigOutput;
     lintOptions?: CLIEngine.Options;
+    strict?: boolean;
 }

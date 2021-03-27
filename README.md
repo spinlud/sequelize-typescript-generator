@@ -10,6 +10,7 @@
 * [Installation](#installation)
 * [CLI usage](#cli-usage)
 * [Programmatic usage](#programmatic-usage)
+* [Strict mode](#strict-mode)
 * [Transform case](#transform-case)
 * [Associations](#associations)
     * [One to One](#one-to-one)
@@ -134,6 +135,8 @@ Options:
                                                                         [string]
   -f, --dialect-options-file  Dialect native options passed as json file path.
                                                                         [string]
+  -R, --no-strict             Disable strict typescript class declaration.
+                                                                       [boolean]                                                                        
 ```
 
 Local usage example:
@@ -167,7 +170,8 @@ import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-genera
         output: {
             clean: true,
             outDir: 'models'
-        }
+        },
+        strict: true,
     };
 
     const dialect = new DialectMySQL();
@@ -183,6 +187,128 @@ import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-genera
     }    
 })();
 ```
+
+## Strict mode
+By default strict mode will be used for models class declaration:
+
+`STRICT ENABLED`
+```ts
+import {
+	Model, Table, Column, DataType, Index, Sequelize, ForeignKey, HasOne 
+} from "sequelize-typescript";
+import { passport } from "./passport";
+
+interface personAttributes {
+    person_id: number;
+    name: string;
+    passport_id: number;
+}
+
+@Table({
+	tableName: "person",
+	timestamps: false 
+})
+export class person extends Model<personAttributes, personAttributes> implements personAttributes {
+
+    @Column({
+    	primaryKey: true,
+    	type: DataType.INTEGER 
+    })
+    @Index({
+    	name: "PRIMARY",
+    	using: "BTREE",
+    	order: "ASC",
+    	unique: true 
+    })
+    person_id!: number;
+
+    @Column({
+    	type: DataType.STRING(80) 
+    })
+    name!: string;
+
+    @Column({
+    	type: DataType.INTEGER 
+    })
+    passport_id!: number;
+
+    @HasOne(() => passport, {
+    	sourceKey: "person_id" 
+    })
+    passport?: passport;
+
+}
+```
+
+You can disable strict mode from both CLI or programmatically:
+
+```shell
+npx stg -D mysql -d myDatabase --no-strict  
+```
+
+```ts
+const config: IConfig = {
+    connection: {
+        dialect: 'mysql',
+        database: 'myDatabase',
+        username: 'myUsername',
+        password: 'myPassword'
+    },
+    metadata: {
+        indices: true,
+        case: 'CAMEL',
+    },
+    output: {
+        clean: true,
+        outDir: 'models'
+    },
+    strict: false,
+};
+```
+
+`STRICT DISABLED`
+```ts
+import {
+	Model, Table, Column, DataType, Index, Sequelize, ForeignKey, HasOne 
+} from "sequelize-typescript";
+import { passport } from "./passport";
+
+@Table({
+	tableName: "person",
+	timestamps: false 
+})
+export class person extends Model {
+
+    @Column({
+    	primaryKey: true,
+    	type: DataType.INTEGER 
+    })
+    @Index({
+    	name: "PRIMARY",
+    	using: "BTREE",
+    	order: "ASC",
+    	unique: true 
+    })
+    person_id!: number;
+
+    @Column({
+    	type: DataType.STRING(80) 
+    })
+    name!: string;
+
+    @Column({
+    	type: DataType.INTEGER 
+    })
+    passport_id!: number;
+
+    @HasOne(() => passport, {
+    	sourceKey: "person_id" 
+    })
+    passport?: passport;
+
+}
+```
+
 
 ## Transform case
 You can transform table name and fields with one of the following cases:

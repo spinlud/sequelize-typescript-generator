@@ -134,7 +134,11 @@ export const cli = async (): Promise<void> => {
             alias: aliasesMap.DIALECT_OPTIONS_FILE,
             type: 'string',
             describe: `Dialect native options passed as json file path.`,
-        });
+        }).option('R', {
+            alias: aliasesMap.DISABLE_STRICT,
+            boolean: true,
+            describe: `Disable strict typescript class declaration.`,
+        })
 
     validateArgs(argv);
 

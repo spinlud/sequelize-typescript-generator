@@ -124,43 +124,14 @@ export class ModelBuilder extends Builder {
      * Build table class declaration
      * @param {ITableMetadata} tableMetadata
      * @param {Dialect} dialect
+     * @param {boolean} strict
      */
-    private static buildTableClassDeclaration(tableMetadata: ITableMetadata, dialect: Dialect): string {
+    private static buildTableClassDeclaration(
+        tableMetadata: ITableMetadata,
+        dialect: Dialect,
+        strict: boolean = true
+    ): string {
         const { originName: tableName, name, columns } = tableMetadata;
-
-        const classDecl = ts.createClassDeclaration(
-            [
-                // @Table decorator
-                generateObjectLiteralDecorator('Table', {
-                    tableName: tableName,
-                    ...tableMetadata.schema && { schema: tableMetadata.schema },
-                    timestamps: tableMetadata.timestamps,
-                    ...tableMetadata.comment && { comment: tableMetadata.comment },
-                })
-            ],
-            [
-                ts.createToken(ts.SyntaxKind.ExportKeyword),
-            ],
-            name,
-            undefined,
-            [
-                ts.createHeritageClause(
-                    ts.SyntaxKind.ExtendsKeyword,
-                    [
-                        ts.createExpressionWithTypeArguments(
-                            [],
-                            ts.createIdentifier('Model')
-                        )
-                    ]
-                )
-            ],
-            // Class members
-            [
-                ...Object.values(columns).map(col => this.buildColumnPropertyDecl(col, dialect)),
-                ...tableMetadata.associations && tableMetadata.associations.length ?
-                    tableMetadata.associations.map(a => this.buildAssociationPropertyDecl(a)) : []
-            ]
-        );
 
         let generatedCode = '';
 
@@ -186,8 +157,8 @@ export class ModelBuilder extends Builder {
 
         // Add models for associations
         tableMetadata.associations?.forEach(a => {
-           importModels.add(a.targetModel);
-           a.joinModel && importModels.add(a.joinModel);
+            importModels.add(a.targetModel);
+            a.joinModel && importModels.add(a.joinModel);
         });
 
         // Add models for foreign keys
@@ -203,6 +174,93 @@ export class ModelBuilder extends Builder {
 
             generatedCode += '\n';
         });
+
+        const attributesInterfaceName = `${tableName}Attributes`;
+
+        if (strict) {
+            generatedCode += '\n';
+
+            const attributesInterface = ts.createInterfaceDeclaration(
+                undefined,
+                undefined,
+                ts.createIdentifier(attributesInterfaceName),
+                undefined,
+                undefined,
+                [
+                    ...(Object.values(columns).map(c => ts.createPropertySignature(
+                        undefined,
+                        ts.createIdentifier(c.name),
+                        c.autoIncrement || c.allowNull ? ts.createToken(ts.SyntaxKind.QuestionToken) : undefined,
+                        ts.createTypeReferenceNode(dialect.mapDbTypeToJs(c.type) ?? 'any', undefined)
+                    )))
+                ]
+            );
+
+            generatedCode += nodeToString(attributesInterface);
+            generatedCode += '\n';
+        }
+
+        const classDecl = ts.createClassDeclaration(
+            [
+                // @Table decorator
+                generateObjectLiteralDecorator('Table', {
+                    tableName: tableName,
+                    ...tableMetadata.schema && { schema: tableMetadata.schema },
+                    timestamps: tableMetadata.timestamps,
+                    ...tableMetadata.comment && { comment: tableMetadata.comment },
+                })
+            ],
+            [
+                ts.createToken(ts.SyntaxKind.ExportKeyword),
+            ],
+            name,
+            undefined,
+            !strict ? [
+                ts.createHeritageClause(
+                    ts.SyntaxKind.ExtendsKeyword,
+                    [
+                        ts.createExpressionWithTypeArguments(
+                            [],
+                            ts.createIdentifier('Model')
+                        )
+                    ]
+                )
+            ] : [
+                ts.createHeritageClause(
+                    ts.SyntaxKind.ExtendsKeyword,
+                    [
+                        ts.createExpressionWithTypeArguments(
+                            [
+                                ts.createTypeReferenceNode(
+                                    ts.createIdentifier(attributesInterfaceName),
+                                    undefined
+                                ),
+                                ts.createTypeReferenceNode(
+                                    ts.createIdentifier(attributesInterfaceName),
+                                    undefined
+                                )
+                            ],
+                            ts.createIdentifier('Model')
+                        )
+                    ]
+                ),
+                ts.createHeritageClause(
+                    ts.SyntaxKind.ImplementsKeyword,
+                    [
+                        ts.createExpressionWithTypeArguments(
+                            undefined,
+                            ts.createIdentifier(attributesInterfaceName)
+                        )
+                    ]
+                )
+            ],
+            // Class members
+            [
+                ...Object.values(columns).map(col => this.buildColumnPropertyDecl(col, dialect)),
+                ...tableMetadata.associations && tableMetadata.associations.length ?
+                    tableMetadata.associations.map(a => this.buildAssociationPropertyDecl(a)) : []
+            ]
+        );
 
         generatedCode += '\n';
         generatedCode += nodeToString(classDecl);
@@ -266,7 +324,8 @@ export class ModelBuilder extends Builder {
         // Build model files
         for (const tableMetadata of Object.values(tablesMetadata)) {
             console.log(`Processing table ${tableMetadata.originName}`);
-            const tableClassDecl = ModelBuilder.buildTableClassDeclaration(tableMetadata, this.dialect);
+            const tableClassDecl =
+                ModelBuilder.buildTableClassDeclaration(tableMetadata, this.dialect, this.config.strict);
 
             writePromises.push((async () => {
                 const outPath = path.join(outDir, `${tableMetadata.name}.ts`);
