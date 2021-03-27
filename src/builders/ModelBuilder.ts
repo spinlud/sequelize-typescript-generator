@@ -175,7 +175,7 @@ export class ModelBuilder extends Builder {
             generatedCode += '\n';
         });
 
-        const attributesInterfaceName = `${tableName}Attributes`;
+        const attributesInterfaceName = `${name}Attributes`;
 
         if (strict) {
             generatedCode += '\n';
