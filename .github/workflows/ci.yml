@@ -108,7 +108,7 @@ jobs:
       - name: Test MariaDB 10.4
         run: npm run test-mariadb
         env:
-          DOCKER_MARIADB_TAG: 10.4.12
+          DOCKER_MARIADB_TAG: 10.5
 
   test_mssql:
     runs-on: ubuntu-latest
