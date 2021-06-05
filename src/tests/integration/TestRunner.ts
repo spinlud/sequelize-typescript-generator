@@ -417,49 +417,47 @@ export class TestRunner {
                     connection && await connection.close();
                 });
 
-                for (const [typeName, typeValue] of testMetadata.dataTypes.testValues) {
-                    it(typeName, async () => {
-                        const dialect = buildDialect(testMetadata);
-                        const DataTypes = connection!.model(testMetadata.dataTypes.dataTypesTable);
-                        const columnName = `f_${typeName}`;
+                it.each(testMetadata.dataTypes.testValues)('%s', async (typeName, typeValue) => {
+                    const dialect = buildDialect(testMetadata);
+                    const DataTypes = connection!.model(testMetadata.dataTypes.dataTypesTable);
+                    const columnName = `f_${typeName}`;
 
-                        const res = await DataTypes.create({ [columnName]: typeValue });
-                        expect(res).toBeDefined();
+                    const res = await DataTypes.create({ [columnName]: typeValue });
+                    expect(res).toBeDefined();
 
-                        const rows = await DataTypes.findAll({ order: [['id', 'DESC']], limit: 1 });
-                        expect(rows.length).toBe(1);
+                    const rows = await DataTypes.findAll({ order: [['id', 'DESC']], limit: 1 });
+                    expect(rows.length).toBe(1);
 
-                        // @ts-ignore-start
-                        const receivedValue = rows[0][columnName];
-                        expect(receivedValue).toBeDefined();
+                    // @ts-ignore-start
+                    const receivedValue = rows[0][columnName];
+                    expect(receivedValue).toBeDefined();
 
-                        const nativeType = await testMetadata.dataTypes.getColumnNativeDataType(
-                            connection!,
-                            testMetadata.schema?.name ?? process.env.TEST_DB_DATABASE!,
-                            testMetadata.dataTypes.dataTypesTable,
-                            columnName
-                        );
+                    const nativeType = await testMetadata.dataTypes.getColumnNativeDataType(
+                        connection!,
+                        testMetadata.schema?.name ?? process.env.TEST_DB_DATABASE!,
+                        testMetadata.dataTypes.dataTypesTable,
+                        columnName
+                    );
 
-                        expect(dialect.mapDbTypeToJs(nativeType)).toBeDefined();
+                    expect(dialect.mapDbTypeToJs(nativeType)).toBeDefined();
 
-                        const receivedValueType = getObjectType(receivedValue);
-                        const expectedValueType = dialect.mapDbTypeToJs(nativeType).toLowerCase();
+                    const receivedValueType = getObjectType(receivedValue);
+                    const expectedValueType = dialect.mapDbTypeToJs(nativeType).toLowerCase();
 
-                        if (receivedValueType === 'array') {
-                            expect(expectedValueType.includes(receivedValueType)).toBe(true);
-                        }
-                        else if (receivedValueType === 'object' &&
-                            sequelizeOptions.dialect === 'mariadb' &&
-                            typeName === 'json'
-                        ) {
-                            expect(JSON.stringify(receivedValue)).toStrictEqual(typeValue);
-                        }
-                        else {
-                            expect(receivedValueType).toStrictEqual(expectedValueType);
-                        }
-                        // @ts-ignore-end
-                    });
-                }
+                    if (receivedValueType === 'array') {
+                        expect(expectedValueType.includes(receivedValueType)).toBe(true);
+                    }
+                    else if (receivedValueType === 'object' &&
+                        sequelizeOptions.dialect === 'mariadb' &&
+                        typeName === 'json'
+                    ) {
+                        expect(JSON.stringify(receivedValue)).toStrictEqual(typeValue);
+                    }
+                    else {
+                        expect(receivedValueType).toStrictEqual(expectedValueType);
+                    }
+                    // @ts-ignore-end
+                });
             });
 
             describe('Associations', () => {

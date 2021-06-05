@@ -109,7 +109,9 @@ export const testMetadata: ITestMetadata = {
             return column;
         },
         // TODO SQLite does not have static data types thus I'm not sure how to test type mappings
-        testValues: [],
+        testValues: [
+            ['varchar', 'Hello world'],
+        ],
     },
     associations: {
         leftTableOneToOne: PERSON_TABLE_NAME,
