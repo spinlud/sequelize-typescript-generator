@@ -42,7 +42,7 @@ export const cli = async (): Promise<void> => {
         .option('s', {
             alias: aliasesMap.SCHEMA,
             string: true,
-            describe: `Schema name (Postgres only)`,
+            describe: `Schema name (Postgres only). Default: \n - public`,
         })
         .option('D', {
             alias: aliasesMap.DIALECT,

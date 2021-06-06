@@ -54,8 +54,9 @@ export interface ITable {
     comment?: string;
 }
 
-export abstract class Dialect {
+type DialectName = 'postgres' | 'mysql' | 'mariadb' | 'sqlite' | 'mssql';
 
+export abstract class Dialect {
     /**
      * Accepted dialects
      */
@@ -66,6 +67,20 @@ export abstract class Dialect {
         'sqlite',
         'mssql',
     ]);
+
+    /**
+     * Dialect name
+     */
+    public name: DialectName;
+
+    /**
+     * @constructor
+     * @param {DialectName} name
+     * @protected
+     */
+    protected constructor(name: DialectName) {
+        this.name = name;
+    }
 
     /**
      * Map database data type to sequelize data type

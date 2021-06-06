@@ -153,6 +153,10 @@ const jsDataTypesMap: { [key: string]: string } = {
  */
 export class DialectPostgres extends Dialect {
 
+    constructor() {
+        super('postgres');
+    }
+
     /**
      * Map database data type to sequelize data type
      * @param {string} dbType

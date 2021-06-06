@@ -124,7 +124,7 @@ export class TestRunner {
                 const config: IConfig = {
                     connection: sequelizeOptions,
                     metadata: {
-                        ...testMetadata.schema && { schema: testMetadata.schema.name },
+                        ...testMetadata.schema && { schema: testMetadata.schema.name }, // Postgres
                         indices: true,
                         associationsFile: associationsFilePath,
                     },

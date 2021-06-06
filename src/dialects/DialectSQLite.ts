@@ -34,6 +34,11 @@ interface IIndexMetadataSQLite {
  * @class DialectSQLite
  */
 export class DialectSQLite extends Dialect {
+
+    constructor() {
+        super('sqlite');
+    }
+
     /**
      * Map database data type to sequelize data type
      * @param {string} dbType

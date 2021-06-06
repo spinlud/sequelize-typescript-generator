@@ -133,6 +133,10 @@ const jsDataTypesMap: { [key: string]: string } = {
  */
 export class DialectMariaDB extends Dialect {
 
+    constructor() {
+        super('mariadb');
+    }
+
     /**
      * Map database data type to sequelize data type
      * @param {string} dbType

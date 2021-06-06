@@ -93,7 +93,8 @@ Options:
                               - Postgres: 5432
                               - MSSQL: 1433                             [number]
   -d, --database              Database name                             [string]
-  -s, --schema                Schema name (Postgres only)               [string]
+  -s, --schema                Schema name (Postgres only). Default:
+                              - public                                  [string]
   -D, --dialect               Dialect:
                               - postgres
                               - mysql

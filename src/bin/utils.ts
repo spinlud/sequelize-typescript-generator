@@ -163,12 +163,14 @@ export const buildConfig = (argv: ArgvType): IConfig => {
             logging: argv[aliasesMap.ENABLE_SEQUELIZE_LOGS],
         },
         metadata: {
-            ...argv[aliasesMap.SCHEMA] && { schema: argv[aliasesMap.SCHEMA] as string},
-            ...argv[aliasesMap.TABLES] && { tables: (argv[aliasesMap.TABLES] as string)
+            ...argv[aliasesMap.SCHEMA] && { schema: argv[aliasesMap.SCHEMA] as string },
+            ...argv[aliasesMap.TABLES] && {
+                tables: (argv[aliasesMap.TABLES] as string)
                     .split(',')
                     .map(tableName => tableName.toLowerCase())
             },
-            ...argv[aliasesMap.SKIP_TABLES] && { skipTables: (argv[aliasesMap.SKIP_TABLES] as string)
+            ...argv[aliasesMap.SKIP_TABLES] && {
+                skipTables: (argv[aliasesMap.SKIP_TABLES] as string)
                     .split(',')
                     .map(tableName => tableName.toLowerCase())
             },

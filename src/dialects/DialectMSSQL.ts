@@ -123,6 +123,10 @@ const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
  */
 export class DialectMSSQL extends Dialect {
 
+    constructor() {
+        super('mssql');
+    }
+
     /**
      * Map database data type to sequelize data type
      * @param {string} dbType
