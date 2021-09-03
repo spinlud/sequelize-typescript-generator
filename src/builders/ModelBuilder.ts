@@ -308,7 +308,7 @@ export class ModelBuilder extends Builder {
         try {
             await fs.access(outDir);
         }
-        catch(err) {
+        catch(err: any) {
             if (err.code && err.code === 'ENOENT') {
                 await fs.mkdir(outDir, { recursive: true });
             }
@@ -374,7 +374,7 @@ export class ModelBuilder extends Builder {
             console.log(`Linting files`);
             linter.lintFiles([path.join(outDir, '*.ts')]);
         }
-        catch(err) {
+        catch(err: any) {
             // Handle unsupported global eslint usage
             if (err.code && err.code === 'MODULE_NOT_FOUND') {
                 let msg = `\n[WARNING] Linting models skipped: dependency not found.\n`;
