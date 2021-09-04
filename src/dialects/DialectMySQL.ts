@@ -15,7 +15,6 @@ interface IColumnMetadataMySQL {
     TABLE_NAME: string;
     COLUMN_NAME: string;
     ORDINAL_POSITION?: number;
-    COLUMN_DEFAULT?: string;
     IS_NULLABLE: string;
     DATA_TYPE: string;
     CHARACTER_MAXIMUM_LENGTH: number;
@@ -28,6 +27,7 @@ interface IColumnMetadataMySQL {
     COLUMN_TYPE: string;
     COLUMN_KEY: string;
     EXTRA: string;
+    COLUMN_DEFAULT: null | string;
     PRIVILEGES: string;
     COLUMN_COMMENT: string;
     TABLE_COMMENT: string;
@@ -127,6 +127,11 @@ const jsDataTypesMap: { [key: string]: string } = {
     json: 'object',
 };
 
+const defaultValuesMap: { [key: string]: string } = {
+    'uuid()': 'DataType.UUIDV4',
+    'CURRENT_TIMESTAMP': 'DataType.NOW',
+};
+
 /**
  * Dialect for MySQL
  * @class DialectMySQL
@@ -149,10 +154,19 @@ export class DialectMySQL extends Dialect {
     /**
      * Map database data type to javascript data type
      * @param {string} dbType
-     * @returns {string
+     * @returns {string}
      */
     public mapDbTypeToJs(dbType: string): string {
         return jsDataTypesMap[dbType];
+    }
+
+    /**
+     * Map database default values to Sequelize type (e.g. uuid() => DataType.UUIDV4).
+     * @param {string} v
+     * @returns {string}
+     */
+    public mapDefaultValueToSequelize(v: string): string {
+        return defaultValuesMap.hasOwnProperty(v) ? defaultValuesMap[v] : v;
     }
 
     /**
@@ -220,6 +234,7 @@ export class DialectMySQL extends Dialect {
                 c.IS_NULLABLE,
                 c.COLUMN_KEY,
                 c.EXTRA,
+                c.COLUMN_DEFAULT,
                 c.COLUMN_COMMENT,
                 t.TABLE_COMMENT                        
             FROM information_schema.columns c
@@ -248,7 +263,8 @@ export class DialectMySQL extends Dialect {
                 originName: column.COLUMN_NAME,
                 type: column.DATA_TYPE,
                 typeExt: column.COLUMN_TYPE,
-                ...this.mapDbTypeToSequelize(column.DATA_TYPE) && { dataType: 'DataType.' +
+                ...this.mapDbTypeToSequelize(column.DATA_TYPE) && {
+                    dataType: 'DataType.' +
                         this.mapDbTypeToSequelize(column.DATA_TYPE).key
                             .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
                 },
@@ -257,6 +273,7 @@ export class DialectMySQL extends Dialect {
                 autoIncrement: column.EXTRA === 'auto_increment',
                 indices: [],
                 comment: column.COLUMN_COMMENT,
+                ...column.COLUMN_DEFAULT && { defaultValue: column.COLUMN_DEFAULT },
             };
 
             // Additional data type informations

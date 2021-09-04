@@ -125,7 +125,12 @@ const jsDataTypesMap: { [key: string]: string } = {
     geometry: 'object',
     geometrycollection: 'object',
     json: 'string',
-}
+};
+
+const defaultValuesMap: { [key: string]: string } = {
+    'uuid()': 'DataType.UUIDV4',
+    'CURRENT_TIMESTAMP': 'DataType.NOW',
+};
 
 /**
  * Dialect for MariaDB
@@ -153,6 +158,15 @@ export class DialectMariaDB extends Dialect {
      */
     public mapDbTypeToJs(dbType: string): string {
         return jsDataTypesMap[dbType];
+    }
+
+    /**
+     * Map database default values to Sequelize type (e.g. uuid() => DataType.UUIDV4).
+     * @param {string} v
+     * @returns {string}
+     */
+    public mapDefaultValueToSequelize(v: string): string {
+        return defaultValuesMap.hasOwnProperty(v) ? defaultValuesMap[v] : v;
     }
 
     /**

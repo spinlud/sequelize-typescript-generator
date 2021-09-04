@@ -96,6 +96,12 @@ export abstract class Dialect {
      */
     public abstract mapDbTypeToJs(dbType: string): string;
 
+    /**
+     * Map database default values to Sequelize type (e.g. uuid() => DataType.UUIDV4).
+     * @param {string} v
+     * @returns {string}
+     */
+    public abstract mapDefaultValueToSequelize(v: string): string;
 
     /**
      * Fetch table names for the provided database/schema

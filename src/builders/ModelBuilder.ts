@@ -49,7 +49,7 @@ export class ModelBuilder extends Builder {
                 ...col.allowNull && { allowNull: col.allowNull },
                 ...col.dataType && { type: col.dataType },
                 ...col.comment && { comment: col.comment },
-                ...col.defaultValue && { defaultValue: col.defaultValue },
+                ...col.defaultValue && { defaultValue: dialect.mapDefaultValueToSequelize(col.defaultValue.toString()) },
             };
 
             return props;
@@ -82,7 +82,7 @@ export class ModelBuilder extends Builder {
             ],
             undefined,
             col.name,
-            (col.autoIncrement || col.allowNull) ?
+            (col.autoIncrement || col.allowNull || col.defaultValue) ?
                 ts.createToken(ts.SyntaxKind.QuestionToken) : ts.createToken(ts.SyntaxKind.ExclamationToken),
             ts.createTypeReferenceNode(dialect.mapDbTypeToJs(col.type) ?? 'any', undefined),
             undefined
@@ -195,7 +195,8 @@ export class ModelBuilder extends Builder {
                     ...(Object.values(columns).map(c => ts.createPropertySignature(
                         undefined,
                         ts.createIdentifier(c.name),
-                        c.autoIncrement || c.allowNull ? ts.createToken(ts.SyntaxKind.QuestionToken) : undefined,
+                        c.autoIncrement || c.allowNull || c.defaultValue ?
+                            ts.createToken(ts.SyntaxKind.QuestionToken) : undefined,
                         ts.createTypeReferenceNode(dialect.mapDbTypeToJs(c.type) ?? 'any', undefined)
                     )))
                 ]

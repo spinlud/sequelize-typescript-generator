@@ -89,6 +89,15 @@ export class DialectSQLite extends Dialect {
     }
 
     /**
+     * Map database default values to Sequelize type (e.g. uuid() => DataType.UUIDV4).
+     * @param {string} v
+     * @returns {string}
+     */
+    public mapDefaultValueToSequelize(v: string): string {
+        return v;
+    }
+
+    /**
      * Fetch table names for the provided database/schema
      * @param {Sequelize} connection
      * @param {IConfig} config
