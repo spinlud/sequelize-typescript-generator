@@ -245,7 +245,7 @@ export class DialectPostgres extends Dialect {
                    FROM pg_attribute a
                     LEFT OUTER JOIN pg_index x
                         ON a.attnum = ANY (x.indkey) AND a.attrelid = x.indrelid
-                    WHERE a.attrelid = '${config.metadata!.schema}.${table}'::regclass AND a.attnum > 0
+                    WHERE a.attrelid = '${config.metadata!.schema}.\"${table}\"'::regclass AND a.attnum > 0
                         AND c.ordinal_position = a.attnum AND x.indisprimary IS TRUE
                 ) AS is_primary,
                 c.*,
@@ -310,7 +310,7 @@ export class DialectPostgres extends Dialect {
                 comment: column.description ?? undefined,
             };
             if (column.column_default) {
-                columnMetadata.defaultValue = `Sequelize.literal("${column.column_default}")`;
+                columnMetadata.defaultValue = `Sequelize.literal("${column.column_default.replace(/\"/g, '\\\"')}")`;
             }
 
             // Additional data type information
@@ -371,7 +371,7 @@ export class DialectPostgres extends Dialect {
                 ON x.indexrelid = pc.oid
             INNER JOIN pg_am am
                 ON pc.relam = am.oid
-            WHERE a.attrelid = '${config.metadata!.schema}.${table}'::regclass AND a.attnum > 0 
+            WHERE a.attrelid = '${config.metadata!.schema}.\"${table}\"'::regclass AND a.attnum > 0 
                 AND a.attname = '${column}';
         `;
 
