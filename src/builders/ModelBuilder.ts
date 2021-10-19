@@ -373,7 +373,7 @@ export class ModelBuilder extends Builder {
             }
 
             console.log(`Linting files`);
-            linter.lintFiles([path.join(outDir, '*.ts')]);
+            await linter.lintFiles([path.join(outDir, '*.ts')]);
         }
         catch(err: any) {
             // Handle unsupported global eslint usage

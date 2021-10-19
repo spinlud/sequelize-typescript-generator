@@ -1,5 +1,5 @@
 import { Options } from 'sequelize';
-import { CLIEngine } from 'eslint';
+import { ESLint } from 'eslint';
 
 export type TransformCase = 'UPPER' | 'LOWER' | 'UNDERSCORE' | 'CAMEL' | 'PASCAL' | 'CONST';
 
@@ -42,6 +42,6 @@ export interface IConfig {
     connection: Options;
     metadata?: IConfigMetadata;
     output: IConfigOutput;
-    lintOptions?: CLIEngine.Options;
+    lintOptions?: ESLint.Options;
     strict?: boolean;
 }

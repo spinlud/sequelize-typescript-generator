@@ -1,7 +1,9 @@
-export const eslintDefaultConfig = {
+import { Linter } from 'eslint';
+
+export const eslintDefaultConfig: Linter.Config = {
     parser:  '@typescript-eslint/parser',
     parserOptions:  {
-        ecmaVersion:  2018,
+        ecmaVersion:  2019,
         sourceType:  'module',
     },
     plugins: [],

@@ -1,26 +1,26 @@
-import { CLIEngine } from 'eslint';
+import { ESLint } from 'eslint';
 import { eslintDefaultConfig } from './eslintDefaultConfig';
 
 /**
  * @class Linter
  */
 export class Linter {
-    private engine: CLIEngine;
+    private engine: ESLint;
 
-    constructor(options?: CLIEngine.Options) {
+    constructor(options?: ESLint.Options) {
         if (options) {
-            this.engine = new CLIEngine(options);
+            this.engine = new ESLint(options);
         }
         else {
-            this.engine = new CLIEngine({
+            this.engine = new ESLint({
                 baseConfig: eslintDefaultConfig,
                 fix: true,
             });
         }
     }
 
-    lintFiles(paths: string[]): void {
-        const report = this.engine.executeOnFiles(paths);
-        CLIEngine.outputFixes(report);
+    async lintFiles(paths: string[]): Promise<void> {
+        const report = await this.engine.lintFiles(paths);
+        await ESLint.outputFixes(report);
     }
 }
