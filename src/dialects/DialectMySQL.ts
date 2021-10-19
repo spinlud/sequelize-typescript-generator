@@ -1,4 +1,4 @@
-import { QueryTypes, AbstractDataTypeConstructor, IndexMethod } from 'sequelize';
+import {QueryTypes, AbstractDataTypeConstructor, IndexMethod, col} from 'sequelize';
 import { Sequelize, DataType } from 'sequelize-typescript';
 import { IConfig } from '../config';
 import { IColumnMetadata, Dialect, IIndexMetadata, ITable } from './Dialect';
@@ -58,7 +58,7 @@ const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
     decimal: DataType.DECIMAL,
     float: DataType.FLOAT,
     double: DataType.DOUBLE,
-    bit: DataType.STRING,
+    bit: DataType.INTEGER,
     varchar: DataType.STRING,
     char: DataType.CHAR,
     text: DataType.STRING,
@@ -97,7 +97,7 @@ const jsDataTypesMap: { [key: string]: string } = {
     float: 'number',
     double: 'number',
     int: 'number',
-    bit: 'Uint8Array',
+    bit: 'number',
     varchar: 'string',
     char: 'string',
     mediumtext: 'string',
@@ -131,6 +131,26 @@ const defaultValuesMap: { [key: string]: string } = {
     'uuid()': 'DataType.UUIDV4',
     'CURRENT_TIMESTAMP': 'DataType.NOW',
 };
+
+const getDefaultValue = (columnDefault: string | null): any => {
+    if (!columnDefault) {
+        return null;
+    }
+
+    // Check if it is MySQL binary representation (e.g. b'100')
+    const regex = new RegExp(/b\'([01]+)\'/g);
+    const binaryStringCheck = regex.exec(columnDefault);
+
+    if (binaryStringCheck) {
+        const parsed = parseInt(binaryStringCheck[1], 2);
+
+        if (parsed !== null) {
+            return parsed;
+        }
+    }
+
+    return columnDefault;
+}
 
 /**
  * Dialect for MySQL
@@ -273,7 +293,7 @@ export class DialectMySQL extends Dialect {
                 autoIncrement: column.EXTRA === 'auto_increment',
                 indices: [],
                 comment: column.COLUMN_COMMENT,
-                ...column.COLUMN_DEFAULT && { defaultValue: column.COLUMN_DEFAULT },
+                ...column.COLUMN_DEFAULT && { defaultValue: getDefaultValue(column.COLUMN_DEFAULT) },
             };
 
             // Additional data type informations

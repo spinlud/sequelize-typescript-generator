@@ -442,10 +442,19 @@ export class TestRunner {
                     expect(dialect.mapDbTypeToJs(nativeType)).toBeDefined();
 
                     const receivedValueType = getObjectType(receivedValue);
+                    console.log(typeName, typeValue, receivedValue, receivedValueType);
                     const expectedValueType = dialect.mapDbTypeToJs(nativeType).toLowerCase();
 
                     if (receivedValueType === 'array') {
                         expect(expectedValueType.includes(receivedValueType)).toBe(true);
+                    }
+                    // Kind of an hack: the problem here is that BIT(n) type stores numbers in binary format (e.g. b'1000')
+                    // but node MySQL driver convert it to Buffer in javascript while the user generally wants to store it
+                    // as a number (or boolean in case of BIT(1) to simulate a boolean flag). So here we are converting
+                    // the received value to a number before comparing it to the original value.
+                    else if ((dialect.name === 'mysql' || dialect.name === 'mariadb') &&
+                        typeName === 'bit' && receivedValueType === 'uint8array') {
+                        expect(parseInt(receivedValue[0], 10)).toStrictEqual(typeValue);
                     }
                     else if (receivedValueType === 'object' &&
                         sequelizeOptions.dialect === 'mariadb' &&
