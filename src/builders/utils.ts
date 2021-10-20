@@ -66,6 +66,22 @@ export const generateObjectLiteralDecorator = (
     decoratorIdentifier: string,
     props: { [key: string]: any }
 ): ts.Decorator => {
+    const _createPropertyAssignment = (propName: string, propValue: any): ts.PropertyAssignment => {
+        let expression: ts.Expression;
+
+        if (typeof propValue === 'number') {
+            expression = ts.createNumericLiteral(propValue);
+        }
+        else if (typeof propValue === 'string' && (propValue.startsWith('DataType.') || propValue.startsWith('Sequelize.'))) {
+            expression = ts.createIdentifier(propValue);
+        }
+        else {
+            expression = ts.createLiteral(propValue);
+        }
+
+        return ts.createPropertyAssignment(propName, expression);
+    }
+
     return ts.createDecorator(
         ts.createCall(
             ts.createIdentifier(decoratorIdentifier),
@@ -74,10 +90,7 @@ export const generateObjectLiteralDecorator = (
                 ts.createObjectLiteral(
                     [
                         ...Object.entries(props)
-                            .map(e => ts.createPropertyAssignment(e[0],
-                                typeof e[1] === 'string' && (
-                                  e[1].startsWith('DataType.') || e[1].startsWith('Sequelize.')
-                                ) ? ts.createIdentifier(e[1]) : ts.createLiteral(e[1])))
+                            .map(e => _createPropertyAssignment(e[0], e[1]))
                     ]
                 )
             ]

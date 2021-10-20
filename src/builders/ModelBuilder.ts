@@ -49,7 +49,7 @@ export class ModelBuilder extends Builder {
                 ...col.allowNull && { allowNull: col.allowNull },
                 ...col.dataType && { type: col.dataType },
                 ...col.comment && { comment: col.comment },
-                ...col.defaultValue !== undefined && { defaultValue: dialect.mapDefaultValueToSequelize(col.defaultValue.toString()) },
+                ...col.defaultValue !== undefined && { defaultValue: dialect.mapDefaultValueToSequelize(col.defaultValue) },
             };
 
             return props;
