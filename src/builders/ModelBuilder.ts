@@ -82,7 +82,7 @@ export class ModelBuilder extends Builder {
             ],
             undefined,
             col.name,
-            (col.autoIncrement || col.allowNull || col.defaultValue) ?
+            (col.autoIncrement || col.allowNull || col.defaultValue !== undefined) ?
                 ts.createToken(ts.SyntaxKind.QuestionToken) : ts.createToken(ts.SyntaxKind.ExclamationToken),
             ts.createTypeReferenceNode(dialect.mapDbTypeToJs(col.type) ?? 'any', undefined),
             undefined
@@ -195,7 +195,7 @@ export class ModelBuilder extends Builder {
                     ...(Object.values(columns).map(c => ts.createPropertySignature(
                         undefined,
                         ts.createIdentifier(c.name),
-                        c.autoIncrement || c.allowNull || c.defaultValue ?
+                        c.autoIncrement || c.allowNull || c.defaultValue !== undefined ?
                             ts.createToken(ts.SyntaxKind.QuestionToken) : undefined,
                         ts.createTypeReferenceNode(dialect.mapDbTypeToJs(c.type) ?? 'any', undefined)
                     )))
