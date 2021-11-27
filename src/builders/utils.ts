@@ -34,7 +34,7 @@ export const generateNamedImports = (importsSpecifier: string[], moduleSpecifier
             ts.createNamedImports(
                 [
                     ...importsSpecifier
-                        .map(is => ts.createImportSpecifier(undefined, ts.createIdentifier(is)))
+                        .map(is => ts.createImportSpecifier(false, undefined, ts.createIdentifier(is)))
                 ]
             )
         ),
