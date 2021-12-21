@@ -138,6 +138,10 @@ export const cli = async (): Promise<void> => {
             alias: aliasesMap.DISABLE_STRICT,
             boolean: true,
             describe: `Disable strict typescript class declaration.`,
+        }).option('V', {
+            alias: aliasesMap.DISABLE_VIEWS,
+            boolean: true,
+            describe: `Disable views generation.`,
         })
 
     validateArgs(argv);
