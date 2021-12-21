@@ -47,6 +47,7 @@ export const aliasesMap = {
     DIALECT_OPTIONS: 'dialect-options',
     DIALECT_OPTIONS_FILE: 'dialect-options-file',
     DISABLE_STRICT: 'no-strict',
+    DISABLE_VIEWS: 'no-views',
 };
 
 /**
@@ -178,6 +179,7 @@ export const buildConfig = (argv: ArgvType): IConfig => {
             timestamps: !!argv[aliasesMap.TIMESTAMPS],
             ...argv[aliasesMap.CASE] && { case: parseCase(argv[aliasesMap.CASE]) },
             ...argv[aliasesMap.ASSOCIATIONS_FILE] && { associationsFile: argv[aliasesMap.ASSOCIATIONS_FILE] as string },
+            noViews: !!argv[aliasesMap.DISABLE_VIEWS],
         },
         output: {
             outDir: argv[aliasesMap.OUTPUT_DIR] ?

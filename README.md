@@ -137,7 +137,9 @@ Options:
   -f, --dialect-options-file  Dialect native options passed as json file path.
                                                                         [string]
   -R, --no-strict             Disable strict typescript class declaration.
-                                                                       [boolean]                                                                        
+                                                                       [boolean]    
+  -V, --no-views              Disable view generation. Available for: mysql and mariadb.
+                                                                       [boolean]                                                                      
 ```
 
 Local usage example:

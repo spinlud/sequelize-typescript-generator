@@ -31,6 +31,7 @@ export interface IConfigMetadata {
     timestamps?: boolean;
     case?: TransformCase | TransformMap | TransformFn;
     associationsFile?: string;
+    noViews?: boolean;
 }
 
 export interface IConfigOutput {
