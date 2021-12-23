@@ -1,7 +1,5 @@
 import fs from 'fs';
 import readline from 'readline';
-import { TransformFn, TransformTarget } from '../config/IConfig';
-import { getTransformer, singularizePtBr } from './utils';
 
 const cardinalities = new Set([
     '1:1',
@@ -105,7 +103,7 @@ export class AssociationsParser {
 
             validateRow(row);
 
-            let [
+            const [
                 cardinality,
                 leftKey,
                 rightKey,
@@ -113,9 +111,7 @@ export class AssociationsParser {
                 rightModel,
                 joinModel
             ] = row;
-            
-            const transformer: TransformFn = getTransformer('PASCAL');
-            
+
             const [
                 leftCardinality,
                 rightCardinality
@@ -139,11 +135,10 @@ export class AssociationsParser {
 
             // 1:1 and 1:N association
             if (cardinality !== 'N:N') {
-
                 associationsMetadata[leftModel].associations.push({
                     associationName: rightCardinality === '1' ? 'HasOne' : 'HasMany',
                     targetModel: rightModel,
-                    sourceKey: leftKey
+                    sourceKey: leftKey,
                 });
 
                 associationsMetadata[rightModel].associations.push({

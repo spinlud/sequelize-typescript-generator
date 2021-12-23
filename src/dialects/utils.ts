@@ -1,7 +1,6 @@
 import { ITableMetadata } from './Dialect';
 import { TransformCase, TransformFn, TransformMap, TransformTarget } from '../config/IConfig';
 import { camelCase, constantCase, pascalCase, snakeCase } from "change-case";
-import { Utils } from "sequelize";
 
 type CaseTransformer = (s: string) => string;
 
@@ -95,41 +94,6 @@ export const getTransformer = (transformCase: TransformCase | TransformMap | Tra
     return transformerFactory(transformCase);
 }
 
-function singularize(s: string) {
-    return Utils.singularize(s);
-  }
-
-function irregularSufix (word: string) : string {
-    if (word === "oes" || word === "aos" || word === "aes") {
-      return "ao"
-    }
-    else if (word === "is") {
-      return "l"
-    }
-    else {
-      return "u"
-    }
-  }
-
-export const singularizePtBr = (word: string) : string => {
-    let singularWord : string = word
-  
-    if (word.substr(-3) === "oes" || word.substr(-3) === "aos" || word.substr(-3) == "aes") {
-      singularWord = word.replace(word.substr(-3), irregularSufix(word.substr(-3)));
-    }
-    else if (word.substr(-2) === "is" || word.substr(-2) === "us" && word !== 'status') {
-      singularWord = word.replace(word.substr(-2), irregularSufix(word.substr(-2)));
-    }
-    else if (word.substr(-3) === "res" || word.substr(-3) === "zes" || word.substr(-3) === "ses") {
-      singularWord = word.substring(0, word.length - 2);
-    }
-    else if (word.substr(-1) === "s" && word !== 'status') {
-      singularWord = singularize(word)
-    }
-  
-    return singularWord
-  }
-
 /**
  * Transform ITableMetadata object using the provided case
  * @param {ITableMetadata} tableMetadata
@@ -142,12 +106,10 @@ export const caseTransformer = (
 ): ITableMetadata => {
 
     const transformer: TransformFn = getTransformer(transformCase);
-    
-    const name = tableMetadata.originName.split('_').map(val=>singularizePtBr(val)).join('_')
-    
+
     const transformed: ITableMetadata = {
         originName: tableMetadata.originName,
-        name: transformer(name, TransformTarget.MODEL),
+        name: transformer(tableMetadata.originName, TransformTarget.MODEL),
         timestamps: tableMetadata.timestamps,
         columns: {},
         ...tableMetadata.associations && {
