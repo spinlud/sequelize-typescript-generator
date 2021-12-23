@@ -221,7 +221,7 @@ export abstract class Dialect {
         // Apply associations if required
         if (config.metadata?.associationsFile) {
             const parsedAssociations = AssociationsParser.parse(config.metadata?.associationsFile);
-
+           
             for (const [tableName, association] of Object.entries(parsedAssociations)) {
                 if(!tablesMetadata[tableName]) {
                     console.warn('[WARNING]', `Associated table ${tableName} not found among (${Object.keys(tablesMetadata).join(', ')})`);

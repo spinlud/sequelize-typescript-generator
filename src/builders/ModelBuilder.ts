@@ -16,6 +16,7 @@ import {
     generateObjectLiteralDecorator,
     generateIndexExport,
 } from './utils';
+import { singularizePtBr } from '../dialects/utils';
 
 const foreignKeyDecorator = 'ForeignKey';
 
@@ -65,12 +66,11 @@ export class ModelBuilder extends Builder {
 
             return props;
         };
-
-
+        
         return ts.createProperty(
             [
                 ...(col.foreignKey ?
-                    [ generateArrowDecorator(foreignKeyDecorator, [col.foreignKey.targetModel]) ]
+                    [ generateArrowDecorator(foreignKeyDecorator, [col.foreignKey.targetModel.match(/[A-Z][a-z]+/g)?.map(val=>singularizePtBr(val)).join('') || col.foreignKey.targetModel]) ]
                     : []
                 ),
                 generateObjectLiteralDecorator('Column', buildColumnDecoratorProps(col)),
@@ -94,11 +94,13 @@ export class ModelBuilder extends Builder {
      * @param {IAssociationMetadata} association
      */
     private static buildAssociationPropertyDecl(association: IAssociationMetadata): ts.PropertyDeclaration {
-        const { associationName, targetModel, joinModel } = association;
+        let { associationName, targetModel, joinModel } = association;
+
+        targetModel = targetModel.match(/[A-Z][a-z]+/g)?.map(val=>singularizePtBr(val)).join('') || targetModel
 
         const targetModels = [ targetModel ];
         joinModel && targetModels.push(joinModel);
-
+        
         return ts.createProperty(
             [
                 ...(association.sourceKey ?
@@ -115,8 +117,7 @@ export class ModelBuilder extends Builder {
                 ),
             ],
             undefined,
-            associationName.includes('Many') ?
-                pluralize.plural(targetModel) : pluralize.singular(targetModel),
+            targetModel,
             ts.createToken(ts.SyntaxKind.QuestionToken),
             associationName.includes('Many') ?
                 ts.createArrayTypeNode(ts.createTypeReferenceNode(targetModel, undefined)) :
@@ -173,8 +174,8 @@ export class ModelBuilder extends Builder {
 
         [...importModels].forEach(modelName => {
             generatedCode += nodeToString(generateNamedImports(
-                [ modelName ],
-                `./${modelName}`
+                [ modelName.match(/[A-Z][a-z]+/g)?.map(val=>singularizePtBr(val)).join('') || modelName ],
+                `./${modelName.match(/[A-Z][a-z]+/g)?.map(val=>singularizePtBr(val)).join('') || modelName}`
             ));
 
             generatedCode += '\n';
