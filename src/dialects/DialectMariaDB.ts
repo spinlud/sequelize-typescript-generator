@@ -185,7 +185,7 @@ export class DialectMariaDB extends Dialect {
                 table_comment   AS table_comment  
             FROM information_schema.tables
             WHERE table_schema = '${config.connection.database}'
-            ${config.metadata?.noViews ? 'AND table_type <> \'VIEW\'' : ''};
+                ${config.metadata?.noViews ? 'AND table_type <> \'VIEW\'' : ''};
         `;
 
         const tables: ITable[] = (await connection.query(

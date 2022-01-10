@@ -138,7 +138,7 @@ Options:
                                                                         [string]
   -R, --no-strict             Disable strict typescript class declaration.
                                                                        [boolean]    
-  -V, --no-views              Disable view generation. Available for: mysql and mariadb.
+  -V, --no-views              Disable view generation. Available for: MySQL and MariaDB.
                                                                        [boolean]                                                                      
 ```
 
