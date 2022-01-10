@@ -38,6 +38,9 @@ import {
     PASSPORT_TABLE_DROP,
     PASSPORT_TABLE_CREATES,
     PASSPORT_TABLE_INSERTS,
+    AUTHORS_VIEW_CREATES,
+    AUTHORS_VIEW_DROP,
+    AUTHORS_VIEW_NAME,
 } from './queries';
 
 interface INativeType {
@@ -101,6 +104,13 @@ export const testMetadata: ITestMetadata = {
             dropQuery: PASSPORT_TABLE_DROP,
             insertQueries: PASSPORT_TABLE_INSERTS,
         },
+    ],
+    testViews: [
+        {
+            name: AUTHORS_VIEW_NAME,
+            createQueries: AUTHORS_VIEW_CREATES,
+            dropQuery: AUTHORS_VIEW_DROP,
+        }
     ],
     filterTables: [ DATA_TYPES_TABLE_NAME ],
     filterSkipTables: [ INDICES_TABLE_NAME ],

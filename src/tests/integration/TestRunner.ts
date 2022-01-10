@@ -81,6 +81,17 @@ const initTestDatabase = async (testMetadata: ITestMetadata, connection: Sequeli
             }
         }
     }
+
+    if (testMetadata.testViews) {
+        for (const testView of testMetadata.testViews) {
+            const { createQueries, dropQuery } = testView;
+            await connection.query(dropQuery);
+
+            for (const createQuery of createQueries) {
+                await connection.query(createQuery);
+            }
+        }
+    }
 };
 
 /**
@@ -178,7 +189,7 @@ export class TestRunner {
                 });
             });
 
-            describe('Filter --tables', () => {
+            describe('Tables', () => {
                 const { testTables, filterTables } = testMetadata;
                 let connection: Sequelize | undefined;
 
@@ -209,7 +220,7 @@ export class TestRunner {
                     connection && await connection.close();
                 });
 
-                it('should register only the provided tables', () => {
+                it('should add only the provided tables', () => {
                     connection!.addModels([ outDir ]);
 
                     for (const table of filterTables) {
@@ -225,7 +236,7 @@ export class TestRunner {
                 });
             });
 
-            describe('Filter --skip-tables', () => {
+            describe('Skip tables', () => {
                 const { testTables, filterSkipTables } = testMetadata;
                 let connection: Sequelize | undefined;
 
@@ -271,6 +282,54 @@ export class TestRunner {
                     }
                 });
             });
+
+            if (testMetadata.testViews) {
+                describe('Skip views', () => {
+                    const { testTables } = testMetadata;
+                    const testViews = testMetadata.testViews!;
+                    let connection: Sequelize | undefined;
+
+                    beforeAll(async () => {
+                        connection = createConnection({ ...sequelizeOptions });
+                        await connection.authenticate();
+                        await initTestDatabase(testMetadata, connection);
+
+                        const config: IConfig = {
+                            connection: sequelizeOptions,
+                            metadata: {
+                                ...testMetadata.schema && { schema: testMetadata.schema.name },
+                                noViews: true,
+                            },
+                            output: {
+                                outDir: outDir,
+                                clean: true,
+                            }
+                        };
+
+                        const dialect = buildDialect(testMetadata);
+                        const builder = new ModelBuilder(config, dialect);
+                        await builder.build();
+                        await fs.unlink(indexDir);
+                    });
+
+                    afterAll(async () => {
+                        connection && await connection.close();
+                    });
+
+                    it('should skip views', () => {
+                        connection!.addModels([ outDir ]);
+
+                        for (const { name: tableName } of testTables) {
+                            connection!.model(tableName);
+                            expect(connection!.isDefined(tableName)).toBe(true);
+                        }
+
+                        for (const { name: viewName } of testViews) {
+                            expect(() => connection!.model(viewName)).toThrow();
+                        }
+                    });
+                });
+            }
 
             describe('Transform case in table and fields names', () => {
                 const { testTables } = testMetadata;

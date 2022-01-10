@@ -204,9 +204,8 @@ export class DialectMySQL extends Dialect {
                 table_name      AS table_name, 
                 table_comment   AS table_comment 
             FROM information_schema.tables
-            WHERE 
-            table_schema = '${config.connection.database}'
-            ${config.metadata?.noViews ? 'AND table_type <> \'VIEW\'' : ''};
+            WHERE table_schema = '${config.connection.database}' 
+                ${config.metadata?.noViews ? 'AND table_type <> \'VIEW\'' : ''};
         `;
 
         const tables: ITable[] = (await connection.query(
@@ -262,7 +261,7 @@ export class DialectMySQL extends Dialect {
             FROM information_schema.columns c
             INNER JOIN information_schema.tables t
                 ON c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME                    
-            WHERE c.TABLE_SCHEMA='${config.connection.database}' AND c.TABLE_NAME = '${table}'
+            WHERE c.TABLE_SCHEMA = '${config.connection.database}' AND c.TABLE_NAME = '${table}'
             ORDER BY c.ORDINAL_POSITION;            
         `;
 

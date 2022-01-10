@@ -26,6 +26,7 @@ export interface ITestMetadata {
     dialect: Dialect;
     schema?: ITestSchema;
     testTables: ITestTable[];
+    testViews?: ITestTable[];
     filterTables: string[];
     filterSkipTables: string[];
     dataTypes: {

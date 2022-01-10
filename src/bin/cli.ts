@@ -18,7 +18,7 @@ process.on('unhandledRejection', (reason, promise) => {
 export const cli = async (): Promise<void> => {
     let usage = `Usage: stg -D <dialect> -d [database] -u [username] -x [password] `;
     usage += `-h [host] -p [port] -o [out-dir] -s [schema] -a [associations-file]`;
-    usage += `-t [tables] -T [skip-tables] -i [indices] -C [case] -S [storage] -L [lint-file] `;
+    usage += `-t [tables] -T [skip-tables] -V [no-views] -i [indices] -C [case] -S [storage] -L [lint-file] `;
     usage += `-l [ssl] -r [protocol] -n [dialect-options] -c [clean] -g [logs]`;
 
     const {argv} = yargs
@@ -141,7 +141,7 @@ export const cli = async (): Promise<void> => {
         }).option('V', {
             alias: aliasesMap.DISABLE_VIEWS,
             boolean: true,
-            describe: `Disable views generation.`,
+            describe: `Disable views generation. Available for: MySQL and MariaDB.`,
         })
 
     validateArgs(argv);
