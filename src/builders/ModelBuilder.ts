@@ -19,10 +19,6 @@ import {
 
 const foreignKeyDecorator = 'ForeignKey';
 
-const exportModifier = ts.factory.createModifiersFromModifierFlags(
-  ts.ModifierFlags.Export
-);
-
 /**
  * @class ModelGenerator
  * @constructor
@@ -191,7 +187,9 @@ export class ModelBuilder extends Builder {
 
             const attributesInterface = ts.createInterfaceDeclaration(
                 undefined,
-                exportModifier,
+                [
+                    ts.createToken(ts.SyntaxKind.ExportKeyword),
+                ],
                 ts.createIdentifier(attributesInterfaceName),
                 undefined,
                 undefined,

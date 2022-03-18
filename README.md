@@ -201,7 +201,7 @@ import {
 } from "sequelize-typescript";
 import { passport } from "./passport";
 
-interface personAttributes {
+export interface personAttributes {
     person_id: number;
     name: string;
     passport_id: number;
