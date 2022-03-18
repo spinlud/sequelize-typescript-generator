@@ -1,6 +1,8 @@
 import * as ts from 'typescript';
 
-const printer = ts.createPrinter({newLine: ts.NewLineKind.LineFeed});
+const printer = ts.createPrinter({
+    newLine: ts.NewLineKind.LineFeed,
+});
 
 /**
  * Returns string representation of typescript node
@@ -16,7 +18,11 @@ export const nodeToString = (node: ts.Node): string => {
         ts.ScriptKind.TS
     );
 
-    return printer.printNode(ts.EmitHint.Unspecified, node, sourceFile);
+    const sourceCode = printer.printNode(ts.EmitHint.Unspecified, node, sourceFile);
+
+    // Typescript automatically escape non ASCII characters like 哈 or 😂. This is a workaround to render them properly.
+    // Reference: https://github.com/microsoft/TypeScript/issues/36174
+    return unescape(sourceCode.replace(/\\u/g, "%u"));
 };
 
 /**
