@@ -89,11 +89,11 @@ const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
 };
 
 const jsDataTypesMap: { [key: string]: string } = {
-    bigint: 'object',
+    bigint: 'string',
     smallint: 'number',
     mediumint: 'number',
     tinyint: 'number',
-    decimal: 'number',
+    decimal: 'string',
     float: 'number',
     double: 'number',
     int: 'number',
