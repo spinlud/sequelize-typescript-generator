@@ -9,15 +9,16 @@ IMAGE_NAME="mcr.microsoft.com/mssql/server"
 CONTAINER_NAME="mssql"
 
 if [[ -z "${DOCKER_MSSQL_TAG}" ]]; then
-  IMAGE_TAG="2017-latest"
+  IMAGE_TAG="2019-latest"
 else
   IMAGE_TAG="${DOCKER_MSSQL_TAG}"
 fi
 
 IMAGE_FULL_NAME="$IMAGE_NAME:$IMAGE_TAG"
 
-docker pull "$IMAGE_FULL_NAME"
+docker pull --platform linux/amd64 "$IMAGE_FULL_NAME"
 
+# Currently not working on arm64 (Apple Silicon): see https://github.com/microsoft/mssql-docker/issues/668
 docker run -d --name $CONTAINER_NAME \
   -e ACCEPT_EULA="Y" \
   -e SA_PASSWORD="$TEST_DB_PASSWORD" \
