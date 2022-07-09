@@ -124,6 +124,10 @@ export const caseTransformer = (
                     a.sourceKey = transformer(a.sourceKey, TransformTarget.COLUMN);
                 }
 
+                if (a.foreignKey) {
+                    a.foreignKey = transformer(a.foreignKey, TransformTarget.COLUMN);
+                }
+
                 return a;
             })
         },
