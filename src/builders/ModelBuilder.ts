@@ -67,7 +67,7 @@ export class ModelBuilder extends Builder {
         };
 
 
-        return ts.createProperty(
+        return ts.factory.createPropertyDeclaration(
             [
                 ...(col.foreignKey ?
                     [ generateArrowDecorator(foreignKeyDecorator, [col.foreignKey.targetModel]) ]
@@ -80,11 +80,11 @@ export class ModelBuilder extends Builder {
                     : []
                 )
             ],
-            undefined,
+            // undefined,
             col.name,
             (col.autoIncrement || col.allowNull || col.defaultValue !== undefined) ?
-                ts.createToken(ts.SyntaxKind.QuestionToken) : ts.createToken(ts.SyntaxKind.ExclamationToken),
-            ts.createTypeReferenceNode(dialect.mapDbTypeToJs(col.type) ?? 'any', undefined),
+                ts.factory.createToken(ts.SyntaxKind.QuestionToken) : ts.factory.createToken(ts.SyntaxKind.ExclamationToken),
+            ts.factory.createTypeReferenceNode(dialect.mapDbTypeToJs(col.type) ?? 'any', undefined),
             undefined
         );
     }
@@ -99,7 +99,7 @@ export class ModelBuilder extends Builder {
         const targetModels = [ targetModel ];
         joinModel && targetModels.push(joinModel);
 
-        return ts.createProperty(
+        return ts.factory.createPropertyDeclaration(
             [
                 ...(association.sourceKey ?
                         [
@@ -114,13 +114,13 @@ export class ModelBuilder extends Builder {
                         ]
                 ),
             ],
-            undefined,
+            // undefined,
             associationName.includes('Many') ?
                 pluralize.plural(targetModel) : pluralize.singular(targetModel),
-            ts.createToken(ts.SyntaxKind.QuestionToken),
+            ts.factory.createToken(ts.SyntaxKind.QuestionToken),
             associationName.includes('Many') ?
-                ts.createArrayTypeNode(ts.createTypeReferenceNode(targetModel, undefined)) :
-                ts.createTypeReferenceNode(targetModel, undefined),
+                ts.factory.createArrayTypeNode(ts.factory.createTypeReferenceNode(targetModel, undefined)) :
+                ts.factory.createTypeReferenceNode(targetModel, undefined),
             undefined
         );
     }
@@ -185,21 +185,20 @@ export class ModelBuilder extends Builder {
         if (strict) {
             generatedCode += '\n';
 
-            const attributesInterface = ts.createInterfaceDeclaration(
-                undefined,
+            const attributesInterface = ts.factory.createInterfaceDeclaration(
                 [
-                    ts.createToken(ts.SyntaxKind.ExportKeyword),
+                    ts.factory.createToken(ts.SyntaxKind.ExportKeyword),
                 ],
-                ts.createIdentifier(attributesInterfaceName),
+                ts.factory.createIdentifier(attributesInterfaceName),
                 undefined,
                 undefined,
                 [
-                    ...(Object.values(columns).map(c => ts.createPropertySignature(
+                    ...(Object.values(columns).map(c => ts.factory.createPropertySignature(
                         undefined,
-                        ts.createIdentifier(c.name),
+                        ts.factory.createIdentifier(c.name),
                         c.autoIncrement || c.allowNull || c.defaultValue !== undefined ?
-                            ts.createToken(ts.SyntaxKind.QuestionToken) : undefined,
-                        ts.createTypeReferenceNode(dialect.mapDbTypeToJs(c.type) ?? 'any', undefined)
+                            ts.factory.createToken(ts.SyntaxKind.QuestionToken) : undefined,
+                        ts.factory.createTypeReferenceNode(dialect.mapDbTypeToJs(c.type) ?? 'any', undefined)
                     )))
                 ]
             );
@@ -208,7 +207,7 @@ export class ModelBuilder extends Builder {
             generatedCode += '\n';
         }
 
-        const classDecl = ts.createClassDeclaration(
+        const classDecl = ts.factory.createClassDeclaration(
             [
                 // @Table decorator
                 generateObjectLiteralDecorator('Table', {
@@ -216,48 +215,49 @@ export class ModelBuilder extends Builder {
                     ...tableMetadata.schema && { schema: tableMetadata.schema },
                     timestamps: tableMetadata.timestamps,
                     ...tableMetadata.comment && { comment: tableMetadata.comment },
-                })
+                }),
+                ts.factory.createToken(ts.SyntaxKind.ExportKeyword),
             ],
-            [
-                ts.createToken(ts.SyntaxKind.ExportKeyword),
-            ],
+            // [
+            //     ts.factory.createToken(ts.SyntaxKind.ExportKeyword),
+            // ],
             name,
             undefined,
             !strict ? [
-                ts.createHeritageClause(
+                ts.factory.createHeritageClause(
                     ts.SyntaxKind.ExtendsKeyword,
                     [
-                        ts.createExpressionWithTypeArguments(
-                            [],
-                            ts.createIdentifier('Model')
+                        ts.factory.createExpressionWithTypeArguments(
+                            ts.factory.createIdentifier('Model'),
+                            []
                         )
                     ]
                 )
             ] : [
-                ts.createHeritageClause(
+                ts.factory.createHeritageClause(
                     ts.SyntaxKind.ExtendsKeyword,
                     [
-                        ts.createExpressionWithTypeArguments(
+                        ts.factory.createExpressionWithTypeArguments(
+                            ts.factory.createIdentifier('Model'),
                             [
-                                ts.createTypeReferenceNode(
-                                    ts.createIdentifier(attributesInterfaceName),
+                                ts.factory.createTypeReferenceNode(
+                                    ts.factory.createIdentifier(attributesInterfaceName),
                                     undefined
                                 ),
-                                ts.createTypeReferenceNode(
-                                    ts.createIdentifier(attributesInterfaceName),
+                                ts.factory.createTypeReferenceNode(
+                                    ts.factory.createIdentifier(attributesInterfaceName),
                                     undefined
                                 )
                             ],
-                            ts.createIdentifier('Model')
                         )
                     ]
                 ),
-                ts.createHeritageClause(
+                ts.factory.createHeritageClause(
                     ts.SyntaxKind.ImplementsKeyword,
                     [
-                        ts.createExpressionWithTypeArguments(
-                            undefined,
-                            ts.createIdentifier(attributesInterfaceName)
+                        ts.factory.createExpressionWithTypeArguments(
+                            ts.factory.createIdentifier(attributesInterfaceName),
+                            undefined
                         )
                     ]
                 )
