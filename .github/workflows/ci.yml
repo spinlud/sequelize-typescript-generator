@@ -2,7 +2,7 @@ name: ci
 on: [push, workflow_dispatch]
 
 jobs:
-  setup:
+  install_build:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
@@ -20,34 +20,15 @@ jobs:
           path: node_modules
           key: node-modules-${{ hashFiles('package-lock.json') }}
 
-      - name: Install dependencies
+      - name: Install
         run: npm install
-
-  build:
-    runs-on: ubuntu-latest
-    needs: setup
-    steps:
-      - name: Check out repository code
-        uses: actions/checkout@v2
-
-      - name: Setup node
-        uses: actions/setup-node@v2
-        with:
-          node-version: '12'
-
-      - name: Restore node_modules
-        id: cache-node-modules
-        uses: actions/cache@v2
-        with:
-          path: node_modules
-          key: node-modules-${{ hashFiles('package-lock.json') }}
 
       - name: Build
         run: npm run build
 
   test_mysql:
     runs-on: ubuntu-latest
-    needs: setup
+    needs: install_build
     steps:
       - name: Check out repository code
         uses: actions/checkout@v2
@@ -76,7 +57,7 @@ jobs:
 
   test_postgres:
     runs-on: ubuntu-latest
-    needs: setup
+    needs: install_build
     steps:
       - name: Check out repository code
         uses: actions/checkout@v2
@@ -110,7 +91,7 @@ jobs:
 
   test_mariadb:
     runs-on: ubuntu-latest
-    needs: setup
+    needs: install_build
     steps:
       - name: Check out repository code
         uses: actions/checkout@v2
@@ -134,7 +115,7 @@ jobs:
 
   test_mssql:
     runs-on: ubuntu-latest
-    needs: setup
+    needs: install_build
     steps:
       - name: Check out repository code
         uses: actions/checkout@v2
@@ -163,7 +144,7 @@ jobs:
 
   test_sqlite:
     runs-on: ubuntu-latest
-    needs: setup
+    needs: install_build
     steps:
       - name: Check out repository code
         uses: actions/checkout@v2
