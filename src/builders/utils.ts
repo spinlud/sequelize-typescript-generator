@@ -34,6 +34,7 @@ export const nodeToString = (node: ts.Node): string => {
 export const generateNamedImports = (importsSpecifier: string[], moduleSpecifier: string): ts.ImportDeclaration => {
     return ts.factory.createImportDeclaration(
         undefined,
+        undefined,
         ts.factory.createImportClause(
             false,
             undefined,
@@ -55,6 +56,7 @@ export const generateNamedImports = (importsSpecifier: string[], moduleSpecifier
  */
 export const generateIndexExport = (modelFileName: string): ts.ExportDeclaration => {
     return ts.factory.createExportDeclaration(
+        undefined,
         undefined,
         false,
         undefined,

@@ -80,7 +80,7 @@ export class ModelBuilder extends Builder {
                     : []
                 )
             ],
-            // undefined,
+            undefined,
             col.name,
             (col.autoIncrement || col.allowNull || col.defaultValue !== undefined) ?
                 ts.factory.createToken(ts.SyntaxKind.QuestionToken) : ts.factory.createToken(ts.SyntaxKind.ExclamationToken),
@@ -114,7 +114,7 @@ export class ModelBuilder extends Builder {
                         ]
                 ),
             ],
-            // undefined,
+            undefined,
             associationName.includes('Many') ?
                 pluralize.plural(targetModel) : pluralize.singular(targetModel),
             ts.factory.createToken(ts.SyntaxKind.QuestionToken),
@@ -186,6 +186,7 @@ export class ModelBuilder extends Builder {
             generatedCode += '\n';
 
             const attributesInterface = ts.factory.createInterfaceDeclaration(
+                undefined,
                 [
                     ts.factory.createToken(ts.SyntaxKind.ExportKeyword),
                 ],
@@ -216,11 +217,10 @@ export class ModelBuilder extends Builder {
                     timestamps: tableMetadata.timestamps,
                     ...tableMetadata.comment && { comment: tableMetadata.comment },
                 }),
+            ],
+            [
                 ts.factory.createToken(ts.SyntaxKind.ExportKeyword),
             ],
-            // [
-            //     ts.factory.createToken(ts.SyntaxKind.ExportKeyword),
-            // ],
             name,
             undefined,
             !strict ? [
