@@ -1,6 +1,6 @@
 {
   "name": "sequelize-typescript-generator",
-  "version": "9.0.0",
+  "version": "9.0.1",
   "description": "Automatically generates typescript models compatible with sequelize-typescript library (https://www.npmjs.com/package/sequelize-typescript) directly from your source database.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -47,7 +47,7 @@
     "pg-hstore": "^2.3.4",
     "reflect-metadata": "^0.1.13",
     "sqlite3": "^5.1.2",
-    "tedious": "^15.1.0",
+    "tedious": "^14.7.0",
     "ts-jest": "^28.0.8",
     "ts-node-dev": "^2.0.0",
     "wkx": "^0.5.0"
