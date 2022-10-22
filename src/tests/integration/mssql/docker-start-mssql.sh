@@ -16,10 +16,10 @@ fi
 
 IMAGE_FULL_NAME="$IMAGE_NAME:$IMAGE_TAG"
 
-docker pull --platform linux/amd64 "$IMAGE_FULL_NAME"
+docker pull --platform=linux/amd64 "$IMAGE_FULL_NAME"
 
 # Currently not working on arm64 (Apple Silicon): see https://github.com/microsoft/mssql-docker/issues/668
-docker run -d --name $CONTAINER_NAME \
+docker run --platform=linux/amd64 -d --name $CONTAINER_NAME \
   -e ACCEPT_EULA="Y" \
   -e SA_PASSWORD="$TEST_DB_PASSWORD" \
   -p "$TEST_DB_PORT":1433  \
