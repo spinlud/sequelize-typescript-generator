@@ -42,6 +42,8 @@ import {
     AUTHORS_VIEW_DROP,
     AUTHORS_VIEW_NAME,
 } from './queries';
+import { parseFullTableName } from '../../../dialects/utils';
+import { ITable } from '../../../dialects/Dialect';
 
 interface INativeType {
     DATA_TYPE: string;
@@ -112,8 +114,8 @@ export const testMetadata: ITestMetadata = {
             dropQuery: AUTHORS_VIEW_DROP,
         }
     ],
-    filterTables: [ DATA_TYPES_TABLE_NAME ],
-    filterSkipTables: [ INDICES_TABLE_NAME ],
+    filterTables: [parseFullTableName(DATA_TYPES_TABLE_NAME) as ITable],
+    filterSkipTables: [parseFullTableName(INDICES_TABLE_NAME) as ITable],
     dataTypes: {
         dataTypesTable: DATA_TYPES_TABLE_NAME,
         async getColumnNativeDataType(

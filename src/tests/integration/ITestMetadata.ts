@@ -1,5 +1,6 @@
 import { Dialect } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
+import { ITable } from '../../dialects/Dialect';
 
 interface ITestTable {
     name: string;
@@ -27,8 +28,8 @@ export interface ITestMetadata {
     schema?: ITestSchema;
     testTables: ITestTable[];
     testViews?: ITestTable[];
-    filterTables: string[];
-    filterSkipTables: string[];
+    filterTables: ITable[];
+    filterSkipTables: ITable[];
     dataTypes: {
         dataTypesTable: string;
         // Should return the native data type for a given column in a table

@@ -1,12 +1,21 @@
 import { Options, Dialect as DialectType } from 'sequelize';
 
-const setEnv = (): void => {
+const ports: {
+    [key: string]: string
+} = {
+    'mariadb': '1235',
+    'mssql': '1236',
+    'mysql': '1237',
+    'postgres': '1238',
+};
+
+const setEnv = (dialect: DialectType): void => {
     if (!process.env['TEST_DB_HOST']) {
         process.env['TEST_DB_HOST'] = 'localhost';
     }
 
     if (!process.env['TEST_DB_PORT']) {
-        process.env['TEST_DB_PORT'] = '1234';
+        process.env['TEST_DB_PORT'] = ports[dialect.toString()] ?? '1234';
     }
 
     if (!process.env['TEST_DB_DATABASE']) {
@@ -28,7 +37,7 @@ const setEnv = (): void => {
  * @returns {Options}
  */
 export const buildSequelizeOptions = (dialect: DialectType): Options => {
-    setEnv();
+    setEnv(dialect);
 
     let sequelizeOptions: Options = {
         dialect: dialect,

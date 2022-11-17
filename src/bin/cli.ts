@@ -19,7 +19,7 @@ export const cli = async (): Promise<void> => {
     let usage = `Usage: stg -D <dialect> -d [database] -u [username] -x [password] `;
     usage += `-h [host] -p [port] -o [out-dir] -s [schema] -a [associations-file]`;
     usage += `-t [tables] -T [skip-tables] -V [no-views] -i [indices] -C [case] -S [storage] -L [lint-file] `;
-    usage += `-l [ssl] -r [protocol] -n [dialect-options] -c [clean] -g [logs]`;
+    usage += `-l [ssl] -r [protocol] -n [dialect-options] -c [clean] -g [logs] -P [prettier]`;
 
     const {argv} = yargs
         .usage(usage)
@@ -142,6 +142,10 @@ export const cli = async (): Promise<void> => {
             alias: aliasesMap.DISABLE_VIEWS,
             boolean: true,
             describe: `Disable views generation. Available for: MySQL and MariaDB.`,
+        }).option('P', {
+            alias: aliasesMap.PRETTIER_FORMAT,
+            boolean: true,
+            describe: `Format via Prettier. See Prettier.io for documentation and configuration. Occurs after linting.`,
         })
 
     validateArgs(argv);

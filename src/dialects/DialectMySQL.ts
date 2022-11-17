@@ -1,13 +1,8 @@
-import {QueryTypes, AbstractDataTypeConstructor, IndexMethod, col} from 'sequelize';
+import { QueryTypes, AbstractDataTypeConstructor, IndexMethod } from 'sequelize';
 import { Sequelize, DataType } from 'sequelize-typescript';
 import { IConfig } from '../config';
-import { IColumnMetadata, Dialect, IIndexMetadata, ITable } from './Dialect';
-import { warnUnknownMappingForDataType, generatePrecisionSignature } from './utils';
-
-interface ITableRow {
-    table_name: string;
-    table_comment?: string;
-}
+import { IColumnMetadata, Dialect, IIndexMetadata, ITable, ITableRow } from './Dialect';
+import { warnUnknownMappingForDataType, generatePrecisionSignature, decorateFullTableName } from './utils';
 
 interface IColumnMetadataMySQL {
     TABLE_CATALOG: string;
@@ -216,7 +211,10 @@ export class DialectMySQL extends Dialect {
             }
         ) as ITableRow[]).map(({ table_name, table_comment }) => {
             const t: ITable = {
-                name: table_name,
+                ...decorateFullTableName({
+                    name: table_name,
+                    // schema: schema_name ?? undefined
+                }),
                 comment: table_comment ?? undefined,
             };
 
@@ -236,7 +234,7 @@ export class DialectMySQL extends Dialect {
     protected async fetchColumnsMetadata(
         connection: Sequelize,
         config: IConfig,
-        table: string
+        table: ITable
     ): Promise<IColumnMetadata[]> {
         const columnsMetadata: IColumnMetadata[] = [];
 
@@ -261,7 +259,7 @@ export class DialectMySQL extends Dialect {
             FROM information_schema.columns c
             INNER JOIN information_schema.tables t
                 ON c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME                    
-            WHERE c.TABLE_SCHEMA = '${config.connection.database}' AND c.TABLE_NAME = '${table}'
+            WHERE c.TABLE_SCHEMA = '${config.connection.database}' AND c.TABLE_NAME = '${table.name}'
             ORDER BY c.ORDINAL_POSITION;            
         `;
 
@@ -340,7 +338,7 @@ export class DialectMySQL extends Dialect {
     protected async fetchColumnIndexMetadata(
         connection: Sequelize,
         config: IConfig,
-        table: string,
+        table: ITable,
         column: string
     ): Promise<IIndexMetadata[]> {
         const indicesMetadata: IIndexMetadata[] = [];
@@ -348,7 +346,7 @@ export class DialectMySQL extends Dialect {
         const query = `
             SELECT *                
             FROM information_schema.statistics s
-            WHERE TABLE_SCHEMA = '${config.connection.database}' AND TABLE_NAME = '${table}' 
+            WHERE TABLE_SCHEMA = '${config.connection.database}' AND TABLE_NAME = '${table.name}' 
                 AND COLUMN_NAME = '${column}';
         `;
 

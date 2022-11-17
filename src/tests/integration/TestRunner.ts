@@ -3,7 +3,6 @@ import { promises as fs } from 'fs';
 import pluralize from 'pluralize';
 import { ITestMetadata } from './ITestMetadata';
 import { Sequelize } from 'sequelize-typescript';
-import { QueryTypes } from 'sequelize';
 import { buildSequelizeOptions } from '../environment';
 import { createConnection } from '../../connection';
 import { IConfig } from '../../config';
@@ -223,15 +222,15 @@ export class TestRunner {
                 it('should add only the provided tables', () => {
                     connection!.addModels([ outDir ]);
 
-                    for (const table of filterTables) {
-                        connection!.model(table);
-                        expect(connection!.isDefined(table)).toBe(true);
+                    const includedTableNames = filterTables.map(t => t.name);
+                    for (const tableName of includedTableNames) {
+                        connection!.model(tableName);
+                        expect(connection!.isDefined(tableName)).toBe(true);
                     }
 
-                    const skippedTables = testTables.map(t => t.name).filter(n => !filterTables.includes(n));
-
-                    for (const table of skippedTables) {
-                        expect(() => connection!.model(table)).toThrow();
+                    const notIncludedTableNames = testTables.map(t => t.name).filter(n => !includedTableNames.includes(n));
+                    for (const tableName of notIncludedTableNames) {
+                        expect(() => connection!.model(tableName)).toThrow();
                     }
                 });
             });
@@ -270,15 +269,15 @@ export class TestRunner {
                 it('should skip the provided tables', () => {
                     connection!.addModels([ outDir ]);
 
-                    for (const table of filterSkipTables) {
-                        expect(() => connection!.model(table)).toThrow();
+                    const skippedTableNames = filterSkipTables.map(t => t.name);
+                    for (const tableName of skippedTableNames) {
+                        expect(() => connection!.model(tableName)).toThrow();
                     }
 
-                    const tables = testTables.map(t => t.name).filter(n => !filterSkipTables.includes(n));
-
-                    for (const table of tables) {
-                        connection!.model(table);
-                        expect(connection!.isDefined(table)).toBe(true);
+                    const notSkippedTables = testTables.map(t => t.name).filter(n => !skippedTableNames.includes(n));
+                    for (const tableName of notSkippedTables) {
+                        connection!.model(tableName);
+                        expect(connection!.isDefined(tableName)).toBe(true);
                     }
                 });
             });

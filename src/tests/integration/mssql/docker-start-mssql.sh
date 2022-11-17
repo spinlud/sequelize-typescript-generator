@@ -1,12 +1,11 @@
-#!/usr/bin/env bash
 set -e
-
-DIR="${BASH_SOURCE%/*}"
-if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
-. "$DIR/../test-env.sh"
 
 IMAGE_NAME="mcr.microsoft.com/mssql/server"
 CONTAINER_NAME="mssql"
+
+DIR="${BASH_SOURCE%/*}"
+if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
+. "$DIR/../test-env.sh" $CONTAINER_NAME
 
 if [[ -z "${DOCKER_MSSQL_TAG}" ]]; then
   IMAGE_TAG="2019-latest"

@@ -2,24 +2,30 @@ import { IndexType, IndexMethod, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { IConfig } from '../config';
 import { createConnection } from "../connection";
-import { AssociationsParser, IAssociationsParsed, IAssociationMetadata } from './AssociationsParser'
+import { AssociationsParser, IAssociationMetadata, IForeignKey } from './AssociationsParser'
 import { caseTransformer } from './utils';
-import {parse} from "@typescript-eslint/parser";
 
 export interface ITablesMetadata {
     [tableName: string]: ITableMetadata;
 }
 
-export interface ITableMetadata {
+export interface ITableName {
     name: string; // Model name
+    schema?: 'public' | string; //'public' default for Postgres
+    fullTableName: string;
+}
+
+export interface ITable extends ITableName {
+    comment?: string;
+}
+
+export interface ITableMetadata extends ITable {
     originName: string; // Database table name
-    schema?: 'public' | string; // Postgres only
     timestamps?: boolean;
     columns: {
         [columnName: string]: IColumnMetadata;
     }
     associations?: IAssociationMetadata[];
-    comment?: string;
 }
 
 export interface IColumnMetadata {
@@ -29,10 +35,7 @@ export interface IColumnMetadata {
     typeExt: string;
     dataType?: string;
     primaryKey: boolean;
-    foreignKey?: {
-        name: string;
-        targetModel: string;
-    }
+    foreignKey?: IForeignKey;
     allowNull: boolean;
     autoIncrement: boolean;
     indices?: IIndexMetadata[],
@@ -49,9 +52,10 @@ export interface IIndexMetadata {
     seq?: number;
 }
 
-export interface ITable {
-    name: string;
-    comment?: string;
+export interface ITableRow {
+    table_name: string;
+    table_comment?: string;
+    schema_name?: string;
 }
 
 type DialectName = 'postgres' | 'mysql' | 'mariadb' | 'sqlite' | 'mssql';
@@ -124,7 +128,7 @@ export abstract class Dialect {
     protected abstract fetchColumnsMetadata(
         connection: Sequelize,
         config: IConfig,
-        table: string
+        table: ITable
     ): Promise<IColumnMetadata[]>;
 
     /**
@@ -138,7 +142,7 @@ export abstract class Dialect {
     protected abstract fetchColumnIndexMetadata(
         connection: Sequelize,
         config: IConfig,
-        table: string,
+        table: ITable,
         column: string
     ): Promise<IIndexMetadata[]>;
 
@@ -164,43 +168,38 @@ export abstract class Dialect {
 
             await connection.authenticate();
 
-            let tables = await this.fetchTables(connection, config);
+            const allTables = await this.fetchTables(connection, config);
 
             // Apply filters
-            tables = tables
-                .filter(({ name }) => {
-                    if (config.metadata?.tables?.length) {
-                        return config.metadata.tables.includes(name.toLowerCase());
-                    }
-                    else {
-                        return true;
-                    }
-                }).filter(({ name }) => {
-                    if (config.metadata?.skipTables?.length) {
-                        return !(config.metadata.skipTables.includes(name.toLowerCase()));
-                    }
-                    else {
-                        return true;
-                    }
-                });
+            const includeFullTableNames = !!config.metadata?.tables?.length ? config.metadata.tables.map(t => !t.schema ? noSchemaPrefix + t.name : t.fullTableName) : [];
+            const skipFullTableNames = !!config.metadata?.skipTables?.length ? config.metadata.skipTables.map(t => !t.schema ? noSchemaPrefix + t.name : t.fullTableName) : [];
 
-            for (const { name: tableName, comment: tableComment } of tables) {
-                const columnsMetadata = await this.fetchColumnsMetadata(connection, config, tableName);
+            // Matching on a dummy schema in case the database or user input doesn't provide schema data
+            const noSchemaPrefix = 'noschema.';
+            const tables = allTables
+                .filter(({ fullTableName, name }) => includeFullTableNames.length == 0 || includeFullTableNames.some(i => i === fullTableName.toLowerCase() || i === noSchemaPrefix + name.toLowerCase()))
+                .filter(({ fullTableName, name }) => skipFullTableNames.length == 0 || !skipFullTableNames.some(i => i === fullTableName.toLowerCase() || i === noSchemaPrefix + name.toLowerCase()));
+
+            for (const table of tables) {
+                const columnsMetadata = await this.fetchColumnsMetadata(connection, config, table);
 
                 // Fetch indices metadata if required
                 if (config.metadata?.indices) {
                     for (const column of columnsMetadata) {
-                        column.indices = await this.fetchColumnIndexMetadata(connection, config, tableName, column.name);
+                        column.indices = await this.fetchColumnIndexMetadata(connection, config, table, column.name);
                     }
                 }
 
+                const tableSchema = !!table.schema
+                    ? table.schema
+                    : config.metadata?.schema;
+
                 const tableMetadata: ITableMetadata = {
-                    originName: tableName,
-                    name: tableName,
-                    ...config.metadata?.schema && { schema: config.metadata!.schema},
+                    originName: table.name,
+                    ...table,
+                    ...tableSchema && { schema: tableSchema},
                     timestamps: config.metadata?.timestamps ?? false,
-                    columns: {},
-                    comment: tableComment ?? undefined,
+                    columns: {}
                 };
 
                 for (const columnMetadata of columnsMetadata) {

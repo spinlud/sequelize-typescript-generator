@@ -1,0 +1,64 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "npm",
+			"script": "build",
+			"group": {
+				"kind": "build",
+				"isDefault": false
+			},
+			"problemMatcher": [],
+			"label": "Build",
+			"detail": "npm run clean && echo Building ... && tsc && echo ... done."
+		},
+		{
+			"type": "npm",
+			"script": "docker-start-all",
+			"group": "build",
+			"problemMatcher": [],
+			"label": "Start All Db Instances",
+			"detail": "npm run docker-start-mysql && npm run docker-start-mariadb && npm run docker-start-postgres && npm run docker-start-mssql"
+		},
+		{
+			"type": "npm",
+			"script": "docker-remove-containers",
+			"group": "build",
+			"problemMatcher": [],
+			"label": "Remove All Db Instances",
+			"detail": "npm run docker-remove-containers"
+		},
+		{
+			"type": "npm",
+			"script": "docker-start-mariadb",
+			"group": "build",
+			"problemMatcher": [],
+			"label": "Start mariadb Db Instance",
+			"detail": "npm run docker-start-mariadb"
+		},
+		{
+			"type": "npm",
+			"script": "docker-start-mssql",
+			"group": "build",
+			"problemMatcher": [],
+			"label": "Start mssql Db Instance",
+			"detail": "npm run docker-start-mssql"
+		},
+		{
+			"type": "npm",
+			"script": "docker-start-mysql",
+			"group": "build",
+			"problemMatcher": [],
+			"label": "Start mysql Db Instance",
+			"detail": "npm run docker-start-mysql"
+		},
+		{
+			"type": "npm",
+			"script": "docker-start-postgres",
+			"group": "build",
+			"problemMatcher": [],
+			"label": "Start postgres Db Instance",
+			"detail": "npm run docker-start-postgres"
+		}
+	]
+}

@@ -1,5 +1,6 @@
 import { Options } from 'sequelize';
 import { ESLint } from 'eslint';
+import { ITable } from '../dialects/Dialect';
 
 export type TransformCase = 'UPPER' | 'LOWER' | 'UNDERSCORE' | 'CAMEL' | 'PASCAL' | 'CONST';
 
@@ -25,8 +26,8 @@ export const TransformCases = new Set<TransformCase>([
 
 export interface IConfigMetadata {
     schema?: 'public' | string; // Postgres only
-    tables?: string[];
-    skipTables?: string[];
+    tables?: ITable[];
+    skipTables?: ITable[];
     indices?: boolean;
     timestamps?: boolean;
     case?: TransformCase | TransformMap | TransformFn;
@@ -44,5 +45,6 @@ export interface IConfig {
     metadata?: IConfigMetadata;
     output: IConfigOutput;
     lintOptions?: ESLint.Options;
+    format?: boolean;
     strict?: boolean;
 }

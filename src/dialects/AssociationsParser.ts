@@ -1,5 +1,6 @@
 import fs from 'fs';
-import readline from 'readline';
+import { ITableName } from './Dialect';
+import { parseFullTableName } from './utils';
 
 const cardinalities = new Set([
     '1:1',
@@ -18,14 +19,14 @@ type AssociationRow = [
 
 export interface IAssociationMetadata {
     associationName: 'HasOne' | 'HasMany' | 'BelongsTo' | 'BelongsToMany';
-    targetModel: string;
-    joinModel?: string;
+    targetModel: ITableName;
+    joinModel?: ITableName;
     sourceKey?: string; // Left table key for HasOne and HasMany associations
 }
 
 export interface IForeignKey {
     name: string;
-    targetModel: string;
+    targetModel: ITableName;
 }
 
 export interface IAssociationsParsed {
@@ -107,46 +108,39 @@ export class AssociationsParser {
                 cardinality,
                 leftKey,
                 rightKey,
-                leftModel,
-                rightModel,
-                joinModel
+                leftModelRaw,
+                rightModelRaw,
+                joinModelRaw
             ] = row;
 
+            const leftModel = parseFullTableName(leftModelRaw);
+            const rightModel = parseFullTableName(rightModelRaw);
+            
             const [
                 leftCardinality,
                 rightCardinality
             ] = cardinality.split(':');
-
+            
             // Add entry for left table
-            if (!associationsMetadata[leftModel]) {
-                associationsMetadata[leftModel] = {
-                    foreignKeys: [],
-                    associations: [],
-                };
-            }
-
+            addModel(associationsMetadata, leftModel?.fullTableName);
+            
             // Add entry for right table
-            if (!associationsMetadata[rightModel]) {
-                associationsMetadata[rightModel] = {
-                    foreignKeys: [],
-                    associations: [],
-                };
-            }
-
+            addModel(associationsMetadata, rightModel?.fullTableName);
+            
             // 1:1 and 1:N association
-            if (cardinality !== 'N:N') {
-                associationsMetadata[leftModel].associations.push({
+            if (cardinality !== 'N:N' && !!leftModel?.fullTableName && !!rightModel?.fullTableName) {
+                associationsMetadata[leftModel.fullTableName].associations.push({
                     associationName: rightCardinality === '1' ? 'HasOne' : 'HasMany',
                     targetModel: rightModel,
                     sourceKey: leftKey,
                 });
 
-                associationsMetadata[rightModel].associations.push({
+                associationsMetadata[rightModel.fullTableName].associations.push({
                     associationName: 'BelongsTo',
                     targetModel: leftModel,
                 });
 
-                associationsMetadata[rightModel].foreignKeys.push({
+                associationsMetadata[rightModel.fullTableName].foreignKeys.push({
                     name: rightKey,
                     targetModel: leftModel,
                 });
@@ -154,34 +148,32 @@ export class AssociationsParser {
             // N:N association
             else {
                 // Add entry for join table
-                if (!associationsMetadata[joinModel!]) {
-                    associationsMetadata[joinModel!] = {
-                        foreignKeys: [],
-                        associations: [],
-                    };
+                const joinModel = parseFullTableName(joinModelRaw);
+                addModel(associationsMetadata, joinModel?.fullTableName);
+
+                if (!!leftModel?.fullTableName && !!rightModel?.fullTableName && !!joinModel?.fullTableName) {
+                    associationsMetadata[leftModel.fullTableName].associations.push({
+                        associationName: 'BelongsToMany',
+                        targetModel: rightModel,
+                        joinModel,
+                    });
+
+                    associationsMetadata[rightModel.fullTableName].associations.push({
+                        associationName: 'BelongsToMany',
+                        targetModel: leftModel,
+                        joinModel,
+                    });
+
+                    associationsMetadata[joinModel.fullTableName].foreignKeys.push({
+                        name: leftKey,
+                        targetModel: leftModel,
+                    });
+
+                    associationsMetadata[joinModel.fullTableName].foreignKeys.push({
+                        name: rightKey,
+                        targetModel: rightModel,
+                    });
                 }
-
-                associationsMetadata[leftModel].associations.push({
-                    associationName: 'BelongsToMany',
-                    targetModel: rightModel,
-                    joinModel: joinModel,
-                });
-
-                associationsMetadata[rightModel].associations.push({
-                    associationName: 'BelongsToMany',
-                    targetModel: leftModel,
-                    joinModel: joinModel,
-                });
-
-                associationsMetadata[joinModel!].foreignKeys.push({
-                    name: leftKey,
-                    targetModel: leftModel
-                });
-
-                associationsMetadata[joinModel!].foreignKeys.push({
-                    name: rightKey,
-                    targetModel: rightModel
-                });
             }
 
         }
@@ -191,5 +183,13 @@ export class AssociationsParser {
 
         return this.associationsMetadata;
     }
+}
 
+function addModel(metadata: IAssociationsParsed, fullTableName?: string) {
+    if (!!fullTableName && !metadata[fullTableName]) {
+        metadata[fullTableName] = {
+            foreignKeys: [],
+            associations: [],
+        };
+    }
 }

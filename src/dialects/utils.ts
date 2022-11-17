@@ -1,6 +1,7 @@
-import { ITableMetadata } from './Dialect';
+import { ITableMetadata, ITableName } from './Dialect';
 import { TransformCase, TransformFn, TransformMap, TransformTarget } from '../config/IConfig';
-import { camelCase, constantCase, pascalCase, snakeCase } from "change-case";
+import { camelCase, constantCase, pascalCase, snakeCase } from 'change-case/dist';
+import { Optional } from 'sequelize';
 
 type CaseTransformer = (s: string) => string;
 
@@ -47,6 +48,21 @@ const getTransformerForCase = (transformCase: TransformCase): CaseTransformer =>
 
     return transformer;
 }
+
+/**
+ * Transform ITableName
+ * @param {TransformFn} transformer
+ * @param {ITableName} tableName
+ * @returns {ITableName}
+ */
+const transformTableName = (transformer: TransformFn, tableName: Optional<ITableName, 'fullTableName'>): ITableName => {
+    return {
+        ...decorateFullTableName({
+            name: transformer(tableName.name, TransformTarget.MODEL),
+            schema: tableName.schema
+        })
+    };
+};
 
 /**
  * Wrapper for case transformer. Returns unprocessed string for non ASCII characters
@@ -109,15 +125,18 @@ export const caseTransformer = (
 
     const transformed: ITableMetadata = {
         originName: tableMetadata.originName,
-        name: transformer(tableMetadata.originName, TransformTarget.MODEL),
+        ...transformTableName(transformer, {
+            name: tableMetadata.originName,
+            schema: tableMetadata.schema
+        }),
         timestamps: tableMetadata.timestamps,
         columns: {},
         ...tableMetadata.associations && {
             associations: tableMetadata.associations.map(a => {
-                a.targetModel = transformer(a.targetModel, TransformTarget.MODEL);
+                a.targetModel = transformTableName(transformer, a.targetModel);
 
                 if (a.joinModel) {
-                    a.joinModel = transformer(a.joinModel, TransformTarget.MODEL);
+                    a.joinModel = transformTableName(transformer, a.joinModel);
                 }
 
                 if (a.sourceKey) {
@@ -137,7 +156,7 @@ export const caseTransformer = (
 
             columnMetadata.foreignKey = {
                 name: transformer(name, TransformTarget.COLUMN),
-                targetModel: transformer(targetModel, TransformTarget.MODEL),
+                targetModel: transformTableName(transformer, targetModel),
             }
         }
 
@@ -173,3 +192,35 @@ export const generatePrecisionSignature = (...args: Array<string|number|undefine
 
     return tokens.length ? `(${tokens.join(',')})` : '';
 };
+
+/**
+ * Generates ITableName from raw string
+ * @param {string} fullTableName 'Customers' or 'dbo.Customers' or '[xyz].Customers'
+ * @returns {ITableName}
+ */
+export const parseFullTableName = (fullTableName?: string, schemaSeparator: string = '.'): ITableName|undefined => {
+    if (!fullTableName) {
+        return undefined;
+    }
+    const splitUp = fullTableName.replace(/\[|\]/g, '').split(schemaSeparator);
+    splitUp.reverse();
+    const temp = {
+        name: splitUp[0],
+        schema: splitUp.length > 1 ? splitUp[1] : '',
+    };
+    const result = decorateFullTableName(temp, schemaSeparator);
+    return result;
+}
+
+/**
+ * Returns the full table name with the rest of the ITableName values passed in
+ * @param {Partial<ITableName>} table
+ * @returns {ITableName}
+ */
+export const decorateFullTableName = (table: Partial<ITableName>, schemaSeparator: string = '.'): ITableName => {
+    const schemaPrefix = !!table.schema ? table.schema + schemaSeparator : '';
+    return {
+        ...table,
+        fullTableName: schemaPrefix + table.name
+    } as ITableName;
+}

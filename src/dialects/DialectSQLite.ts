@@ -1,13 +1,8 @@
-import { QueryTypes, AbstractDataTypeConstructor, IndexMethod } from 'sequelize';
+import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize, DataType } from 'sequelize-typescript';
 import { IConfig } from '../config';
-import { IColumnMetadata, Dialect, IIndexMetadata, ITable } from './Dialect';
-import { warnUnknownMappingForDataType } from './utils';
-
-interface ITableRow {
-    table_name: string;
-    table_comment?: string;
-}
+import { IColumnMetadata, Dialect, IIndexMetadata, ITable, ITableRow } from './Dialect';
+import { decorateFullTableName, warnUnknownMappingForDataType } from './utils';
 
 interface IColumnMetadataSQLite {
     cid: number;
@@ -122,7 +117,10 @@ export class DialectSQLite extends Dialect {
             }
         ) as ITableRow[]).map(({ table_name, table_comment }) => {
             const t: ITable = {
-                name: table_name,
+                ...decorateFullTableName({
+                    name: table_name,
+                    // schema: schema_name ?? undefined
+                }),
                 comment: table_comment ?? undefined,
             };
 
@@ -135,11 +133,11 @@ export class DialectSQLite extends Dialect {
     protected async fetchColumnsMetadata(
         connection: Sequelize,
         config: IConfig,
-        table: string
+        table: ITable
     ): Promise<IColumnMetadata[]> {
         const columnsMetadata: IColumnMetadata[] = [];
 
-        const query = `PRAGMA main.table_info('${table}')`;
+        const query = `PRAGMA main.table_info('${table.name}')`;
 
         const columns = await connection.query(
             query,
@@ -181,7 +179,7 @@ export class DialectSQLite extends Dialect {
     protected async fetchColumnIndexMetadata(
         connection: Sequelize,
         config: IConfig,
-        table: string,
+        table: ITable,
         column: string
     ): Promise<IIndexMetadata[]> {
         const indicesMetadata: IIndexMetadata[] = [];
@@ -199,7 +197,7 @@ export class DialectSQLite extends Dialect {
             FROM sqlite_master AS m,
                    pragma_index_list(m.name) AS il,
                    pragma_index_info(il.name) AS ii
-            WHERE m.type = 'table' AND m.name = '${table}' AND ii.name = '${column}'
+            WHERE m.type = 'table' AND m.name = '${table.name}' AND ii.name = '${column}'
             ORDER BY il.seq;
         `;
 

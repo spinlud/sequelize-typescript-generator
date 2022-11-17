@@ -17,6 +17,7 @@
     * [One to Many](#one-to-many)
     * [Many to Many](#many-to-many)
 * [Lint](#lint)
+* [Format](#format)
 
 <!-- toc stop -->
 
@@ -81,8 +82,8 @@ stg --help
 ```shell
 Usage: stg -D <dialect> -d [database] -u [username] -x [password] -h [host] -p
 [port] -o [out-dir] -s [schema] -a [associations-file]-t [tables] -T
-[skip-tables] -i [indices] -C [case] -S [storage] -L [lint-file] -l [ssl] -r
-[protocol] -c [clean]
+[skip-tables] -V [no-views] -i [indices] -C [case] -S [storage] -L [lint-file]
+-l [ssl] -r [protocol] -n [dialect-options] -c [clean] -g [logs] -P [prettier]
 
 Options:
   --help                      Show help                                [boolean]
@@ -137,9 +138,12 @@ Options:
   -f, --dialect-options-file  Dialect native options passed as json file path.
                                                                         [string]
   -R, --no-strict             Disable strict typescript class declaration.
-                                                                       [boolean]    
-  -V, --no-views              Disable view generation. Available for: MySQL and MariaDB.
-                                                                       [boolean]                                                                      
+                                                                       [boolean]
+  -V, --no-views              Disable views generation. Available for: MySQL and
+                              MariaDB.                                 [boolean]
+  -P, --prettier              Format via Prettier. See Prettier.io for
+                              documentation and configuration. Occurs after
+                              linting.                                 [boolean]
 ```
 
 Local usage example:
@@ -932,6 +936,21 @@ import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-genera
     await builder.build();
 })();
 ```
+
+## Format
+Since linting is not recommended for certain formatting options, you can optionally use Prettier to format each generated model following the linting.
+
+The only default option that overrides Prettier's defaults is:
+
+```ts
+{
+    singleQuote: true
+}
+```
+
+To override more options, simply include a Prettier configuration file in the directory hierarchy from the current working directory (where the generator is run from).
+
+The parser will always be set to `typescript`. See [Prettier.io](https://prettier.io/docs/en/configuration.html) for configuration options.
 
 ## License
 [MIT License](http://en.wikipedia.org/wiki/MIT_License)
