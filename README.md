@@ -368,6 +368,31 @@ const config: IConfig = {
 
 NB: please note that currently case transformation is not supported for non ASCII strings.
 
+## Table Names
+
+**NOTE: (only applies to db dialects with custom schemas)**
+
+If your database only has 1 schema, you can simply use the table names wherever needed (e.g. tables to process/skip, tables in association files). 
+But if you need to specify different schemas (e.g. multiple tables have the same name, but a different schema), then use the following format when 
+specifying tables:
+
+```sql
+--example schema name: xyz
+--example table name: Customer
+
+xyz.Customer
+--or
+[xyz].[Customer]
+--or
+[xyz].Customer
+--or
+xyz.[Customer]
+```
+
+Namely, separate the schema name from the table name with a '.' (period), optionally enclosing either or both names with square brackets. Case does not matter in
+identifying the correct table.
+
+
 ## Associations
 Including associations in the generated models requires a bit of manual work unfortunately, but hopefully 
 it will buy you some time instead of defining them from scratch.  
