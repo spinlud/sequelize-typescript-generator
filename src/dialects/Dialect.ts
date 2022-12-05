@@ -3,7 +3,7 @@ import { Sequelize } from 'sequelize-typescript';
 import { IConfig } from '../config';
 import { createConnection } from "../connection";
 import { AssociationsParser, IAssociationMetadata, IForeignKey } from './AssociationsParser'
-import { caseTransformer } from './utils';
+import { caseTransformer, noSchemaPrefix, populateFullTableNameDictionary, Dictionary } from './utils';
 
 export interface ITablesMetadata {
     [tableName: string]: ITableMetadata;
@@ -113,7 +113,7 @@ export abstract class Dialect {
      * @param {IConfig} config
      * @returns {Promise<string[]>}
      */
-    protected abstract fetchTables(
+    public abstract fetchTables(
         connection: Sequelize,
         config: IConfig
     ): Promise<ITable[]>;
@@ -154,6 +154,7 @@ export abstract class Dialect {
     public async buildTablesMetadata(config: IConfig): Promise<ITablesMetadata> {
         let connection: Sequelize | undefined;
         const tablesMetadata: ITablesMetadata = {};
+        const tableNameDictionary: Dictionary<ITableName> = {};
 
         try {
             // Set schema for Postgres to 'public' if not provided
@@ -169,16 +170,18 @@ export abstract class Dialect {
             await connection.authenticate();
 
             const allTables = await this.fetchTables(connection, config);
-
+            
             // Apply filters
+            // NOTE: `tables` and `skipTables` are already lowercase
             const includeFullTableNames = !!config.metadata?.tables?.length ? config.metadata.tables.map(t => !t.schema ? noSchemaPrefix + t.name : t.fullTableName) : [];
             const skipFullTableNames = !!config.metadata?.skipTables?.length ? config.metadata.skipTables.map(t => !t.schema ? noSchemaPrefix + t.name : t.fullTableName) : [];
 
             // Matching on a dummy schema in case the database or user input doesn't provide schema data
-            const noSchemaPrefix = 'noschema.';
             const tables = allTables
                 .filter(({ fullTableName, name }) => includeFullTableNames.length == 0 || includeFullTableNames.some(i => i === fullTableName.toLowerCase() || i === noSchemaPrefix + name.toLowerCase()))
                 .filter(({ fullTableName, name }) => skipFullTableNames.length == 0 || !skipFullTableNames.some(i => i === fullTableName.toLowerCase() || i === noSchemaPrefix + name.toLowerCase()));
+
+            populateFullTableNameDictionary(tables, tableNameDictionary);
 
             for (const table of tables) {
                 const columnsMetadata = await this.fetchColumnsMetadata(connection, config, table);
@@ -206,7 +209,7 @@ export abstract class Dialect {
                     tableMetadata.columns[columnMetadata.name] = columnMetadata;
                 }
 
-                tablesMetadata[tableMetadata.originName] = tableMetadata;
+                tablesMetadata[tableMetadata.fullTableName] = tableMetadata;
             }
         }
         catch(err) {
@@ -219,21 +222,25 @@ export abstract class Dialect {
 
         // Apply associations if required
         if (config.metadata?.associationsFile) {
-            const parsedAssociations = AssociationsParser.parse(config.metadata?.associationsFile);
+            const parsedAssociations = AssociationsParser.parse(tableNameDictionary, config.metadata?.associationsFile);
 
-            for (const [tableName, association] of Object.entries(parsedAssociations)) {
-                if(!tablesMetadata[tableName]) {
-                    console.warn('[WARNING]', `Associated table ${tableName} not found among (${Object.keys(tablesMetadata).join(', ')})`);
+            for (const [fullTableName, association] of Object.entries(parsedAssociations)) {
+
+                if(!!association.errors?.length) {
+                    association.errors.forEach(e => {
+                        console.warn('[WARNING]', e);
+                    });
+                    console.warn(`Available table names: (${Object.keys(tablesMetadata).join(', ')})`)
                     continue;
                 }
 
                 // Attach associations to table
-                tablesMetadata[tableName].associations = association.associations;
+                tablesMetadata[fullTableName].associations = association.associations;
 
-                const { columns } = tablesMetadata[tableName];
+                const { columns } = tablesMetadata[fullTableName];
 
                 // Override foreign keys
-                for (const { name: columnName, targetModel } of association.foreignKeys) {
+                for (const { name: columnName, targetModel, hasMultipleForSameTarget } of association.foreignKeys) {
                     if (!columns[columnName]) {
                         console.warn('[WARNING]', `Foreign key column ${columnName} not found among (${Object.keys(columns).join(', ')})`);
                         continue;
@@ -241,7 +248,8 @@ export abstract class Dialect {
 
                     columns[columnName].foreignKey = {
                         name: columnName,
-                        targetModel: targetModel
+                        targetModel: targetModel,
+                        hasMultipleForSameTarget
                     };
                 }
             }

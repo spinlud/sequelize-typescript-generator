@@ -190,7 +190,7 @@ export class DialectMySQL extends Dialect {
      * @param {IConfig} config
      * @returns {Promise<ITable[]>}
      */
-    protected async fetchTables(
+    public async fetchTables(
         connection: Sequelize,
         config: IConfig
     ): Promise<ITable[]> {

@@ -3,7 +3,38 @@ import { TransformCase, TransformFn, TransformMap, TransformTarget } from '../co
 import { camelCase, constantCase, pascalCase, snakeCase } from 'change-case/dist';
 import { Optional } from 'sequelize';
 
+export const noSchemaPrefix = 'noschema.';
+
+export type Dictionary<T> = {[key: string]: T};
+export type ObjDictionary = Dictionary<{}>;
+export type StringDictionary = Dictionary<string>;
+
 type CaseTransformer = (s: string) => string;
+
+/**
+ * @description
+ * Takes an Array<V>, and a grouping function,
+ * and returns a Map of the array grouped by the grouping function.
+ *
+ * @param list An array of type V.
+ * @param keyGetter A Function that takes the the Array type V as an input, and returns a value of type K.
+ *                  K is generally intended to be a property key of V.
+ *
+ * @returns Map of the array grouped by the grouping function.
+ */
+export const groupBy = <K, V>(list: Array<V>, keyGetter: (input: V) => K): Map<K, Array<V>> => {
+    const map = new Map();
+    list.forEach((item) => {
+         const key = keyGetter(item);
+         const collection = map.get(key);
+         if (!collection) {
+             map.set(key, [item]);
+         } else {
+             collection.push(item);
+         }
+    });
+    return map;
+}
 
 export const toUpperCase = (s: string) => s.toUpperCase();
 export const toLowerCase = (s: string) => s.toLowerCase();
@@ -152,11 +183,12 @@ export const caseTransformer = (
     for (const [columnName, columnMetadata] of Object.entries(tableMetadata.columns)) {
 
         if (columnMetadata.foreignKey) {
-            const { name, targetModel } = columnMetadata.foreignKey;
+            const { name, targetModel, hasMultipleForSameTarget } = columnMetadata.foreignKey;
 
             columnMetadata.foreignKey = {
                 name: transformer(name, TransformTarget.COLUMN),
                 targetModel: transformTableName(transformer, targetModel),
+                hasMultipleForSameTarget
             }
         }
 
@@ -223,4 +255,22 @@ export const decorateFullTableName = (table: Partial<ITableName>, schemaSeparato
         ...table,
         fullTableName: schemaPrefix + table.name
     } as ITableName;
+}
+
+export const populateFullTableNameDictionary = (tables: ITableName[], dictionary: ObjDictionary) => {
+    tables.forEach(t => {
+        const {name, fullTableName, schema} = t;
+        const tableName: ITableName = {
+            name, fullTableName, schema
+        };
+
+        dictionary[t.fullTableName] = tableName;
+        dictionary[t.fullTableName.toLowerCase()] = tableName;
+        const loweredName = t.name.toLowerCase();
+        if (tables.filter(a => a.name.toLowerCase() == loweredName).length === 1) {
+            // only 1 table has this name, regardless of schema
+            dictionary[loweredName] = tableName;
+            dictionary[noSchemaPrefix + loweredName] = tableName;
+        }
+    });
 }

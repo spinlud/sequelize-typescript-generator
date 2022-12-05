@@ -70,7 +70,7 @@ export class ModelBuilder extends Builder {
 
         return ts.factory.createPropertyDeclaration(
             [
-                ...(col.foreignKey ?
+                ...(!!col.foreignKey && !col.foreignKey.hasMultipleForSameTarget ?
                     [ generateArrowDecorator(foreignKeyDecorator, [col.foreignKey.targetModel.name]) ]
                     : []
                 ),
@@ -95,30 +95,38 @@ export class ModelBuilder extends Builder {
      * @param {IAssociationMetadata} association
      */
     private static buildAssociationPropertyDecl(association: IAssociationMetadata): ts.PropertyDeclaration {
-        const { associationName, targetModel, joinModel } = association;
+        const { associationName, targetModel, joinModel, targetModelPropName, targetKey, targetAlias, sourceKey } = association;
         const targetTableName = targetModel.name;
 
         const targetModels = [ targetTableName ];
         joinModel && targetModels.push(joinModel.name);
 
+        const navigationPropName = targetModelPropName ?? (
+            associationName.includes('Many')
+                ? pluralize.plural(targetTableName)
+                : pluralize.singular(targetTableName)
+        );
+
+        const opts = !!sourceKey || !!targetKey
+            ? {
+                ...!!sourceKey && { sourceKey },
+                ...!!targetKey && { 
+                    foreignKey: targetKey,
+                    ...!!targetAlias && { as: targetAlias }
+                }
+            }
+            : undefined;
+
         return ts.factory.createPropertyDeclaration(
             [
-                ...(association.sourceKey ?
-                        [
-                            generateArrowDecorator(
-                                associationName,
-                                targetModels,
-                                { sourceKey: association.sourceKey }
-                            )
-                        ]
-                        : [
-                            generateArrowDecorator(associationName, targetModels)
-                        ]
-                ),
+                generateArrowDecorator(
+                    associationName,
+                    targetModels,
+                    opts,
+                )
             ],
             undefined,
-            associationName.includes('Many') ?
-                pluralize.plural(targetTableName) : pluralize.singular(targetTableName),
+            navigationPropName,
             ts.factory.createToken(ts.SyntaxKind.QuestionToken),
             associationName.includes('Many') ?
                 ts.factory.createArrayTypeNode(ts.factory.createTypeReferenceNode(targetTableName, undefined)) :
@@ -267,8 +275,13 @@ export class ModelBuilder extends Builder {
             // Class members
             [
                 ...Object.values(columns).map(col => this.buildColumnPropertyDecl(col, dialect)),
-                ...tableMetadata.associations && tableMetadata.associations.length ?
-                    tableMetadata.associations.map(a => this.buildAssociationPropertyDecl(a)) : []
+
+                // preventing nav prop generation for multiple relationships between the same 2 tables without aliases
+                ...tableMetadata.associations && tableMetadata.associations.length
+                    ? tableMetadata.associations
+                        .filter(a => !a.hasMultipleForSameTarget || !!a.targetAlias)
+                        .map(a => this.buildAssociationPropertyDecl(a))
+                    : []
             ]
         );
 

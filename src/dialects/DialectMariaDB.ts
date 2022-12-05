@@ -170,7 +170,7 @@ export class DialectMariaDB extends Dialect {
      * @param {IConfig} config
      * @returns {Promise<string[]>}
      */
-    protected async fetchTables(
+    public async fetchTables(
         connection: Sequelize,
         config: IConfig
     ): Promise<ITable[]> {

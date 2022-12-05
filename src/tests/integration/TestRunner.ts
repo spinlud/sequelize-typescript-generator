@@ -2,12 +2,12 @@ import path from 'path';
 import { promises as fs } from 'fs';
 import pluralize from 'pluralize';
 import { ITestMetadata } from './ITestMetadata';
-import { Sequelize } from 'sequelize-typescript';
+import { ModelCtor, Model, Sequelize } from 'sequelize-typescript';
 import { buildSequelizeOptions } from '../environment';
 import { createConnection } from '../../connection';
 import { IConfig } from '../../config';
-import { Dialect } from '../../dialects/Dialect';
-import { getTransformer } from '../../dialects/utils';
+import { Dialect, ITableName } from '../../dialects/Dialect';
+import { Dictionary, getTransformer, populateFullTableNameDictionary } from '../../dialects/utils';
 import { ModelBuilder } from '../../builders';
 import { TransformCases, TransformTarget, TransformFn } from '../../config/IConfig';
 import {
@@ -17,6 +17,8 @@ import {
     DialectMariaDB,
     DialectSQLite,
 } from '../../dialects';
+import { AssociationsParser, AssociationType, IAssociationsParsed } from '../../dialects/AssociationsParser';
+import { getAssociationCustomPropName } from './test-helpers';
 
 /**
  * Workaround: deprecated GeomFromText function for MySQL
@@ -122,8 +124,8 @@ export class TestRunner {
 
         describe(testMetadata.name, () => {
             jest.setTimeout(120000);
-            const outDir = path.join(process.cwd(), 'output-models');
-            const indexDir = path.join(outDir, 'index.ts');
+            const outDir = path.join(process.cwd(), this.testMetadata.dialect.toString(), 'output-models');
+            const indexFile = path.join(outDir, 'index.ts');
             const associationsFilePath = path.join(process.cwd(), 'src', 'tests', 'integration', 'associations.csv');
             const sequelizeOptions = buildSequelizeOptions(testMetadata.dialect);
 
@@ -132,11 +134,18 @@ export class TestRunner {
                 let connection: Sequelize | undefined;
 
                 const config: IConfig = {
-                    connection: sequelizeOptions,
+                    connection: {
+                        ...sequelizeOptions,
+                        ...{
+                            logging: (sql: string, timing?: number) => {const r = 1},
+                            logQueryParameters: false
+                        }
+                    },
                     metadata: {
                         ...testMetadata.schema && { schema: testMetadata.schema.name }, // Postgres
                         indices: true,
                         associationsFile: associationsFilePath,
+                        // case: 'LOWER'
                     },
                     output: {
                         outDir: outDir,
@@ -149,10 +158,14 @@ export class TestRunner {
                     const builder = new ModelBuilder(config, dialect);
                     await builder.build();
 
-                    const models = await import(path.join(outDir, 'index.ts'));
-
-                    // @ts-ignore
-                    connection!.addModels([ ...Object.values(models) ]);
+                    try {
+                        const models = await import(path.join(outDir, 'index.ts'));
+    
+                        // @ts-ignore
+                        connection!.addModels([ ...Object.values(models) ]);
+                    } catch (er) {
+                        console.error('Error importing the models.', er)
+                    }
 
                     for (const testTable of testTables) {
                         connection!.model(testTable.name);
@@ -212,7 +225,7 @@ export class TestRunner {
                     const dialect = buildDialect(testMetadata);
                     const builder = new ModelBuilder(config, dialect);
                     await builder.build();
-                    await fs.unlink(indexDir);
+                    await fs.unlink(indexFile);
                 });
 
                 afterAll(async () => {
@@ -259,7 +272,7 @@ export class TestRunner {
                     const dialect = buildDialect(testMetadata);
                     const builder = new ModelBuilder(config, dialect);
                     await builder.build();
-                    await fs.unlink(indexDir);
+                    await fs.unlink(indexFile);
                 });
 
                 afterAll(async () => {
@@ -308,7 +321,7 @@ export class TestRunner {
                         const dialect = buildDialect(testMetadata);
                         const builder = new ModelBuilder(config, dialect);
                         await builder.build();
-                        await fs.unlink(indexDir);
+                        await fs.unlink(indexFile);
                     });
 
                     afterAll(async () => {
@@ -465,7 +478,7 @@ export class TestRunner {
                     const builder = new ModelBuilder(config, dialect);
                     await builder.build();
 
-                    const models = await import(indexDir);
+                    const models = await import(indexFile);
 
                     // @ts-ignore
                     connection!.addModels([ ...Object.values(models) ]);
@@ -529,6 +542,8 @@ export class TestRunner {
 
             describe('Associations', () => {
                 let connection: Sequelize | undefined;
+                let parsedAssociations: IAssociationsParsed | undefined;
+                const tableNameDictionary: Dictionary<ITableName> = {};
 
                 beforeAll(async () => {
                     connection = createConnection({ ...sequelizeOptions });
@@ -552,92 +567,220 @@ export class TestRunner {
                     const builder = new ModelBuilder(config, dialect);
                     await builder.build();
 
-                    const models = await import(indexDir);
+                    const models = await import(indexFile);
 
                     // @ts-ignore
                     connection!.addModels([ ...Object.values(models) ]);
+
+                    const allTables = await dialect.fetchTables(connection, config);
+                    populateFullTableNameDictionary(allTables, tableNameDictionary);
+                    parsedAssociations = AssociationsParser.parse(tableNameDictionary, associationsFilePath);
                 });
 
                 afterAll(async () => {
                     connection && await connection.close();
                 });
 
-                it('1:1', async () => {
-                    const personModel = connection!.model(testMetadata.associations.leftTableOneToOne);
-                    const passportModel = connection!.model(testMetadata.associations.rightTableOneToOne);
-                    const personField = pluralize.singular(testMetadata.associations.leftTableOneToOne);
-                    const passportField = pluralize.singular(testMetadata.associations.rightTableOneToOne);
+                describe('Basic', () => {
+                    it('1:1', async () => {
+                        const personModel = connection!.model(testMetadata.associations.oneToOne.leftTable);
+                        const passportModel = connection!.model(testMetadata.associations.oneToOne.rightTable);
+                        const personField = pluralize.singular(testMetadata.associations.oneToOne.leftTable);
+                        const passportField = pluralize.singular(testMetadata.associations.oneToOne.rightTable);
 
-                    const people = await personModel.findAll({  include: [ passportModel ] });
+                        const people = await personModel.findAll({  include: [ passportModel ] });
 
-                    for (const person of people) {
-                        expect(person).toHaveProperty(passportField);
-                    }
+                        for (const person of people) {
+                            expect(person).toHaveProperty(passportField);
+                        }
 
-                    const passports = await passportModel.findAll({  include: [ personModel ] });
+                        const passports = await passportModel.findAll({  include: [ personModel ] });
 
-                    for (const pass of passports) {
-                        expect(pass).toHaveProperty(personField);
-                    }
+                        for (const pass of passports) {
+                            expect(pass).toHaveProperty(personField);
+                        }
+                    });
+
+                    it('1:N', async () => {
+                        const racesModel = connection!.model(testMetadata.associations.oneToMany.leftTable);
+                        const unitsModel = connection!.model(testMetadata.associations.oneToMany.rightTable);
+                        const raceField = pluralize.singular(testMetadata.associations.oneToMany.leftTable);
+                        const unitsField = pluralize.plural(testMetadata.associations.oneToMany.rightTable);
+
+                        const races = await racesModel.findAll({  include: [ unitsModel ] });
+
+                        for (const race of races) {
+                            expect(race).toHaveProperty(unitsField);
+
+                            // @ts-ignore
+                            const associatedUnits = race[unitsField];
+
+                            expect(associatedUnits).toHaveProperty('length');
+                            expect(associatedUnits.length).toBeGreaterThanOrEqual(1);
+                        }
+
+                        const units = await unitsModel.findAll({  include: [ racesModel ] });
+
+                        for (const unit of units) {
+                            expect(unit).toHaveProperty(raceField);
+                        }
+                    });
+
+                    it('N:N', async () => {
+                        const authorsModel = connection!.model(testMetadata.associations.manyToMany.leftTable);
+                        const booksModel = connection!.model(testMetadata.associations.manyToMany.rightTable);
+                        const authorsField = pluralize.plural(testMetadata.associations.manyToMany.leftTable);
+                        const booksField = pluralize.plural(testMetadata.associations.manyToMany.rightTable);
+
+                        const authors = await authorsModel.findAll({  include: [ booksModel ] });
+
+                        for (const author of authors) {
+                            expect(author).toHaveProperty(booksField);
+
+                            // @ts-ignore
+                            const associatedBooks = author[booksField];
+
+                            expect(associatedBooks).toHaveProperty('length');
+                            expect(associatedBooks.length).toBeGreaterThanOrEqual(1);
+                        }
+
+                        const books = await booksModel.findAll({  include: [ authorsModel ] });
+
+                        for (const book of books) {
+                            expect(book).toHaveProperty(authorsField);
+
+                            // @ts-ignore
+                            const associatedAuthors = book[authorsField];
+
+                            expect(associatedAuthors).toHaveProperty('length');
+                            expect(associatedAuthors.length).toBeGreaterThanOrEqual(1);
+                        }
+                    });
                 });
 
-                it('1:N', async () => {
-                    const racesModel = connection!.model(testMetadata.associations.leftTableOneToMany);
-                    const unitsModel = connection!.model(testMetadata.associations.rightTableOneToMany);
-                    const raceField = pluralize.singular(testMetadata.associations.leftTableOneToMany);
-                    const unitsField = pluralize.plural(testMetadata.associations.rightTableOneToMany);
+                if (!!testMetadata.associations.navProps) {
+                    describe('Overriding Navigation Prop Names', () => {
+                        if (!!testMetadata.associations.navProps?.oneToOne) {
+                            it('1:1', async () => {
+                                
+                                const navProps = testMetadata.associations.navProps!.oneToOne;
+                                const scholarshipTable = tableNameDictionary[navProps.leftTable.toLowerCase()];
+                                const studentTable = tableNameDictionary[navProps.rightTable.toLowerCase()];
+                                
+                                await checkNavProps(connection, parsedAssociations!, scholarshipTable, studentTable, 'HasOne', 'BelongsTo');
+                            });
+                        }
 
-                    const races = await racesModel.findAll({  include: [ unitsModel ] });
+                        if (!!testMetadata.associations.navProps?.oneToOne) {
+                            it('1:N', async () => {
+                                const navProps = testMetadata.associations.navProps!.oneToMany;
+                                const codeLookupTable = tableNameDictionary[navProps.leftTable.toLowerCase()];
+                                const horseTable = tableNameDictionary[navProps.rightTable.toLowerCase()];
+                                const foreignKeys = navProps.rightKeys;
 
-                    for (const race of races) {
-                        expect(race).toHaveProperty(unitsField);
+                                await checkNavProps(connection, parsedAssociations!, codeLookupTable, horseTable, 'HasMany', 'BelongsTo', foreignKeys);
+                            });
+                        }
 
-                        // @ts-ignore
-                        const associatedUnits = race[unitsField];
+                        it.skip('N:N', async () => {
+                            const authorsModel = connection!.model(testMetadata.associations.manyToMany.leftTable);
+                            const booksModel = connection!.model(testMetadata.associations.manyToMany.rightTable);
+                            const authorsField = pluralize.plural(testMetadata.associations.manyToMany.leftTable);
+                            const booksField = pluralize.plural(testMetadata.associations.manyToMany.rightTable);
 
-                        expect(associatedUnits).toHaveProperty('length');
-                        expect(associatedUnits.length).toBeGreaterThanOrEqual(1);
-                    }
+                            const authors = await authorsModel.findAll({  include: [ booksModel ] });
 
-                    const units = await unitsModel.findAll({  include: [ racesModel ] });
+                            for (const author of authors) {
+                                expect(author).toHaveProperty(booksField);
 
-                    for (const unit of units) {
-                        expect(unit).toHaveProperty(raceField);
-                    }
-                });
+                                // @ts-ignore
+                                const associatedBooks = author[booksField];
 
-                it('N:N', async () => {
-                    const authorsModel = connection!.model(testMetadata.associations.leftTableManyToMany);
-                    const booksModel = connection!.model(testMetadata.associations.rightTableManyToMany);
-                    const authorsField = pluralize.plural(testMetadata.associations.leftTableManyToMany);
-                    const booksField = pluralize.plural(testMetadata.associations.rightTableManyToMany);
+                                expect(associatedBooks).toHaveProperty('length');
+                                expect(associatedBooks.length).toBeGreaterThanOrEqual(1);
+                            }
 
-                    const authors = await authorsModel.findAll({  include: [ booksModel ] });
+                            const books = await booksModel.findAll({  include: [ authorsModel ] });
 
-                    for (const author of authors) {
-                        expect(author).toHaveProperty(booksField);
+                            for (const book of books) {
+                                expect(book).toHaveProperty(authorsField);
 
-                        // @ts-ignore
-                        const associatedBooks = author[booksField];
+                                // @ts-ignore
+                                const associatedAuthors = book[authorsField];
 
-                        expect(associatedBooks).toHaveProperty('length');
-                        expect(associatedBooks.length).toBeGreaterThanOrEqual(1);
-                    }
+                                expect(associatedAuthors).toHaveProperty('length');
+                                expect(associatedAuthors.length).toBeGreaterThanOrEqual(1);
+                            }
+                        });
+                    });
+                }
 
-                    const books = await booksModel.findAll({  include: [ authorsModel ] });
-
-                    for (const book of books) {
-                        expect(book).toHaveProperty(authorsField);
-
-                        // @ts-ignore
-                        const associatedAuthors = book[authorsField];
-
-                        expect(associatedAuthors).toHaveProperty('length');
-                        expect(associatedAuthors.length).toBeGreaterThanOrEqual(1);
-                    }
-                });
             });
 
         });
     }
 }
+async function checkNavProps (
+    connection: Sequelize | undefined,
+    parsedAssociations: IAssociationsParsed,
+    leftTable: ITableName,
+    rightTable: ITableName,
+    primaryAssociationType: AssociationType,
+    foreignAssociationType: AssociationType,
+    foreignKeys?: string[]
+) {
+
+    const leftModel = connection!.model(leftTable.name);      // like codeLookup
+    const rightModel = connection!.model(rightTable.name);    // like horse
+
+    const defaultFieldNameOnRightTable = pluralize.singular(leftTable.name);
+    const defaultFieldNameOnLeftTable = pluralize.singular(rightTable.name);
+
+    if (!foreignKeys || foreignKeys.length == 0) {
+        foreignKeys = [''];
+    }
+
+    for (let i = 0; i < foreignKeys.length; i++) {
+        const key = foreignKeys[i];
+        
+        await checkPropsOneDirection(parsedAssociations, rightTable, foreignAssociationType, leftTable, key, defaultFieldNameOnRightTable, rightModel, leftModel);
+        await checkPropsOneDirection(parsedAssociations, leftTable, primaryAssociationType, rightTable, key, defaultFieldNameOnLeftTable, leftModel, rightModel);
+    }
+}
+
+async function checkPropsOneDirection (
+    parsedAssociations: IAssociationsParsed,
+    table1: ITableName,
+    associationType: AssociationType,
+    table2: ITableName,
+    key: string,
+    defaultFieldNameOnTable1: string,
+    model1: ModelCtor<Model<any, any>>,
+    model2: ModelCtor<Model<any, any>>
+) {
+    const association = getAssociationCustomPropName(parsedAssociations, table1.fullTableName, associationType, table2.fullTableName, key);
+    const customFieldNameOnTable1 = association?.targetModelPropName;
+    const fieldNameOnTable1 = customFieldNameOnTable1 ?? defaultFieldNameOnTable1;
+
+    const modelToInclude = association?.targetAlias ?? model2;
+
+    const shouldHaveNavProp = !association?.hasMultipleForSameTarget || !!association?.targetAlias;
+
+    // need an alias defined since there are multiple relationships between the same 2 tables, so this nav prop should not exist
+    const findOpts = shouldHaveNavProp
+        ? { include: [modelToInclude] }
+        : {};
+
+    const model1Records = await model1.findAll(findOpts);
+    for (const model1Record of model1Records) {
+        if (shouldHaveNavProp) {
+            expect(model1Record).toHaveProperty(fieldNameOnTable1);
+        } else {
+            expect(model1Record).not.toHaveProperty(fieldNameOnTable1);
+        }
+        if (!!customFieldNameOnTable1 || !shouldHaveNavProp) {
+            expect(model1Record).not.toHaveProperty(defaultFieldNameOnTable1);
+        }
+    }
+}
+

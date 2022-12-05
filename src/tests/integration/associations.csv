@@ -1,3 +1,12 @@
-1:1, person_id, passport_id, person, passport
-1:N, race_id, unit_id, races, units
-N:N, author_id, book_id, authors, books, authors_books
+1:1, person_id,       passport_id,      person,       passport
+1:N, race_id,         unit_id,          races,        units
+N:N, author_id,       book_id,          authors,      books,    authors_books
+
+1:1, scholarship_id,  scholarship_id,   scholarship,  student,  ,             eXtraMoney,   RECIPient
+
+1:N, code_lookup_id,  horse_status_id,  codeLookup,   hoRse,    ,             Status
+1:N, code_lookup_id,  horse_color_id,   codelookup,   horsE,    ,             CoLor
+1:N, code_lookup_id,  horse_breed_id,   codelookup,   horse,    ,             breed,        speCialHorses
+1:N, code_lookup_id,  horse_gender_id,  codeLookup,   hoRse,    ,             Gender,       MorFHorses
+
+N:N, worker_id,       shift_id,         worker,       shift,    worker_shift, Laborers,     WorkRotations

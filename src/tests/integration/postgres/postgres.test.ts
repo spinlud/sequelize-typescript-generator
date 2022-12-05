@@ -173,12 +173,18 @@ const testMetadata: ITestMetadata = {
         ],
     },
     associations: {
-        leftTableOneToOne: PERSON_TABLE_NAME,
-        rightTableOneToOne: PASSPORT_TABLE_NAME,
-        leftTableOneToMany: RACES_TABLE_NAME,
-        rightTableOneToMany: UNITS_TABLE_NAME,
-        leftTableManyToMany: AUTHORS_TABLE_NAME,
-        rightTableManyToMany: BOOKS_TABLE_NAME,
+        oneToOne: {
+            leftTable: PERSON_TABLE_NAME,
+            rightTable: PASSPORT_TABLE_NAME,
+        },
+        oneToMany: {
+            leftTable: RACES_TABLE_NAME,
+            rightTable: UNITS_TABLE_NAME,
+        },
+        manyToMany: {
+            leftTable: AUTHORS_TABLE_NAME,
+            rightTable: BOOKS_TABLE_NAME,
+        }
     },
 };
 

@@ -27,6 +27,7 @@
     "test-postgres": "npm run docker-start-postgres && jest src/tests/integration/postgres",
     "test-sqlite": "jest src/tests/integration/sqlite",
     "test": "npm run test-mariadb && npm run test-mssql && npm run test-mysql && npm run test-postgres && npm run test-sqlite",
+    "test-all": "npm run docker-start-all && jest src/tests/integration",
     "dev": "npx ts-node-dev src/bin/cli.ts -D mysql -u root -x mysql -d dbtest --dialect-options '{\"timezone\": \"local\"}' --case const:camel --clean --logs",
     "usage": "npx ts-node-dev src/bin/cli.ts --help"
   },
@@ -46,6 +47,7 @@
     "@types/validator": "^13.7.9",
     "@types/yargs": "^17.0.13",
     "jest": "^28.1.3",
+    "jest-html-reporters": "^3.0.11",
     "mariadb": "^3.0.1",
     "mysql2": "^2.3.3",
     "pg": "^8.8.0",

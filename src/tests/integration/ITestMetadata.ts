@@ -22,6 +22,22 @@ type GetColumnNativeDataTypeFn = (
     column: string
 ) => Promise<string>;
 
+interface ITestAssociationTableNames {
+    oneToOne: {
+        leftTable: string;  // Left table 1:1 relation
+        rightTable: string; // Right table 1:1 relation
+    },
+    oneToMany: {
+        leftTable: string;      // Left table 1:N relation
+        rightTable: string;     // Right table 1:N relation
+        rightKeys?: string[];   // Right table foreign keys (usually the more descriptive ones)
+    },
+    manyToMany: {
+        leftTable: string;  // Left table N:N relation
+        rightTable: string; // Right table N:N relation
+    }
+}
+
 export interface ITestMetadata {
     name: string;
     dialect: Dialect;
@@ -36,12 +52,7 @@ export interface ITestMetadata {
         getColumnNativeDataType: GetColumnNativeDataTypeFn;
         testValues: [string, any][];
     },
-    associations: {
-        leftTableOneToOne: string; // Left table 1:1 relation
-        rightTableOneToOne: string; // Right table 1:1 relation
-        leftTableOneToMany: string; // Left table 1:N relation
-        rightTableOneToMany: string; // Right table 1:N relation
-        leftTableManyToMany: string; // Left table N:N relation
-        rightTableManyToMany: string; // Right table N:N relation
-    },
+    associations: ITestAssociationTableNames & {
+        navProps?: ITestAssociationTableNames
+    }
 }
