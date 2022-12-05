@@ -37,7 +37,30 @@ import {
     PASSPORT_TABLE_DROP,
     PASSPORT_TABLE_CREATES,
     PASSPORT_TABLE_INSERTS,
+
+    HORSE_TABLE_NAME,
+    HORSE_TABLE_DROP,
+    HORSE_TABLE_CREATES,
+    HORSE_TABLE_INSERTS,
+
+    CODELOOKUP_TABLE_NAME,
+    CODELOOKUP_TABLE_DROP,
+    CODELOOKUP_TABLE_CREATES,
+    CODELOOKUP_TABLE_INSERTS,
+
+    SCHOLARSHIP_TABLE_NAME,
+    SCHOLARSHIP_TABLE_DROP,
+    SCHOLARSHIP_TABLE_CREATES,
+    SCHOLARSHIP_TABLE_INSERTS,
+
+    STUDENT_TABLE_NAME,
+    STUDENT_TABLE_DROP,
+    STUDENT_TABLE_CREATES,
+    STUDENT_TABLE_INSERTS,
+
 } from './queries';
+import { ITable } from '../../../dialects/Dialect';
+import { parseFullTableName } from '../../../dialects/utils';
 
 interface INativeType {
     DATA_TYPE: string;
@@ -100,9 +123,36 @@ const testMetadata: ITestMetadata = {
             dropQuery: PASSPORT_TABLE_DROP,
             insertQueries: PASSPORT_TABLE_INSERTS,
         },
+
+
+
+        {
+            name: HORSE_TABLE_NAME,
+            createQueries: HORSE_TABLE_CREATES,
+            dropQuery: HORSE_TABLE_DROP,
+            insertQueries: HORSE_TABLE_INSERTS,
+        },
+        {
+            name: CODELOOKUP_TABLE_NAME,
+            createQueries: CODELOOKUP_TABLE_CREATES,
+            dropQuery: CODELOOKUP_TABLE_DROP,
+            insertQueries: CODELOOKUP_TABLE_INSERTS,
+        },
+        {
+            name: SCHOLARSHIP_TABLE_NAME,
+            createQueries: SCHOLARSHIP_TABLE_CREATES,
+            dropQuery: SCHOLARSHIP_TABLE_DROP,
+            insertQueries: SCHOLARSHIP_TABLE_INSERTS,
+        },
+        {
+            name: STUDENT_TABLE_NAME,
+            createQueries: STUDENT_TABLE_CREATES,
+            dropQuery: STUDENT_TABLE_DROP,
+            insertQueries: STUDENT_TABLE_INSERTS,
+        },
     ],
-    filterTables: [ DATA_TYPES_TABLE_NAME ],
-    filterSkipTables: [ INDICES_TABLE_NAME ],
+    filterTables: [parseFullTableName(DATA_TYPES_TABLE_NAME) as ITable],
+    filterSkipTables: [parseFullTableName(INDICES_TABLE_NAME) as ITable],
     dataTypes: {
         dataTypesTable: DATA_TYPES_TABLE_NAME,
         async getColumnNativeDataType(
@@ -160,12 +210,38 @@ const testMetadata: ITestMetadata = {
         ]
     },
     associations: {
-        leftTableOneToOne: PERSON_TABLE_NAME,
-        rightTableOneToOne: PASSPORT_TABLE_NAME,
-        leftTableOneToMany: RACES_TABLE_NAME,
-        rightTableOneToMany: UNITS_TABLE_NAME,
-        leftTableManyToMany: AUTHORS_TABLE_NAME,
-        rightTableManyToMany: BOOKS_TABLE_NAME,
+        oneToOne: {
+            leftTable: PERSON_TABLE_NAME,
+            rightTable: PASSPORT_TABLE_NAME,
+        },
+        oneToMany: {
+            leftTable: RACES_TABLE_NAME,
+            rightTable: UNITS_TABLE_NAME,
+        },
+        manyToMany: {
+            leftTable: AUTHORS_TABLE_NAME,
+            rightTable: BOOKS_TABLE_NAME,
+        },
+        navProps: {
+            oneToOne: {
+                leftTable: SCHOLARSHIP_TABLE_NAME,
+                rightTable: STUDENT_TABLE_NAME,
+            },
+            oneToMany: {
+                leftTable: CODELOOKUP_TABLE_NAME,
+                rightTable: HORSE_TABLE_NAME,
+                rightKeys: [
+                    'horse_breed_id',
+                    'horse_color_id',
+                    'horse_gender_id',
+                    'horse_status_id',
+                ]
+            },
+            manyToMany: {
+                leftTable: AUTHORS_TABLE_NAME,
+                rightTable: BOOKS_TABLE_NAME,
+            },
+        }
     }
 };
 

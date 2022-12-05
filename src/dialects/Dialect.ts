@@ -2,24 +2,30 @@ import { IndexType, IndexMethod, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { IConfig } from '../config';
 import { createConnection } from "../connection";
-import { AssociationsParser, IAssociationsParsed, IAssociationMetadata } from './AssociationsParser'
-import { caseTransformer } from './utils';
-import {parse} from "@typescript-eslint/parser";
+import { AssociationsParser, IAssociationMetadata, IForeignKey } from './AssociationsParser'
+import { caseTransformer, noSchemaPrefix, populateFullTableNameDictionary, Dictionary } from './utils';
 
 export interface ITablesMetadata {
     [tableName: string]: ITableMetadata;
 }
 
-export interface ITableMetadata {
+export interface ITableName {
     name: string; // Model name
+    schema?: 'public' | string; //'public' default for Postgres
+    fullTableName: string;
+}
+
+export interface ITable extends ITableName {
+    comment?: string;
+}
+
+export interface ITableMetadata extends ITable {
     originName: string; // Database table name
-    schema?: 'public' | string; // Postgres only
     timestamps?: boolean;
     columns: {
         [columnName: string]: IColumnMetadata;
     }
     associations?: IAssociationMetadata[];
-    comment?: string;
 }
 
 export interface IColumnMetadata {
@@ -29,10 +35,7 @@ export interface IColumnMetadata {
     typeExt: string;
     dataType?: string;
     primaryKey: boolean;
-    foreignKey?: {
-        name: string;
-        targetModel: string;
-    }
+    foreignKey?: IForeignKey;
     allowNull: boolean;
     autoIncrement: boolean;
     indices?: IIndexMetadata[],
@@ -49,9 +52,10 @@ export interface IIndexMetadata {
     seq?: number;
 }
 
-export interface ITable {
-    name: string;
-    comment?: string;
+export interface ITableRow {
+    table_name: string;
+    table_comment?: string;
+    schema_name?: string;
 }
 
 type DialectName = 'postgres' | 'mysql' | 'mariadb' | 'sqlite' | 'mssql';
@@ -109,7 +113,7 @@ export abstract class Dialect {
      * @param {IConfig} config
      * @returns {Promise<string[]>}
      */
-    protected abstract fetchTables(
+    public abstract fetchTables(
         connection: Sequelize,
         config: IConfig
     ): Promise<ITable[]>;
@@ -124,7 +128,7 @@ export abstract class Dialect {
     protected abstract fetchColumnsMetadata(
         connection: Sequelize,
         config: IConfig,
-        table: string
+        table: ITable
     ): Promise<IColumnMetadata[]>;
 
     /**
@@ -138,7 +142,7 @@ export abstract class Dialect {
     protected abstract fetchColumnIndexMetadata(
         connection: Sequelize,
         config: IConfig,
-        table: string,
+        table: ITable,
         column: string
     ): Promise<IIndexMetadata[]>;
 
@@ -150,6 +154,7 @@ export abstract class Dialect {
     public async buildTablesMetadata(config: IConfig): Promise<ITablesMetadata> {
         let connection: Sequelize | undefined;
         const tablesMetadata: ITablesMetadata = {};
+        const tableNameDictionary: Dictionary<ITableName> = {};
 
         try {
             // Set schema for Postgres to 'public' if not provided
@@ -164,50 +169,47 @@ export abstract class Dialect {
 
             await connection.authenticate();
 
-            let tables = await this.fetchTables(connection, config);
-
+            const allTables = await this.fetchTables(connection, config);
+            
             // Apply filters
-            tables = tables
-                .filter(({ name }) => {
-                    if (config.metadata?.tables?.length) {
-                        return config.metadata.tables.includes(name.toLowerCase());
-                    }
-                    else {
-                        return true;
-                    }
-                }).filter(({ name }) => {
-                    if (config.metadata?.skipTables?.length) {
-                        return !(config.metadata.skipTables.includes(name.toLowerCase()));
-                    }
-                    else {
-                        return true;
-                    }
-                });
+            // NOTE: `tables` and `skipTables` are already lowercase
+            const includeFullTableNames = !!config.metadata?.tables?.length ? config.metadata.tables.map(t => !t.schema ? noSchemaPrefix + t.name : t.fullTableName) : [];
+            const skipFullTableNames = !!config.metadata?.skipTables?.length ? config.metadata.skipTables.map(t => !t.schema ? noSchemaPrefix + t.name : t.fullTableName) : [];
 
-            for (const { name: tableName, comment: tableComment } of tables) {
-                const columnsMetadata = await this.fetchColumnsMetadata(connection, config, tableName);
+            // Matching on a dummy schema in case the database or user input doesn't provide schema data
+            const tables = allTables
+                .filter(({ fullTableName, name }) => includeFullTableNames.length == 0 || includeFullTableNames.some(i => i === fullTableName.toLowerCase() || i === noSchemaPrefix + name.toLowerCase()))
+                .filter(({ fullTableName, name }) => skipFullTableNames.length == 0 || !skipFullTableNames.some(i => i === fullTableName.toLowerCase() || i === noSchemaPrefix + name.toLowerCase()));
+
+            populateFullTableNameDictionary(tables, tableNameDictionary);
+
+            for (const table of tables) {
+                const columnsMetadata = await this.fetchColumnsMetadata(connection, config, table);
 
                 // Fetch indices metadata if required
                 if (config.metadata?.indices) {
                     for (const column of columnsMetadata) {
-                        column.indices = await this.fetchColumnIndexMetadata(connection, config, tableName, column.name);
+                        column.indices = await this.fetchColumnIndexMetadata(connection, config, table, column.name);
                     }
                 }
 
+                const tableSchema = !!table.schema
+                    ? table.schema
+                    : config.metadata?.schema;
+
                 const tableMetadata: ITableMetadata = {
-                    originName: tableName,
-                    name: tableName,
-                    ...config.metadata?.schema && { schema: config.metadata!.schema},
+                    originName: table.name,
+                    ...table,
+                    ...tableSchema && { schema: tableSchema},
                     timestamps: config.metadata?.timestamps ?? false,
-                    columns: {},
-                    comment: tableComment ?? undefined,
+                    columns: {}
                 };
 
                 for (const columnMetadata of columnsMetadata) {
                     tableMetadata.columns[columnMetadata.name] = columnMetadata;
                 }
 
-                tablesMetadata[tableMetadata.originName] = tableMetadata;
+                tablesMetadata[tableMetadata.fullTableName] = tableMetadata;
             }
         }
         catch(err) {
@@ -220,21 +222,25 @@ export abstract class Dialect {
 
         // Apply associations if required
         if (config.metadata?.associationsFile) {
-            const parsedAssociations = AssociationsParser.parse(config.metadata?.associationsFile);
+            const parsedAssociations = AssociationsParser.parse(tableNameDictionary, config.metadata?.associationsFile);
 
-            for (const [tableName, association] of Object.entries(parsedAssociations)) {
-                if(!tablesMetadata[tableName]) {
-                    console.warn('[WARNING]', `Associated table ${tableName} not found among (${Object.keys(tablesMetadata).join(', ')})`);
+            for (const [fullTableName, association] of Object.entries(parsedAssociations)) {
+
+                if(!!association.errors?.length) {
+                    association.errors.forEach(e => {
+                        console.warn('[WARNING]', e);
+                    });
+                    console.warn(`Available table names: (${Object.keys(tablesMetadata).join(', ')})`)
                     continue;
                 }
 
                 // Attach associations to table
-                tablesMetadata[tableName].associations = association.associations;
+                tablesMetadata[fullTableName].associations = association.associations;
 
-                const { columns } = tablesMetadata[tableName];
+                const { columns } = tablesMetadata[fullTableName];
 
                 // Override foreign keys
-                for (const { name: columnName, targetModel } of association.foreignKeys) {
+                for (const { name: columnName, targetModel, hasMultipleForSameTarget } of association.foreignKeys) {
                     if (!columns[columnName]) {
                         console.warn('[WARNING]', `Foreign key column ${columnName} not found among (${Object.keys(columns).join(', ')})`);
                         continue;
@@ -242,7 +248,8 @@ export abstract class Dialect {
 
                     columns[columnName].foreignKey = {
                         name: columnName,
-                        targetModel: targetModel
+                        targetModel: targetModel,
+                        hasMultipleForSameTarget
                     };
                 }
             }

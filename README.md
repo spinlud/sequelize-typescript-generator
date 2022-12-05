@@ -17,6 +17,7 @@
     * [One to Many](#one-to-many)
     * [Many to Many](#many-to-many)
 * [Lint](#lint)
+* [Format](#format)
 
 <!-- toc stop -->
 
@@ -81,8 +82,8 @@ stg --help
 ```shell
 Usage: stg -D <dialect> -d [database] -u [username] -x [password] -h [host] -p
 [port] -o [out-dir] -s [schema] -a [associations-file]-t [tables] -T
-[skip-tables] -i [indices] -C [case] -S [storage] -L [lint-file] -l [ssl] -r
-[protocol] -c [clean]
+[skip-tables] -V [no-views] -i [indices] -C [case] -S [storage] -L [lint-file]
+-l [ssl] -r [protocol] -n [dialect-options] -c [clean] -g [logs] -P [prettier]
 
 Options:
   --help                      Show help                                [boolean]
@@ -137,9 +138,12 @@ Options:
   -f, --dialect-options-file  Dialect native options passed as json file path.
                                                                         [string]
   -R, --no-strict             Disable strict typescript class declaration.
-                                                                       [boolean]    
-  -V, --no-views              Disable view generation. Available for: MySQL and MariaDB.
-                                                                       [boolean]                                                                      
+                                                                       [boolean]
+  -V, --no-views              Disable views generation. Available for: MySQL and
+                              MariaDB.                                 [boolean]
+  -P, --prettier              Format via Prettier. See Prettier.io for
+                              documentation and configuration. Occurs after
+                              linting.                                 [boolean]
 ```
 
 Local usage example:
@@ -363,6 +367,31 @@ const config: IConfig = {
 ```
 
 NB: please note that currently case transformation is not supported for non ASCII strings.
+
+## Table Names
+
+**NOTE: (only applies to db dialects with custom schemas)**
+
+If your database only has 1 schema, you can simply use the table names wherever needed (e.g. tables to process/skip, tables in association files). 
+But if you need to specify different schemas (e.g. multiple tables have the same name, but a different schema), then use the following format when 
+specifying tables:
+
+```sql
+--example schema name: xyz
+--example table name: Customer
+
+xyz.Customer
+--or
+[xyz].[Customer]
+--or
+[xyz].Customer
+--or
+xyz.[Customer]
+```
+
+Namely, separate the schema name from the table name with a '.' (period), optionally enclosing either or both names with square brackets. Case does not matter in
+identifying the correct table.
+
 
 ## Associations
 Including associations in the generated models requires a bit of manual work unfortunately, but hopefully 
@@ -932,6 +961,21 @@ import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-genera
     await builder.build();
 })();
 ```
+
+## Format
+Since linting is not recommended for certain formatting options, you can optionally use Prettier to format each generated model following the linting.
+
+The only default option that overrides Prettier's defaults is:
+
+```ts
+{
+    singleQuote: true
+}
+```
+
+To override more options, simply include a Prettier configuration file in the directory hierarchy from the current working directory (where the generator is run from).
+
+The parser will always be set to `typescript`. See [Prettier.io](https://prettier.io/docs/en/configuration.html) for configuration options.
 
 ## License
 [MIT License](http://en.wikipedia.org/wiki/MIT_License)

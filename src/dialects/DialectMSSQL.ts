@@ -1,13 +1,8 @@
 import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize, DataType } from 'sequelize-typescript';
 import { IConfig } from '../config';
-import { IColumnMetadata, IIndexMetadata, Dialect, ITable } from './Dialect';
-import { generatePrecisionSignature, warnUnknownMappingForDataType } from './utils';
-
-interface ITableRow {
-    table_name: string;
-    table_comment?: string;
-}
+import { IColumnMetadata, IIndexMetadata, Dialect, ITable, ITableRow } from './Dialect';
+import { decorateFullTableName, generatePrecisionSignature, warnUnknownMappingForDataType } from './utils';
 
 interface IColumnMetadataMSSQL {
     CHARACTER_MAXIMUM_LENGTH: number | null;
@@ -160,20 +155,22 @@ export class DialectMSSQL extends Dialect {
      * @param {IConfig} config
      * @returns {Promise<ITable[]>}
      */
-    protected async fetchTables(
+    public async fetchTables(
         connection: Sequelize,
         config: IConfig
     ): Promise<ITable[]> {
         const query = `
             SELECT
-                t.name               AS [table_name],
-                td.value             AS [table_comment]
-            FROM sysobjects t
-            INNER JOIN sysusers u
-                ON u.uid = t.uid
+                s.name      AS [schema_name],
+                t.name      AS [table_name],
+                td.value    AS [table_comment]
+            FROM sys.tables t
+            JOIN sys.schemas s ON t.schema_id = s.schema_id
+            JOIN sys.objects o ON t.object_id = o.object_id
             LEFT OUTER JOIN sys.extended_properties td
-                ON td.major_id = t.id AND td.minor_id = 0 AND td.name = 'MS_Description'
-            WHERE t.type = 'u';
+                ON td.major_id = t.object_id
+                    AND td.minor_id = 0 AND td.name = 'MS_Description'
+            WHERE o.type = 'U'
         `;
 
         const tables: ITable[] = (await connection.query(
@@ -182,9 +179,12 @@ export class DialectMSSQL extends Dialect {
                 type: QueryTypes.SELECT,
                 raw: true,
             }
-        ) as ITableRow[]).map(({ table_name, table_comment }) => {
+        ) as ITableRow[]).map(({ table_name, table_comment, schema_name }) => {
             const t: ITable = {
-                name: table_name,
+                ...decorateFullTableName({
+                    name: table_name,
+                    schema: schema_name ?? undefined
+                }),
                 comment: table_comment ?? undefined,
             };
 
@@ -204,7 +204,7 @@ export class DialectMSSQL extends Dialect {
     protected async fetchColumnsMetadata(
         connection: Sequelize,
         config: IConfig,
-        table: string
+        table: ITable
     ): Promise<IColumnMetadata[]> {
         const columnsMetadata: IColumnMetadata[] = [];
 
@@ -228,7 +228,7 @@ export class DialectMSSQL extends Dialect {
                 ON sc.id = t.id AND sc.name = c.COLUMN_NAME
             LEFT OUTER JOIN sys.extended_properties ep
                  ON ep.major_id = sc.id AND ep.minor_id = sc.colid AND ep.name = 'MS_Description'                                        
-            WHERE c.TABLE_CATALOG = N'${config.connection.database}' AND c.TABLE_NAME = N'${table}'
+            WHERE c.TABLE_CATALOG = N'${config.connection.database}' AND c.TABLE_NAME = N'${table.name}'
             ORDER BY c.ORDINAL_POSITION;
         `;
 
@@ -295,7 +295,7 @@ export class DialectMSSQL extends Dialect {
     protected async fetchColumnIndexMetadata(
         connection: Sequelize,
         config: IConfig,
-        table: string,
+        table: ITable,
         column: string
     ): Promise<IIndexMetadata[]> {
         const indicesMetadata: IIndexMetadata[] = [];
@@ -322,7 +322,7 @@ export class DialectMSSQL extends Dialect {
                     ON ic.object_id = c.object_id AND ic.column_id = c.column_id
                 JOIN sys.tables t
                     ON t.object_id = c.object_id
-            WHERE t.object_id = object_id(N'${table}') AND c.name=N'${column}'
+            WHERE t.object_id = object_id(N'${table.name}') AND c.name=N'${column}'
             ORDER BY ic.column_id;
         `;
 

@@ -42,6 +42,8 @@ import {
     AUTHORS_VIEW_DROP,
     AUTHORS_VIEW_NAME,
 } from './queries';
+import { parseFullTableName } from '../../../dialects/utils';
+import { ITable } from '../../../dialects/Dialect';
 
 interface INativeType {
     DATA_TYPE: string;
@@ -112,8 +114,8 @@ export const testMetadata: ITestMetadata = {
             dropQuery: AUTHORS_VIEW_DROP,
         }
     ],
-    filterTables: [ DATA_TYPES_TABLE_NAME ],
-    filterSkipTables: [ INDICES_TABLE_NAME ],
+    filterTables: [parseFullTableName(DATA_TYPES_TABLE_NAME) as ITable],
+    filterSkipTables: [parseFullTableName(INDICES_TABLE_NAME) as ITable],
     dataTypes: {
         dataTypesTable: DATA_TYPES_TABLE_NAME,
         async getColumnNativeDataType(
@@ -175,12 +177,18 @@ export const testMetadata: ITestMetadata = {
         ]
     },
     associations: {
-        leftTableOneToOne: PERSON_TABLE_NAME,
-        rightTableOneToOne: PASSPORT_TABLE_NAME,
-        leftTableOneToMany: RACES_TABLE_NAME,
-        rightTableOneToMany: UNITS_TABLE_NAME,
-        leftTableManyToMany: AUTHORS_TABLE_NAME,
-        rightTableManyToMany: BOOKS_TABLE_NAME,
+        oneToOne: {
+            leftTable: PERSON_TABLE_NAME,
+            rightTable: PASSPORT_TABLE_NAME,
+        },
+        oneToMany: {
+            leftTable: RACES_TABLE_NAME,
+            rightTable: UNITS_TABLE_NAME,
+        },
+        manyToMany: {
+            leftTable: AUTHORS_TABLE_NAME,
+            rightTable: BOOKS_TABLE_NAME,
+        }
     },
 };
 

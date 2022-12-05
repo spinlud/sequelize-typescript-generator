@@ -143,11 +143,19 @@ export const generateArrowDecorator = (
         ),
     );
 
-    objectLiteralProps && argumentsArray.push(
+    !!objectLiteralProps && argumentsArray.push(
         ts.factory.createObjectLiteralExpression([
-            ...Object.entries(objectLiteralProps).map(e =>
-                ts.factory.createPropertyAssignment(e[0], ts.createLiteral(e[1]))
-            )
+            ...Object.entries(objectLiteralProps).map(e => {
+                if (typeof e[1] === 'object') {
+                    return ts.factory.createPropertyAssignment(e[0], 
+                        ts.factory.createObjectLiteralExpression([
+                            ...Object.entries(e[1]).map(p => ts.factory.createPropertyAssignment(p[0], ts.createLiteral(p[1] as any)))
+                        ])
+                    );
+                } else {
+                    return ts.factory.createPropertyAssignment(e[0], ts.createLiteral(e[1]));
+                }
+            })
         ])
     );
 

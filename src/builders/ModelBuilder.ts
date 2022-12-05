@@ -16,6 +16,7 @@ import {
     generateObjectLiteralDecorator,
     generateIndexExport,
 } from './utils';
+import { formatSource } from '../lint/formatter';
 
 const foreignKeyDecorator = 'ForeignKey';
 
@@ -69,8 +70,8 @@ export class ModelBuilder extends Builder {
 
         return ts.factory.createPropertyDeclaration(
             [
-                ...(col.foreignKey ?
-                    [ generateArrowDecorator(foreignKeyDecorator, [col.foreignKey.targetModel]) ]
+                ...(!!col.foreignKey && !col.foreignKey.hasMultipleForSameTarget ?
+                    [ generateArrowDecorator(foreignKeyDecorator, [col.foreignKey.targetModel.name]) ]
                     : []
                 ),
                 generateObjectLiteralDecorator('Column', buildColumnDecoratorProps(col)),
@@ -94,33 +95,42 @@ export class ModelBuilder extends Builder {
      * @param {IAssociationMetadata} association
      */
     private static buildAssociationPropertyDecl(association: IAssociationMetadata): ts.PropertyDeclaration {
-        const { associationName, targetModel, joinModel } = association;
+        const { associationName, targetModel, joinModel, targetModelPropName, targetKey, targetAlias, sourceKey } = association;
+        const targetTableName = targetModel.name;
 
-        const targetModels = [ targetModel ];
-        joinModel && targetModels.push(joinModel);
+        const targetModels = [ targetTableName ];
+        joinModel && targetModels.push(joinModel.name);
+
+        const navigationPropName = targetModelPropName ?? (
+            associationName.includes('Many')
+                ? pluralize.plural(targetTableName)
+                : pluralize.singular(targetTableName)
+        );
+
+        const opts = !!sourceKey || !!targetKey
+            ? {
+                ...!!sourceKey && { sourceKey },
+                ...!!targetKey && { 
+                    foreignKey: targetKey,
+                    ...!!targetAlias && { as: targetAlias }
+                }
+            }
+            : undefined;
 
         return ts.factory.createPropertyDeclaration(
             [
-                ...(association.sourceKey ?
-                        [
-                            generateArrowDecorator(
-                                associationName,
-                                targetModels,
-                                { sourceKey: association.sourceKey }
-                            )
-                        ]
-                        : [
-                            generateArrowDecorator(associationName, targetModels)
-                        ]
-                ),
+                generateArrowDecorator(
+                    associationName,
+                    targetModels,
+                    opts,
+                )
             ],
             undefined,
-            associationName.includes('Many') ?
-                pluralize.plural(targetModel) : pluralize.singular(targetModel),
+            navigationPropName,
             ts.factory.createToken(ts.SyntaxKind.QuestionToken),
             associationName.includes('Many') ?
-                ts.factory.createArrayTypeNode(ts.factory.createTypeReferenceNode(targetModel, undefined)) :
-                ts.factory.createTypeReferenceNode(targetModel, undefined),
+                ts.factory.createArrayTypeNode(ts.factory.createTypeReferenceNode(targetTableName, undefined)) :
+                ts.factory.createTypeReferenceNode(targetTableName, undefined),
             undefined
         );
     }
@@ -162,13 +172,13 @@ export class ModelBuilder extends Builder {
 
         // Add models for associations
         tableMetadata.associations?.forEach(a => {
-            importModels.add(a.targetModel);
-            a.joinModel && importModels.add(a.joinModel);
+            importModels.add(a.targetModel.name);
+            a.joinModel && importModels.add(a.joinModel.name);
         });
 
         // Add models for foreign keys
         Object.values(tableMetadata.columns).forEach(col => {
-            col.foreignKey && importModels.add(col.foreignKey.targetModel);
+            col.foreignKey && importModels.add(col.foreignKey.targetModel.name);
         });
 
         [...importModels].forEach(modelName => {
@@ -265,8 +275,13 @@ export class ModelBuilder extends Builder {
             // Class members
             [
                 ...Object.values(columns).map(col => this.buildColumnPropertyDecl(col, dialect)),
-                ...tableMetadata.associations && tableMetadata.associations.length ?
-                    tableMetadata.associations.map(a => this.buildAssociationPropertyDecl(a)) : []
+
+                // preventing nav prop generation for multiple relationships between the same 2 tables without aliases
+                ...tableMetadata.associations && tableMetadata.associations.length
+                    ? tableMetadata.associations
+                        .filter(a => !a.hasMultipleForSameTarget || !!a.targetAlias)
+                        .map(a => this.buildAssociationPropertyDecl(a))
+                    : []
             ]
         );
 
@@ -299,11 +314,12 @@ export class ModelBuilder extends Builder {
             console.log('CONFIGURATION', this.config);
         }
 
-        console.log(`Fetching metadata from source`);
+        console.log(`Fetching metadata from source ...`);
         const tablesMetadata = await this.dialect.buildTablesMetadata(this.config);
+        console.log(`    ... done.`);
 
         if (Object.keys(tablesMetadata).length === 0) {
-            console.warn(`Couldn't find any table for database ${this.config.connection.database} and provided filters`);
+            console.warn(`Couldn't find any table for database ${this.config.connection.database} and provided filters.`);
             return;
         }
 
@@ -323,15 +339,18 @@ export class ModelBuilder extends Builder {
 
         // Clean files if required
         if (clean) {
-            console.log(`Cleaning output dir`);
+            console.log(`Cleaning output dir ...`);
             for (const file of await fs.readdir(outDir)) {
                 await fs.unlink(path.join(outDir, file));
             }
+            console.log(`    ... done.`);
         }
 
         // Build model files
+        console.log(`Generating models ...`);
+
         for (const tableMetadata of Object.values(tablesMetadata)) {
-            console.log(`Processing table ${tableMetadata.originName}`);
+            console.log(`    ... processing table ${tableMetadata.originName}.`);
             const tableClassDecl =
                 ModelBuilder.buildTableClassDeclaration(tableMetadata, this.dialect, this.config.strict);
 
@@ -344,7 +363,7 @@ export class ModelBuilder extends Builder {
                     { flag: 'w' }
                 );
 
-                console.log(`Generated model file at ${outPath}`);
+                console.log(`        ... generated model file at ${outPath}`);
             })());
         }
 
@@ -358,24 +377,26 @@ export class ModelBuilder extends Builder {
                 indexContent
             );
 
-            console.log(`Generated index file at ${indexPath}`);
+            console.log(`    ... generated index file at ${indexPath}.`);
         })());
 
         await Promise.all(writePromises);
+        console.log(`    ... done.`);
 
         // Lint files
         try {
-            let linter: Linter;
+            const linter = !!this.config.lintOptions
+                ? new Linter(this.config.lintOptions)
+                : new Linter();
 
-            if (this.config.lintOptions) {
-                linter = new Linter(this.config.lintOptions);
-            }
-            else {
-                linter = new Linter();
-            }
+            console.log(`Linting files ...`);
+            const filePattern = path.join(outDir, '*.ts');
+            await linter.lintFiles([filePattern]);
+            console.log(`    ... done.`);
 
-            console.log(`Linting files`);
-            await linter.lintFiles([path.join(outDir, '*.ts')]);
+            if (!!this.config.format) {
+                await formatSource(filePattern);
+            }
         }
         catch(err: any) {
             // Handle unsupported global eslint usage

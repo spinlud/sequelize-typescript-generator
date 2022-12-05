@@ -1,0 +1,122 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Local Dev",
+      "type": "node",
+      "request": "launch",
+      "args": [
+        "src/bin/cli.ts",
+        "-h", "localhost",
+        "-p", "1533",
+        "-d", "<DbName>",
+        "-D", "mssql",
+        "-u", "<Username>",
+        "-x", "<Password>",
+        "-t", "emp.[Employer],[dbo].[Codevalue]",
+        "--clean",
+        "--logs",
+        "--prettier"
+      ],
+      "runtimeArgs": [
+        "--loader", "ts-node/esm"
+      ],
+      "cwd": "${workspaceRoot}",
+      "internalConsoleOptions": "openOnSessionStart"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Run All Tests",
+      "program": "${workspaceRoot}/node_modules/jest/bin/jest.js",
+      "env": { "CI": "true" },
+      "args": [
+        "-c", "./jest.config.js",
+        "--verbose",
+        "-i",
+        "--no-cache"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Watch All Tests",
+      "program": "${workspaceRoot}/node_modules/jest/bin/jest.js",
+      "args": [
+        "-c", "./jest.config.js",
+        "--verbose",
+        "-i",
+        "--no-cache",
+        "--watchAll"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "preLaunchTask": "Start All Db Instances"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Watch Tests (1 Dialect)",
+      "program": "${workspaceRoot}/node_modules/jest/bin/jest.js",
+      "args": [
+        "src/tests/integration/${input:whichDialect}",
+        "-c", "./jest.config.js",
+        "--verbose",
+        "-i",
+        "--no-cache",
+        "--watchAll"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "preLaunchTask": "Start ${input:whichDialect} Db Instance"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Watch SQLite Tests",
+      "program": "${workspaceRoot}/node_modules/jest/bin/jest.js",
+      "args": [
+        "src/tests/integration/sqlite",
+        "-c", "./jest.config.js",
+        "--verbose",
+        "-i",
+        "--no-cache",
+        "--watchAll"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+    },
+    // {
+    //   "type": "node",
+    //   "request": "launch",
+    //   "name": "Jest Watch Current File",
+    //   "program": "${workspaceFolder}/node_modules/jest/bin/jest",
+    //   "args": [
+    //     "${fileBasename}",
+    //     "-c",
+    //     // "./config/test/jest.json",
+    //     "./jest.config.js",
+    //     "--verbose",
+    //     "-i",
+    //     "--no-cache",
+    //     "--watchAll"
+    //   ],
+    //   "console": "integratedTerminal",
+    //   "internalConsoleOptions": "neverOpen"
+    // }
+  ],
+  "inputs": [
+    {
+      "id": "whichDialect",
+      "description": "Select which dialect to use",
+      "type": "pickString",
+      "options": ["mariadb", "mssql", "mysql", "postgres"],
+      "default": "mssql"
+    }
+  ]
+}

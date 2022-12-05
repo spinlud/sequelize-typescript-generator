@@ -1,12 +1,12 @@
-#!/usr/bin/env bash
 set -e
-
-DIR="${BASH_SOURCE%/*}"
-if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
-. "$DIR/../test-env.sh"
 
 IMAGE_NAME="mariadb"
 CONTAINER_NAME="mariadb"
+
+DIR="${BASH_SOURCE%/*}"
+if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
+. "$DIR/../test-env.sh" $CONTAINER_NAME
+
 
 if [[ -z "${DOCKER_MARIADB_TAG}" ]]; then
   IMAGE_TAG="10.5"

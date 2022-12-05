@@ -40,6 +40,8 @@ import {
     PASSPORT_TABLE_CREATES,
     PASSPORT_TABLE_INSERTS,
 } from "./queries";
+import { ITable } from '../../../dialects/Dialect';
+import { parseFullTableName } from '../../../dialects/utils';
 
 interface INativeType {
     udt_name: string;
@@ -108,8 +110,8 @@ const testMetadata: ITestMetadata = {
             insertQueries: PASSPORT_TABLE_INSERTS,
         },
     ],
-    filterTables: [ DATA_TYPES_TABLE_NAME ],
-    filterSkipTables: [ INDICES_TABLE_NAME ],
+    filterTables: [parseFullTableName(DATA_TYPES_TABLE_NAME) as ITable],
+    filterSkipTables: [parseFullTableName(INDICES_TABLE_NAME) as ITable],
     dataTypes: {
         dataTypesTable: DATA_TYPES_TABLE_NAME,
         async getColumnNativeDataType(
@@ -171,12 +173,18 @@ const testMetadata: ITestMetadata = {
         ],
     },
     associations: {
-        leftTableOneToOne: PERSON_TABLE_NAME,
-        rightTableOneToOne: PASSPORT_TABLE_NAME,
-        leftTableOneToMany: RACES_TABLE_NAME,
-        rightTableOneToMany: UNITS_TABLE_NAME,
-        leftTableManyToMany: AUTHORS_TABLE_NAME,
-        rightTableManyToMany: BOOKS_TABLE_NAME,
+        oneToOne: {
+            leftTable: PERSON_TABLE_NAME,
+            rightTable: PASSPORT_TABLE_NAME,
+        },
+        oneToMany: {
+            leftTable: RACES_TABLE_NAME,
+            rightTable: UNITS_TABLE_NAME,
+        },
+        manyToMany: {
+            leftTable: AUTHORS_TABLE_NAME,
+            rightTable: BOOKS_TABLE_NAME,
+        }
     },
 };
 

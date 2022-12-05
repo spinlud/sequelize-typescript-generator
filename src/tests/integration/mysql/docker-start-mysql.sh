@@ -1,12 +1,12 @@
-#!/usr/bin/env bash
 set -e
-
-DIR="${BASH_SOURCE%/*}"
-if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
-. "$DIR/../test-env.sh"
 
 IMAGE_NAME="mysql"
 CONTAINER_NAME="mysql"
+
+DIR="${BASH_SOURCE%/*}"
+if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
+. "$DIR/../test-env.sh" $CONTAINER_NAME
+
 
 if [[ -z "${DOCKER_MYSQL_TAG}" ]]; then
   IMAGE_TAG="8.0-oracle"

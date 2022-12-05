@@ -195,3 +195,150 @@ export const PASSPORT_TABLE_CREATES = [
 export const PASSPORT_TABLE_INSERTS = [
     `INSERT INTO ${PASSPORT_TABLE_NAME} VALUES(1, 'Frostmourne');`,
 ];
+
+
+export const HORSE_TABLE_NAME = 'horse';
+export const HORSE_TABLE_DROP = `DROP TABLE IF EXISTS ${HORSE_TABLE_NAME}`;
+export const HORSE_TABLE_CREATES = [
+    `
+        CREATE TABLE ${HORSE_TABLE_NAME}
+        (
+            horse_id            INT             PRIMARY KEY,
+            horse_name          VARCHAR(30)     NOT NULL,
+            horse_status_id     INT             NOT NULL,
+            horse_color_id      INT             NOT NULL,
+            horse_breed_id      INT             NOT NULL,
+            horse_gender_id     INT             NOT NULL
+        );
+    `,
+];
+export const HORSE_TABLE_INSERTS = [
+    `INSERT INTO ${HORSE_TABLE_NAME} VALUES(1, 'Sunshine', 12, 2, 11, 6);`,
+    `INSERT INTO ${HORSE_TABLE_NAME} VALUES(2, 'Lightning', 13, 5, 9, 7);`,
+];
+
+export const CODELOOKUP_TABLE_NAME = 'codeLookup';
+export const CODELOOKUP_TABLE_DROP = `DROP TABLE IF EXISTS ${CODELOOKUP_TABLE_NAME}`;
+export const CODELOOKUP_TABLE_CREATES = [
+    `
+        CREATE TABLE ${CODELOOKUP_TABLE_NAME}
+        (
+            code_lookup_id      INT             PRIMARY KEY,
+            code_value          VARCHAR(80)     NOT NULL
+        );
+    `,
+];
+export const CODELOOKUP_TABLE_INSERTS = [
+    `INSERT INTO ${CODELOOKUP_TABLE_NAME} VALUES(1, 'Palamino');`,
+    `INSERT INTO ${CODELOOKUP_TABLE_NAME} VALUES(2, 'Chestnut');`,
+    `INSERT INTO ${CODELOOKUP_TABLE_NAME} VALUES(3, 'Black');`,
+    `INSERT INTO ${CODELOOKUP_TABLE_NAME} VALUES(4, 'Brown');`,
+    `INSERT INTO ${CODELOOKUP_TABLE_NAME} VALUES(5, 'White');`,
+    `INSERT INTO ${CODELOOKUP_TABLE_NAME} VALUES(6, 'Female');`,
+    `INSERT INTO ${CODELOOKUP_TABLE_NAME} VALUES(7, 'Male');`,
+    `INSERT INTO ${CODELOOKUP_TABLE_NAME} VALUES(8, 'Clydesdale');`,
+    `INSERT INTO ${CODELOOKUP_TABLE_NAME} VALUES(9, 'Arabian');`,
+    `INSERT INTO ${CODELOOKUP_TABLE_NAME} VALUES(10, 'Belgian');`,
+    `INSERT INTO ${CODELOOKUP_TABLE_NAME} VALUES(11, 'Morgan');`,
+    `INSERT INTO ${CODELOOKUP_TABLE_NAME} VALUES(12, 'Active');`,
+    `INSERT INTO ${CODELOOKUP_TABLE_NAME} VALUES(13, 'Inactive');`,
+];
+
+export const STUDENT_TABLE_NAME = 'student';
+export const STUDENT_TABLE_DROP = `DROP TABLE IF EXISTS ${STUDENT_TABLE_NAME}`;
+export const STUDENT_TABLE_CREATES = [
+    `
+        CREATE TABLE ${STUDENT_TABLE_NAME}
+        (
+            student_id          INT             PRIMARY KEY,
+            name                VARCHAR(80)     NOT NULL,
+            scholarship_id      INT             NOT NULL
+        );
+    `,
+];
+export const STUDENT_TABLE_INSERTS = [
+    `INSERT INTO ${STUDENT_TABLE_NAME} VALUES(1, 'Joe', 1);`,
+];
+
+export const SCHOLARSHIP_TABLE_NAME = 'scholarship';
+export const SCHOLARSHIP_TABLE_DROP = `DROP TABLE IF EXISTS ${SCHOLARSHIP_TABLE_NAME}`;
+export const SCHOLARSHIP_TABLE_CREATES = [
+    `
+        CREATE TABLE ${SCHOLARSHIP_TABLE_NAME}
+        (
+            scholarship_id      INT             PRIMARY KEY,
+            sponsor_name        VARCHAR(80)     NOT NULL,
+            amount              DECIMAL(5, 2)   NOT NULL
+        );
+    `,
+];
+export const SCHOLARSHIP_TABLE_INSERTS = [
+    `INSERT INTO ${SCHOLARSHIP_TABLE_NAME} VALUES(1, 'MyBank', 603.47);`,
+];
+
+
+
+
+
+
+
+
+
+export const WORKERS_TABLE_NAME = 'workers';
+export const WORKERS_TABLE_DROP = `DROP TABLE IF EXISTS ${WORKERS_TABLE_NAME}`;
+export const WORKERS_TABLE_CREATES = [
+    `
+        CREATE TABLE ${WORKERS_TABLE_NAME}
+        (
+            worker_id           INT             primary key,
+            full_name           VARCHAR(80)     not null
+        );
+    `,
+];
+export const WORKERS_TABLE_INSERTS = [
+    `INSERT INTO ${WORKERS_TABLE_NAME} VALUES (1, 'Lefty Smith');`,
+    `INSERT INTO ${WORKERS_TABLE_NAME} VALUES (2, 'Happy Jones');`,
+];
+
+export const SHIFT_TABLE_NAME = 'shift';
+export const SHIFT_TABLE_DROP = `DROP TABLE IF EXISTS ${SHIFT_TABLE_NAME}`;
+export const SHIFT_TABLE_CREATES = [
+    `
+        CREATE TABLE ${SHIFT_TABLE_NAME}
+        (
+            shift_id            INT             PRIMARY KEY,
+            name                VARCHAR(10)     NOT NULL,
+            start_time          TIME        NOT NULL,
+            end_time            TIME        NOT NULL
+        );
+    `,
+];
+export const SHIFT_TABLE_INSERTS = [
+    `INSERT INTO ${SHIFT_TABLE_NAME} VALUES (1, 'Morning', '05:00', '11:00');`,
+    `INSERT INTO ${SHIFT_TABLE_NAME} VALUES (2, 'Lunch', '11:00', '17:00');`,
+    `INSERT INTO ${SHIFT_TABLE_NAME} VALUES (3, 'Dinner', '17:00', '23:00');`,
+    `INSERT INTO ${SHIFT_TABLE_NAME} VALUES (4, 'Night', '23:00', '05:00');`,
+];
+
+export const WORKERS_SHIFTS_TABLE_NAME = 'worker_shift';
+export const WORKERS_SHIFTS_TABLE_DROP = `DROP TABLE IF EXISTS ${WORKERS_SHIFTS_TABLE_NAME}`;
+export const WORKERS_SHIFTS_TABLE_CREATES = [
+    `
+        CREATE TABLE ${WORKERS_SHIFTS_TABLE_NAME}
+        (
+            worker_id       INT             not null,
+            shift_id        INT             not null,
+            PRIMARY KEY (worker_id, shift_id)
+        );
+    `,
+];
+export const WORKERS_SHIFTS_TABLE_INSERTS = [
+    `INSERT INTO ${WORKERS_SHIFTS_TABLE_NAME} VALUES (1, 1);`,
+    `INSERT INTO ${WORKERS_SHIFTS_TABLE_NAME} VALUES (1, 2);`,
+    `INSERT INTO ${WORKERS_SHIFTS_TABLE_NAME} VALUES (1, 4);`,
+    `INSERT INTO ${WORKERS_SHIFTS_TABLE_NAME} VALUES (2, 3);`,
+    `INSERT INTO ${WORKERS_SHIFTS_TABLE_NAME} VALUES (2, 4);`,
+];
+
+
+

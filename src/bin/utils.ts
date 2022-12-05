@@ -18,6 +18,7 @@ import {
     TransformMap,
     TransformTarget
 } from '../config/IConfig';
+import { parseFullTableName } from '../dialects/utils';
 
 export type ArgvType = { [key: string]: any };
 
@@ -48,6 +49,7 @@ export const aliasesMap = {
     DIALECT_OPTIONS_FILE: 'dialect-options-file',
     DISABLE_STRICT: 'no-strict',
     DISABLE_VIEWS: 'no-views',
+    PRETTIER_FORMAT: 'prettier'
 };
 
 /**
@@ -168,12 +170,12 @@ export const buildConfig = (argv: ArgvType): IConfig => {
             ...argv[aliasesMap.TABLES] && {
                 tables: (argv[aliasesMap.TABLES] as string)
                     .split(',')
-                    .map(tableName => tableName.toLowerCase())
+                    .map(tableName => parseFullTableName(tableName.toLowerCase()))
             },
             ...argv[aliasesMap.SKIP_TABLES] && {
                 skipTables: (argv[aliasesMap.SKIP_TABLES] as string)
                     .split(',')
-                    .map(tableName => tableName.toLowerCase())
+                    .map(tableName => parseFullTableName(tableName.toLowerCase()))
             },
             indices: !!argv[aliasesMap.INDICES],
             timestamps: !!argv[aliasesMap.TIMESTAMPS],
@@ -196,6 +198,7 @@ export const buildConfig = (argv: ArgvType): IConfig => {
                 fix: true,
             }
         },
+        format: !!argv[aliasesMap.PRETTIER_FORMAT]
     };
 
     return config;

@@ -1,5 +1,7 @@
 import fs from 'fs';
-import readline from 'readline';
+import pluralize from 'pluralize';
+import { ITableName } from './Dialect';
+import { Dictionary, groupBy, parseFullTableName } from './utils';
 
 const cardinalities = new Set([
     '1:1',
@@ -8,30 +10,40 @@ const cardinalities = new Set([
 ]);
 
 type AssociationRow = [
-    string, // cardinality
-    string, // left key
-    string, // right key
-    string, // left table
-    string, // right table
-    string? // [join table]
+    string,   // cardinality
+    string,   // left key
+    string,   // right key
+    string,   // left table
+    string,   // right table
+    string?,  // [join table]
+    string?,   // [right model prop name]
+    string?,  // [left model prop name]
 ];
 
+export type AssociationType = 'HasOne' | 'HasMany' | 'BelongsTo' | 'BelongsToMany';
+
 export interface IAssociationMetadata {
-    associationName: 'HasOne' | 'HasMany' | 'BelongsTo' | 'BelongsToMany';
-    targetModel: string;
-    joinModel?: string;
-    sourceKey?: string; // Left table key for HasOne and HasMany associations
+    associationName: AssociationType;
+    targetModel: ITableName;
+    joinModel?: ITableName;
+    sourceKey?: string;                 // Left table key for HasOne and HasMany associations
+    targetKey?: string;                 // Right table key for HasOne and HasMany associations
+    targetAlias?: string;               // Alias for navigation prop destination model
+    targetModelPropName?: string;       // Custom field name for nav prop
+    hasMultipleForSameTarget: boolean;  // Tracks if there are multiple relationships between the same 2 models
 }
 
 export interface IForeignKey {
     name: string;
-    targetModel: string;
+    targetModel: ITableName;
+    hasMultipleForSameTarget: boolean;  // Tracks if there are multiple relationships between the same 2 models
 }
 
 export interface IAssociationsParsed {
-    [tableName: string]: {
+    [fullTableName: string]: {
         foreignKeys: IForeignKey[];
         associations: IAssociationMetadata[];
+        errors: string[]
     }
 }
 
@@ -82,7 +94,7 @@ export class AssociationsParser {
      * @param {string} path
      * @returns {IAssociationsParsed}
      */
-    static parse(path: string): IAssociationsParsed {
+    static parse(tableNameDictionary: Dictionary<ITableName>, path: string): IAssociationsParsed {
         // Return cached value if already set
         if (this.associationsMetadata) {
             return this.associationsMetadata;
@@ -98,8 +110,15 @@ export class AssociationsParser {
         for (const line of lines) {
             const row = line
                 .split(',')
-                .map((t, i) => i === 0 ? t.toUpperCase() : t) // Capitalize cardinality
-                .map(t => t.trim()) as AssociationRow;
+                
+                // Trim leading/trailing spaces for each field
+                .map(t => t.trim())
+
+                // Capitalize cardinality
+                .map((t, i) => i === 0 ? t.toUpperCase() : t)
+
+                // Treat optional empty fields as undefined
+                .map((t, i) => i <= 4 || t != '' ? t : undefined) as AssociationRow;
 
             validateRow(row);
 
@@ -107,9 +126,11 @@ export class AssociationsParser {
                 cardinality,
                 leftKey,
                 rightKey,
-                leftModel,
-                rightModel,
-                joinModel
+                leftModelRaw,
+                rightModelRaw,
+                joinModelRaw,
+                leftModelPropName,
+                rightModelPropName,
             ] = row;
 
             const [
@@ -118,72 +139,102 @@ export class AssociationsParser {
             ] = cardinality.split(':');
 
             // Add entry for left table
-            if (!associationsMetadata[leftModel]) {
-                associationsMetadata[leftModel] = {
-                    foreignKeys: [],
-                    associations: [],
-                };
-            }
+            const leftModel = getTableName(tableNameDictionary, associationsMetadata, leftModelRaw);
 
             // Add entry for right table
-            if (!associationsMetadata[rightModel]) {
-                associationsMetadata[rightModel] = {
-                    foreignKeys: [],
-                    associations: [],
-                };
-            }
+            const rightModel = getTableName(tableNameDictionary, associationsMetadata, rightModelRaw);
 
             // 1:1 and 1:N association
-            if (cardinality !== 'N:N') {
-                associationsMetadata[leftModel].associations.push({
+            if (cardinality !== 'N:N' && !!leftModel?.fullTableName && !!rightModel?.fullTableName) {
+                associationsMetadata[leftModel.fullTableName].associations.push({
                     associationName: rightCardinality === '1' ? 'HasOne' : 'HasMany',
                     targetModel: rightModel,
                     sourceKey: leftKey,
+                    targetKey: rightKey,
+                    targetAlias: rightModelPropName,
+                    targetModelPropName: rightModelPropName,
+                    hasMultipleForSameTarget: false
                 });
 
-                associationsMetadata[rightModel].associations.push({
+                associationsMetadata[rightModel.fullTableName].associations.push({
                     associationName: 'BelongsTo',
                     targetModel: leftModel,
+                    targetKey: rightKey,
+                    targetAlias: leftModelPropName,
+                    targetModelPropName: leftModelPropName,
+                    hasMultipleForSameTarget: false
                 });
 
-                associationsMetadata[rightModel].foreignKeys.push({
+                associationsMetadata[rightModel.fullTableName].foreignKeys.push({
                     name: rightKey,
                     targetModel: leftModel,
+                    hasMultipleForSameTarget: false
                 });
             }
             // N:N association
             else {
                 // Add entry for join table
-                if (!associationsMetadata[joinModel!]) {
-                    associationsMetadata[joinModel!] = {
-                        foreignKeys: [],
-                        associations: [],
-                    };
+                const joinModel = getTableName(tableNameDictionary, associationsMetadata, joinModelRaw);
+
+                if (!!leftModel?.fullTableName && !!rightModel?.fullTableName && !!joinModel?.fullTableName) {
+                    associationsMetadata[leftModel.fullTableName].associations.push({
+                        associationName: 'BelongsToMany',
+                        targetModel: rightModel,
+                        joinModel,
+                        targetAlias: leftModelPropName,
+                        targetModelPropName: rightModelPropName,
+                        hasMultipleForSameTarget: false
+                    });
+
+                    associationsMetadata[rightModel.fullTableName].associations.push({
+                        associationName: 'BelongsToMany',
+                        targetModel: leftModel,
+                        joinModel,
+                        targetAlias: rightModelPropName,
+                        targetModelPropName: leftModelPropName,
+                        hasMultipleForSameTarget: false
+                    });
+
+                    associationsMetadata[joinModel.fullTableName].foreignKeys.push({
+                        name: leftKey,
+                        targetModel: leftModel,
+                        hasMultipleForSameTarget: false
+                    });
+
+                    associationsMetadata[joinModel.fullTableName].foreignKeys.push({
+                        name: rightKey,
+                        targetModel: rightModel,
+                        hasMultipleForSameTarget: false
+                    });
                 }
-
-                associationsMetadata[leftModel].associations.push({
-                    associationName: 'BelongsToMany',
-                    targetModel: rightModel,
-                    joinModel: joinModel,
-                });
-
-                associationsMetadata[rightModel].associations.push({
-                    associationName: 'BelongsToMany',
-                    targetModel: leftModel,
-                    joinModel: joinModel,
-                });
-
-                associationsMetadata[joinModel!].foreignKeys.push({
-                    name: leftKey,
-                    targetModel: leftModel
-                });
-
-                associationsMetadata[joinModel!].foreignKeys.push({
-                    name: rightKey,
-                    targetModel: rightModel
-                });
             }
 
+        }
+
+        // Add targetModelPropName for non-overridden/duplicated nav props
+        for (const [fullTableName, association] of Object.entries(associationsMetadata)) {
+            const associationGroups = groupBy(association.associations.filter(a => !a.targetModelPropName), x => `${x.associationName}~${x.targetModel.fullTableName}~${x.targetModelPropName}`);
+            associationGroups.forEach(group => {
+                if (group.length > 1) {
+                    for (let i = 0; i < group.length; i++) {
+                        const assoc = group[i];
+                        const baseName = assoc.associationName.includes('Many')
+                            ? pluralize.plural(assoc.targetModel.name)
+                            : pluralize.singular(assoc.targetModel.name);
+                        assoc.targetModelPropName = baseName + (i > 0 ? i : '');
+                        assoc.hasMultipleForSameTarget = true;
+                    }
+                }
+            });
+
+            const foreignKeyGroups = groupBy(association.foreignKeys, x => x.targetModel.fullTableName);
+            foreignKeyGroups.forEach(group => {
+                if (group.length > 1) {
+                    for (let i = 0; i < group.length; i++) {
+                        group[i].hasMultipleForSameTarget = true;
+                    }
+                }
+            });
         }
 
         // Cache result
@@ -191,5 +242,35 @@ export class AssociationsParser {
 
         return this.associationsMetadata;
     }
+}
 
+function addModel(metadata: IAssociationsParsed, fullTableName?: string, error?: string) {
+    if (!!fullTableName) {
+        if (!metadata[fullTableName]) {
+            metadata[fullTableName] = {
+                foreignKeys: [],
+                associations: [],
+                errors: []
+            };
+        }
+
+        if (!!error) {
+            metadata[fullTableName].errors.push(error);
+        }
+    }
+}
+
+function getTableName(tableNameDictionary: Dictionary<ITableName>, associationsMetadata: IAssociationsParsed, rawModel?: string) {
+    const modelParsed = parseFullTableName(rawModel?.toLowerCase());
+    const model = !!modelParsed
+        ? tableNameDictionary[modelParsed.fullTableName]
+        : undefined;
+
+    const unmatchedError = !model && !!rawModel
+        ? `No table match found for association model: '${rawModel}'`
+        : undefined;
+
+    addModel(associationsMetadata, model?.fullTableName, unmatchedError);
+
+    return model;
 }
