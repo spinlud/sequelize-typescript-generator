@@ -86,7 +86,6 @@ const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
     geometry: DataType.GEOMETRY,
     geometrycollection: DataType.GEOMETRY,
     json: DataType.JSON,
-    geography: DataType.GEOGRAPHY,
 };
 
 const jsDataTypesMap: { [key: string]: string } = {

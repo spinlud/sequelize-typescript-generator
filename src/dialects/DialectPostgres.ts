@@ -106,7 +106,6 @@ const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
     json: DataType.JSON,
     jsonb: DataType.JSONB,
     jsonpath: DataType.JSON,
-    geography: DataType.GEOGRAPHY,
     geometry: DataType.GEOMETRY,
 }
 
