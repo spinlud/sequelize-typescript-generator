@@ -115,6 +115,7 @@ const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
     varbinary: DataType.STRING,
     uniqueidentifier: DataType.STRING,
     xml: DataType.STRING,
+    geography: DataType.GEOGRAPHY,
 };
 
 /**
