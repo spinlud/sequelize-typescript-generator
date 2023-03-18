@@ -80,12 +80,11 @@ export class ModelBuilder extends Builder {
                     : []
                 )
             ],
-            undefined,
             col.name,
             (col.autoIncrement || col.allowNull || col.defaultValue !== undefined) ?
                 ts.factory.createToken(ts.SyntaxKind.QuestionToken) : ts.factory.createToken(ts.SyntaxKind.ExclamationToken),
             ts.factory.createTypeReferenceNode(dialect.mapDbTypeToJs(col.type) ?? 'any', undefined),
-            undefined
+            undefined,
         );
     }
 
@@ -114,14 +113,13 @@ export class ModelBuilder extends Builder {
                         ]
                 ),
             ],
-            undefined,
             associationName.includes('Many') ?
                 pluralize.plural(targetModel) : pluralize.singular(targetModel),
             ts.factory.createToken(ts.SyntaxKind.QuestionToken),
             associationName.includes('Many') ?
                 ts.factory.createArrayTypeNode(ts.factory.createTypeReferenceNode(targetModel, undefined)) :
                 ts.factory.createTypeReferenceNode(targetModel, undefined),
-            undefined
+            undefined,
         );
     }
 
@@ -186,7 +184,6 @@ export class ModelBuilder extends Builder {
             generatedCode += '\n';
 
             const attributesInterface = ts.factory.createInterfaceDeclaration(
-                undefined,
                 [
                     ts.factory.createToken(ts.SyntaxKind.ExportKeyword),
                 ],
@@ -217,8 +214,7 @@ export class ModelBuilder extends Builder {
                     timestamps: tableMetadata.timestamps,
                     ...tableMetadata.comment && { comment: tableMetadata.comment },
                 }),
-            ],
-            [
+                // Export modifier
                 ts.factory.createToken(ts.SyntaxKind.ExportKeyword),
             ],
             name,

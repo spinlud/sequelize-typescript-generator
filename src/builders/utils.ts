@@ -34,7 +34,6 @@ export const nodeToString = (node: ts.Node): string => {
 export const generateNamedImports = (importsSpecifier: string[], moduleSpecifier: string): ts.ImportDeclaration => {
     return ts.factory.createImportDeclaration(
         undefined,
-        undefined,
         ts.factory.createImportClause(
             false,
             undefined,
@@ -56,7 +55,6 @@ export const generateNamedImports = (importsSpecifier: string[], moduleSpecifier
  */
 export const generateIndexExport = (modelFileName: string): ts.ExportDeclaration => {
     return ts.factory.createExportDeclaration(
-        undefined,
         undefined,
         false,
         undefined,
@@ -145,9 +143,23 @@ export const generateArrowDecorator = (
 
     objectLiteralProps && argumentsArray.push(
         ts.factory.createObjectLiteralExpression([
-            ...Object.entries(objectLiteralProps).map(e =>
-                ts.factory.createPropertyAssignment(e[0], ts.createLiteral(e[1]))
-            )
+            ...Object.entries(objectLiteralProps).map(e => {
+                let initializer: ts.Expression;
+
+                switch (typeof e[1]) {
+                    case 'number':
+                        initializer = ts.factory.createNumericLiteral(e[1]);
+                        break;
+                    case 'boolean':
+                        initializer = e[1] ? ts.factory.createTrue() : ts.factory.createFalse();
+                        break;
+                    default:
+                        initializer = ts.factory.createStringLiteral(e[1]);
+                        break;
+                }
+
+                return ts.factory.createPropertyAssignment(e[0], initializer);
+            }),
         ])
     );
 
