@@ -2,6 +2,15 @@
 
 ---
 
+### 10.1.0
+#### Breaking changes:
+
+#### Minor changes and bug fixes:
+* Libraries update
+* Changed node.js version to v14.21.3 to test latest versions of `typescript` using `jest` 
+
+---
+
 ### 10.0.0
 #### Breaking changes:
 * Typescript: `4.9.4` -> `5.0.2`
