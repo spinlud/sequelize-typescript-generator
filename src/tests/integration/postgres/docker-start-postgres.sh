@@ -9,7 +9,7 @@ IMAGE_NAME="postgres"
 CONTAINER_NAME="postgres"
 
 if [[ -z "${DOCKER_POSTGRES_TAG}" ]]; then
-  IMAGE_TAG="12.1"
+  IMAGE_TAG="16"
 else
   IMAGE_TAG="${DOCKER_POSTGRES_TAG}"
 fi

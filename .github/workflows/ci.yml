@@ -11,7 +11,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v2
         with:
-          node-version: '14'
+          node-version: '16'
 
       - name: Cache node_modules
         id: cache-node-modules
@@ -36,7 +36,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v2
         with:
-          node-version: '14'
+          node-version: '16'
 
       - name: Restore node_modules
         id: cache-node-modules
@@ -65,7 +65,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v2
         with:
-          node-version: '14'
+          node-version: '16'
 
       - name: Restore node_modules
         id: cache-node-modules
@@ -74,20 +74,20 @@ jobs:
           path: node_modules
           key: node-modules-${{ hashFiles('package-lock.json') }}
 
-      - name: Test Postgres 10
-        run: npm run test-postgres
-        env:
-          DOCKER_POSTGRES_TAG: 10
-
       - name: Test Postgres 11
         run: npm run test-postgres
         env:
           DOCKER_POSTGRES_TAG: 11
 
-      - name: Test Postgres 12
+      - name: Test Postgres 14
         run: npm run test-postgres
         env:
-          DOCKER_POSTGRES_TAG: 12
+          DOCKER_POSTGRES_TAG: 14
+
+      - name: Test Postgres 16
+        run: npm run test-postgres
+        env:
+          DOCKER_POSTGRES_TAG: 16
 
   test_mariadb:
     runs-on: ubuntu-latest
@@ -99,7 +99,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v2
         with:
-          node-version: '14'
+          node-version: '16'
 
       - name: Restore node_modules
         id: cache-node-modules
@@ -108,10 +108,15 @@ jobs:
           path: node_modules
           key: node-modules-${{ hashFiles('package-lock.json') }}
 
-      - name: Test MariaDB 10.4
+      - name: Test MariaDB 10
         run: npm run test-mariadb
         env:
-          DOCKER_MARIADB_TAG: 10.5
+          DOCKER_MARIADB_TAG: 10
+
+      - name: Test MariaDB 11
+        run: npm run test-mariadb
+        env:
+          DOCKER_MARIADB_TAG: 11
 
   test_mssql:
     runs-on: ubuntu-latest
@@ -123,7 +128,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v2
         with:
-          node-version: '14'
+          node-version: '16'
 
       - name: Restore node_modules
         id: cache-node-modules
@@ -132,15 +137,15 @@ jobs:
           path: node_modules
           key: node-modules-${{ hashFiles('package-lock.json') }}
 
-      - name: Test MSSQL 2017
-        run: npm run test-mssql
-        env:
-          DOCKER_MSSQL_TAG: 2017-CU17-ubuntu
-
       - name: Test MSSQL 2019
         run: npm run test-mssql
         env:
           DOCKER_MSSQL_TAG: 2019-latest
+
+      - name: Test MSSQL 2022
+        run: npm run test-mssql
+        env:
+          DOCKER_MSSQL_TAG: 2022-latest
 
   test_sqlite:
     runs-on: ubuntu-latest
@@ -152,7 +157,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v2
         with:
-          node-version: '14'
+          node-version: '16'
 
       - name: Restore node_modules
         id: cache-node-modules
@@ -174,7 +179,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v2
         with:
-          node-version: '14'
+          node-version: '16'
 
       - name: Restore node_modules
         id: cache-node-modules

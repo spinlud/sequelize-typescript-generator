@@ -22,12 +22,12 @@
 
 ## Supported databases
 
-Currently tested databases:
+Currently tested databases and versions:
 
-- Postgres (10, 11, 12)
+- Postgres (11, 14, 16)
 - Mysql (5, 8)
-- MariaDB (10)
-- SQL Server (2017, 2019)
+- MariaDB (10, 11)
+- SQL Server (2019, 2022)
 - SQLite (3)
 
 ## Prerequisites
