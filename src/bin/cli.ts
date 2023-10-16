@@ -142,7 +142,7 @@ export const cli = async (): Promise<void> => {
             alias: aliasesMap.DISABLE_VIEWS,
             boolean: true,
             describe: `Disable views generation. Available for: MySQL and MariaDB.`,
-        })
+        });
 
     validateArgs(argv);
 

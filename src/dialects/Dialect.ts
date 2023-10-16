@@ -4,7 +4,6 @@ import { IConfig } from '../config';
 import { createConnection } from "../connection";
 import { AssociationsParser, IAssociationsParsed, IAssociationMetadata } from './AssociationsParser'
 import { caseTransformer } from './utils';
-import {parse} from "@typescript-eslint/parser";
 
 export interface ITablesMetadata {
     [tableName: string]: ITableMetadata;
