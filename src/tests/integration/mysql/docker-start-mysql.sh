@@ -9,7 +9,7 @@ IMAGE_NAME="mysql"
 CONTAINER_NAME="mysql"
 
 if [[ -z "${DOCKER_MYSQL_TAG}" ]]; then
-  IMAGE_TAG="8.0-oracle"
+  IMAGE_TAG="8"
 else
   IMAGE_TAG="${DOCKER_MYSQL_TAG}"
 fi

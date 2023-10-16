@@ -9,7 +9,7 @@ IMAGE_NAME="mariadb"
 CONTAINER_NAME="mariadb"
 
 if [[ -z "${DOCKER_MARIADB_TAG}" ]]; then
-  IMAGE_TAG="10.5"
+  IMAGE_TAG="11"
 else
   IMAGE_TAG="${DOCKER_MARIADB_TAG}"
 fi
