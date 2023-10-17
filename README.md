@@ -20,9 +20,9 @@
 
 <!-- toc stop -->
 
-## Supported databases
+## Tested databases
 
-Currently tested databases and versions:
+This library is tested on the following databases:
 
 - Postgres (11, 14, 16)
 - Mysql (5, 8)

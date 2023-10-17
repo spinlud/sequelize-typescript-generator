@@ -1,3 +1,3 @@
-1:1, person_id, passport_id, person, passport
-1:N, race_id, unit_id, races, units
+1:1, passport_id, passport_id, person, passport
+1:N, race_id, race_id, races, units
 N:N, author_id, book_id, authors, books, authors_books
