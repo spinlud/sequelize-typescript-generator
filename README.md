@@ -423,12 +423,12 @@ Define a `1:1` association with the following entry in the associations file:
 
 Then pass the associations file path to the `cli`:
 ```shell
-npx stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
+npx stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --associations-file path/to/associations.csv --out-dir models --clean 
 ```
 
 Global:
 ```shell
-stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
+stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --associations-file path/to/associations.csv --out-dir models --clean 
 ```
 
 Or programmatically:
@@ -445,7 +445,7 @@ import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-genera
             password: 'myPassword'
         },
         metadata: {
-            indices: true,
+            indices: false,
             associationsFile: 'path/to/associations.csv',            
         },
         output: {
