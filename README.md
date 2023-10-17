@@ -472,89 +472,77 @@ This will generate the following models:
 
 ```ts
 import {
-	Model, Table, Column, DataType, Index, ForeignKey, HasOne 
+  Model, Table, Column, DataType, Index, Sequelize, ForeignKey, HasOne
 } from "sequelize-typescript";
 import { passport } from "./passport";
 
+export interface personAttributes {
+  person_id: number;
+  name: string;
+  passport_id: number;
+}
+
 @Table({
-	tableName: "person",
-	timestamps: false,
-	comment: "" 
+  tableName: "person",
+  timestamps: false
 })
-export class person extends Model {
+export class person extends Model<personAttributes, personAttributes> implements personAttributes {
 
-    @Column({
-    	field: "person_id",
-    	primaryKey: true,
-    	type: DataType.INTEGER 
-    })
-    @Index({
-    	name: "PRIMARY",
-    	using: "BTREE",
-    	order: "ASC",
-    	unique: true 
-    })
-    person_id!: number;
+  @Column({
+    primaryKey: true,
+    type: DataType.INTEGER
+  })
+  person_id!: number;
 
-    @Column({
-    	field: "name",
-    	type: DataType.STRING(80) 
-    })
-    name!: string;
+  @Column({
+    type: DataType.STRING(80)
+  })
+  name!: string;
 
-    @Column({
-    	field: "passport_id",
-    	type: DataType.INTEGER 
-    })
-    @Index({
-    	name: "person_passport_passport_id_fk",
-    	using: "BTREE",
-    	order: "ASC",
-    	unique: false 
-    })
-    passport_id!: number;
+  @Column({
+    type: DataType.INTEGER
+  })
+  passport_id!: number;
 
-    @HasOne(() => passport)
-    passport?: passport;
+  @HasOne(() => passport, {
+    sourceKey: "passport_id"
+  })
+  passport?: passport;
 
 }
 ```
 
 ```ts
 import {
-	Model, Table, Column, DataType, Index, ForeignKey, BelongsTo 
+  Model, Table, Column, DataType, Index, Sequelize, ForeignKey, BelongsTo
 } from "sequelize-typescript";
 import { person } from "./person";
 
+export interface passportAttributes {
+  passport_id: number;
+  code: string;
+}
+
 @Table({
-	tableName: "passport",
-	timestamps: false,
-	comment: "" 
+  tableName: "passport",
+  timestamps: false
 })
-export class passport extends Model {
+export class passport extends Model<passportAttributes, passportAttributes> implements passportAttributes {
 
-    @ForeignKey(() => person)
-    @Column({
-    	field: "passport_id",
-    	primaryKey: true,
-    	type: DataType.INTEGER 
-    })
-    @Index({
-    	name: "PRIMARY",
-    	using: "BTREE",
-    	order: "ASC",
-    	unique: true 
-    })
-    passport_id!: number;
+  @ForeignKey(() => person)
+  @Column({
+    primaryKey: true,
+    type: DataType.INTEGER
+  })
+  passport_id!: number;
 
-    @Column({
-    	field: "code",
-    	type: DataType.STRING(80) 
-    })
-    code!: string;
+  @Column({
+    type: DataType.STRING(80)
+  })
+  code!: string;
 
-    @BelongsTo(() => person)
-    person?: person;
+  @BelongsTo(() => person)
+  person?: person;
 
 }
 ```
@@ -606,83 +594,77 @@ This will generate the following models:
 
 ```ts
 import {
-	Model, Table, Column, DataType, Index, ForeignKey, HasMany 
+  Model, Table, Column, DataType, Index, Sequelize, ForeignKey, HasMany
 } from "sequelize-typescript";
 import { units } from "./units";
 
+export interface racesAttributes {
+  race_id: number;
+  race_name: string;
+}
+
 @Table({
-	tableName: "races",
-	timestamps: false,
-	comment: "" 
+  tableName: "races",
+  timestamps: false
 })
-export class races extends Model {
+export class races extends Model<racesAttributes, racesAttributes> implements racesAttributes {
 
-    @Column({
-    	field: "race_id",
-    	primaryKey: true,
-    	type: DataType.INTEGER 
-    })
-    @Index({
-    	name: "PRIMARY",
-    	using: "BTREE",
-    	order: "ASC",
-    	unique: true 
-    })
-    race_id!: number;
+  @Column({
+    primaryKey: true,
+    type: DataType.INTEGER
+  })
+  race_id!: number;
 
-    @Column({
-    	field: "race_name",
-    	type: DataType.STRING(80) 
-    })
-    race_name!: string;
+  @Column({
+    type: DataType.STRING(80)
+  })
+  race_name!: string;
 
-    @HasMany(() => units)
-    units?: units[];
+  @HasMany(() => units, {
+    sourceKey: "race_id"
+  })
+  units?: units[];
 
 }
 ```
 
 ```ts
 import {
-	Model, Table, Column, DataType, Index, ForeignKey, BelongsTo 
+  Model, Table, Column, DataType, Index, Sequelize, ForeignKey, BelongsTo
 } from "sequelize-typescript";
 import { races } from "./races";
 
+export interface unitsAttributes {
+  unit_id: number;
+  unit_name: string;
+  race_id: number;
+}
+
 @Table({
-	tableName: "units",
-	timestamps: false,
-	comment: "" 
+  tableName: "units",
+  timestamps: false
 })
-export class units extends Model {
+export class units extends Model<unitsAttributes, unitsAttributes> implements unitsAttributes {
 
-    @Column({
-    	field: "unit_id",
-    	primaryKey: true,
-    	type: DataType.INTEGER 
-    })
-    @Index({
-    	name: "PRIMARY",
-    	using: "BTREE",
-    	order: "ASC",
-    	unique: true 
-    })
-    unit_id!: number;
+  @Column({
+    primaryKey: true,
+    type: DataType.INTEGER
+  })
+  unit_id!: number;
 
-    @Column({
-    	field: "unit_name",
-    	type: DataType.STRING(80) 
-    })
-    unit_name!: string;
+  @Column({
+    type: DataType.STRING(80)
+  })
+  unit_name!: string;
 
-    @ForeignKey(() => races)
-    @Column({
-    	field: "race_id",
-    	type: DataType.INTEGER 
-    })
-    race_id!: number;
+  @ForeignKey(() => races)
+  @Column({
+    type: DataType.INTEGER
+  })
+  race_id!: number;
 
-    @BelongsTo(() => races)
-    race?: races;
+  @BelongsTo(() => races)
+  race?: races;
 
 }
 ```
@@ -741,123 +723,105 @@ This will generate the following models:
 
 ```ts
 import {
-	Model, Table, Column, DataType, Index, ForeignKey, BelongsToMany 
+  Model, Table, Column, DataType, Index, Sequelize, ForeignKey, BelongsToMany
 } from "sequelize-typescript";
 import { books } from "./books";
 import { authors_books } from "./authors_books";
 
+export interface authorsAttributes {
+  author_id: number;
+  full_name: string;
+}
+
 @Table({
-	tableName: "authors",
-	timestamps: false,
-	comment: "" 
+  tableName: "authors",
+  timestamps: false
 })
-export class authors extends Model {
+export class authors extends Model<authorsAttributes, authorsAttributes> implements authorsAttributes {
 
-    @Column({
-    	field: "author_id",
-    	primaryKey: true,
-    	type: DataType.INTEGER 
-    })
-    @Index({
-    	name: "PRIMARY",
-    	using: "BTREE",
-    	order: "ASC",
-    	unique: true 
-    })
-    author_id!: number;
+  @Column({
+    primaryKey: true,
+    type: DataType.INTEGER
+  })
+  author_id!: number;
 
-    @Column({
-    	field: "full_name",
-    	type: DataType.STRING(80) 
-    })
-    full_name!: string;
+  @Column({
+    type: DataType.STRING(80)
+  })
+  full_name!: string;
 
-    @BelongsToMany(() => books, () => authors_books)
-    books?: books[];
+  @BelongsToMany(() => books, () => authors_books)
+  books?: books[];
 
 }
 ```
 
 ```ts
 import {
-	Model, Table, Column, DataType, Index, ForeignKey, BelongsToMany 
+  Model, Table, Column, DataType, Index, Sequelize, ForeignKey, BelongsToMany
 } from "sequelize-typescript";
 import { authors } from "./authors";
 import { authors_books } from "./authors_books";
 
+export interface booksAttributes {
+  book_id: number;
+  title: string;
+}
+
 @Table({
-	tableName: "books",
-	timestamps: false,
-	comment: "" 
+  tableName: "books",
+  timestamps: false
 })
-export class books extends Model {
+export class books extends Model<booksAttributes, booksAttributes> implements booksAttributes {
 
-    @Column({
-    	field: "book_id",
-    	primaryKey: true,
-    	type: DataType.INTEGER 
-    })
-    @Index({
-    	name: "PRIMARY",
-    	using: "BTREE",
-    	order: "ASC",
-    	unique: true 
-    })
-    book_id!: number;
+  @Column({
+    primaryKey: true,
+    type: DataType.INTEGER
+  })
+  book_id!: number;
 
-    @Column({
-    	field: "title",
-    	type: DataType.STRING(80) 
-    })
-    title!: string;
+  @Column({
+    type: DataType.STRING(80)
+  })
+  title!: string;
 
-    @BelongsToMany(() => authors, () => authors_books)
-    authors?: authors[];
+  @BelongsToMany(() => authors, () => authors_books)
+  authors?: authors[];
 
 }
 ```
 
 ```ts
 import {
-	Model, Table, Column, DataType, Index, ForeignKey 
+  Model, Table, Column, DataType, Index, Sequelize, ForeignKey
 } from "sequelize-typescript";
 import { authors } from "./authors";
 import { books } from "./books";
 
+export interface authors_booksAttributes {
+  author_id: number;
+  book_id: number;
+}
+
 @Table({
-	tableName: "authors_books",
-	timestamps: false,
-	comment: "" 
+  tableName: "authors_books",
+  timestamps: false
 })
-export class authors_books extends Model {
+export class authors_books extends Model<authors_booksAttributes, authors_booksAttributes> implements authors_booksAttributes {
 
-    @ForeignKey(() => authors)
-    @Column({
-    	field: "author_id",
-    	primaryKey: true,
-    	type: DataType.INTEGER 
-    })
-    @Index({
-    	name: "PRIMARY",
-    	using: "BTREE",
-    	order: "ASC",
-    	unique: true 
-    })
-    author_id!: number;
+  @ForeignKey(() => authors)
+  @Column({
+    primaryKey: true,
+    type: DataType.INTEGER
+  })
+  author_id!: number;
 
-    @ForeignKey(() => books)
-    @Column({
-    	field: "book_id",
-    	primaryKey: true,
-    	type: DataType.INTEGER 
-    })
-    @Index({
-    	name: "PRIMARY",
-    	using: "BTREE",
-    	order: "ASC",
-    	unique: true 
-    })
-    book_id!: number;
+  @ForeignKey(() => books)
+  @Column({
+    primaryKey: true,
+    type: DataType.INTEGER
+  })
+  book_id!: number;
 
 }
 ```
