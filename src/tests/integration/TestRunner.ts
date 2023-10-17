@@ -123,7 +123,7 @@ export class TestRunner {
 
         describe(testMetadata.name, () => {
             jest.setTimeout(120000);
-            const outDir = path.join(process.cwd(), 'output-models');
+            const outDir = path.join(process.cwd(), 'src/tests/integration/output-models');
             const indexDir = path.join(outDir, 'index.ts');
             const associationsFilePath = path.join(process.cwd(), 'src', 'tests', 'integration', 'associations.csv');
             const sequelizeOptions = buildSequelizeOptions(testMetadata.dialect);

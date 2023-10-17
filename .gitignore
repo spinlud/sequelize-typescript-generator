@@ -8,6 +8,7 @@
 **/memory
 src/tmp/**
 ./models/**
+src/tests/integration/output-models
 
 # Created by https://www.gitignore.io/api/node,macos
 # Edit at https://www.gitignore.io/?templates=node,macos
