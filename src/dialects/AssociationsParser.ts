@@ -21,6 +21,7 @@ export interface IAssociationMetadata {
     targetModel: string;
     joinModel?: string;
     sourceKey?: string; // Left table key for HasOne and HasMany associations
+    foreignKey?: string; // Right table key for HasOne and HasMany associations
 }
 
 export interface IForeignKey {
@@ -139,6 +140,7 @@ export class AssociationsParser {
                     associationName: rightCardinality === '1' ? 'HasOne' : 'HasMany',
                     targetModel: rightModel,
                     sourceKey: leftKey,
+                    foreignKey: rightKey,
                 });
 
                 associationsMetadata[rightModel].associations.push({
