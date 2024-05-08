@@ -6,6 +6,7 @@ export const DATA_TYPES_TABLE_NAME = 'data_types';
 export const DATA_TYPES_TABLE_DROP = `DROP TABLE IF EXISTS ${SCHEMA_NAME}.${DATA_TYPES_TABLE_NAME} CASCADE`;
 export const DATA_TYPES_TABLE_CREATES = [
     `
+        CREATE EXTENSION IF NOT EXISTS citext;
         CREATE TABLE ${SCHEMA_NAME}.${DATA_TYPES_TABLE_NAME}
         (
             id            serial      not null      constraint data_types_pk        primary key,
@@ -24,6 +25,7 @@ export const DATA_TYPES_TABLE_CREATES = [
             f_char        char(1),
             f_character   char(2),
             f_text        text,
+            f_citext      citext,
             f_cidr        cidr,
             f_inet        inet,
             f_macaddr     macaddr,
