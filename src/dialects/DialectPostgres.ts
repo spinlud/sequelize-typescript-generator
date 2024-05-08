@@ -31,6 +31,7 @@ interface IColumnMetadataPostgres {
     character_set_catalog: string;
     character_set_schema: string;
     character_set_name: string;
+    citext: string;
     collation_catalog: string;
     collation_schema: string;
     collation_name: string;
@@ -107,6 +108,7 @@ const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
     json: DataType.JSON,
     jsonb: DataType.JSONB,
     jsonpath: DataType.JSON,
+    citext: DataType.CITEXT,
 }
 
 const jsDataTypesMap: { [key: string]: string } = {
@@ -137,6 +139,7 @@ const jsDataTypesMap: { [key: string]: string } = {
     circle: 'object',
     geometry: 'object',
     cidr: 'string',
+    citext: 'string',
     inet: 'string',
     macaddr: 'string',
     macaddr8: 'string',

@@ -144,6 +144,7 @@ const testMetadata: ITestMetadata = {
             ['char', 'A'],
             ['character', 'AB'],
             ['text', 'xYz'],
+            ['citext', 'Hello again, World!'],
             ['cidr', '10.0.0.0/16'],
             ['inet', '192.168.100.128/25'],
             ['macaddr', '08:00:2b:01:02:03'],
