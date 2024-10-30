@@ -1,3 +1,4 @@
+import { pascalCase } from 'change-case';
 import { promises as fs } from 'fs';
 import path from 'path';
 import * as ts from 'typescript';
@@ -92,13 +93,13 @@ export class ModelBuilder extends Builder {
      * Build association class member
      * @param {IAssociationMetadata} association
      */
-    private static buildAssociationPropertyDecl(association: IAssociationMetadata): ts.PropertyDeclaration {
+    private static buildAssociationPropertyDecl(association: IAssociationMetadata, tablesMetadata: ITablesMetadata): ts.PropertyDeclaration[] {
         const { associationName, targetModel, joinModel } = association;
 
         const targetModels = [ targetModel ];
         joinModel && targetModels.push(joinModel);
 
-        return ts.factory.createPropertyDeclaration(
+        const mainProperty = ts.factory.createPropertyDeclaration(
             [
                 ...(association.sourceKey ?
                         [
@@ -121,6 +122,99 @@ export class ModelBuilder extends Builder {
                 ts.factory.createTypeReferenceNode(targetModel, undefined),
             undefined,
         );
+
+        const mixinDeclarations = this.generateAssociationMixins(association, tablesMetadata);
+
+        return [mainProperty, ...mixinDeclarations];
+    }
+
+    private static createMixinDeclaration(name: string, type: string): ts.PropertyDeclaration {
+        return ts.factory.createPropertyDeclaration(
+            [ts.factory.createModifier(ts.SyntaxKind.DeclareKeyword)],
+            name,
+            undefined,
+            ts.factory.createTypeReferenceNode(type, undefined),
+            undefined
+        );
+    }
+
+    private static generateAssociationMixins(association: IAssociationMetadata,     tablesMetadata: ITablesMetadata): ts.PropertyDeclaration[] {
+        const { associationName, targetModel } = association;
+        const singularTarget = pluralize.singular(targetModel);
+        const pluralTarget = pluralize.plural(targetModel);
+    
+        // Get the primary key type from the target table's metadata
+        const targetTable = tablesMetadata[targetModel];
+        const primaryKeyColumn = Object.values(targetTable.columns).find(col => col.primaryKey);
+        const primaryKeyType = primaryKeyColumn ? 
+            this.getPrimaryKeyType(primaryKeyColumn.type) : 
+            'number';  // fallback to number if not found
+
+        switch (associationName) {
+            case 'HasMany':
+                return [
+                    this.createMixinDeclaration(`get${pascalCase(pluralTarget)}`, `HasManyGetAssociationsMixin<${targetModel}>`),
+                    this.createMixinDeclaration(`add${pascalCase(singularTarget)}`, `HasManyAddAssociationMixin<${targetModel}, ${primaryKeyType}>`),
+                    this.createMixinDeclaration(`add${pascalCase(pluralTarget)}`, `HasManyAddAssociationsMixin<${targetModel}, ${primaryKeyType}>`),
+                    this.createMixinDeclaration(`set${pascalCase(pluralTarget)}`, `HasManySetAssociationsMixin<${targetModel}, ${primaryKeyType}>`),
+                    this.createMixinDeclaration(`remove${pascalCase(singularTarget)}`, `HasManyRemoveAssociationMixin<${targetModel}, ${primaryKeyType}>`),
+                    this.createMixinDeclaration(`remove${pascalCase(pluralTarget)}`, `HasManyRemoveAssociationsMixin<${targetModel}, ${primaryKeyType}>`),
+                    this.createMixinDeclaration(`has${pascalCase(singularTarget)}`, `HasManyHasAssociationMixin<${targetModel}, ${primaryKeyType}>`),
+                    this.createMixinDeclaration(`has${pascalCase(pluralTarget)}`, `HasManyHasAssociationsMixin<${targetModel}, ${primaryKeyType}>`),
+                    this.createMixinDeclaration(`count${pascalCase(pluralTarget)}`, 'HasManyCountAssociationsMixin'),
+                    this.createMixinDeclaration(`create${pascalCase(singularTarget)}`, `HasManyCreateAssociationMixin<${targetModel}>`)
+                ];
+    
+            case 'HasOne':
+                return [
+                    this.createMixinDeclaration(`get${pascalCase(singularTarget)}`, `HasOneGetAssociationMixin<${targetModel}>`),
+                    this.createMixinDeclaration(`set${pascalCase(singularTarget)}`, `HasOneSetAssociationMixin<${targetModel}, ${primaryKeyType}>`),
+                    this.createMixinDeclaration(`create${pascalCase(singularTarget)}`, `HasOneCreateAssociationMixin<${targetModel}>`),
+                ];
+    
+            case 'BelongsTo':
+                return [
+                    this.createMixinDeclaration(`get${pascalCase(singularTarget)}`, `BelongsToGetAssociationMixin<${targetModel}>`),
+                    this.createMixinDeclaration(`set${pascalCase(singularTarget)}`, `BelongsToSetAssociationMixin<${targetModel}, ${primaryKeyType}>`),
+                    this.createMixinDeclaration(`create${pascalCase(singularTarget)}`, `BelongsToCreateAssociationMixin<${targetModel}>`),
+                ];
+    
+            case 'BelongsToMany':
+                return [
+                    this.createMixinDeclaration(`get${pascalCase(pluralTarget)}`, `BelongsToManyGetAssociationsMixin<${targetModel}>`),
+                    this.createMixinDeclaration(`set${pascalCase(pluralTarget)}`, `BelongsToManySetAssociationsMixin<${targetModel}, ${primaryKeyType}>`),
+                    this.createMixinDeclaration(`add${pascalCase(singularTarget)}`, `BelongsToManyAddAssociationMixin<${targetModel}, ${primaryKeyType}>`),
+                    this.createMixinDeclaration(`add${pascalCase(pluralTarget)}`, `BelongsToManyAddAssociationsMixin<${targetModel}, ${primaryKeyType}>`),
+                    this.createMixinDeclaration(`create${pascalCase(singularTarget)}`, `BelongsToManyCreateAssociationMixin<${targetModel}>`),
+                    this.createMixinDeclaration(`remove${pascalCase(singularTarget)}`, `BelongsToManyRemoveAssociationMixin<${targetModel}, ${primaryKeyType}>`),
+                    this.createMixinDeclaration(`remove${pascalCase(pluralTarget)}`, `BelongsToManyRemoveAssociationsMixin<${targetModel}, ${primaryKeyType}>`),
+                    this.createMixinDeclaration(`has${pascalCase(singularTarget)}`, `BelongsToManyHasAssociationMixin<${targetModel}, ${primaryKeyType}>`),
+                    this.createMixinDeclaration(`has${pascalCase(pluralTarget)}`, `BelongsToManyHasAssociationsMixin<${targetModel}, ${primaryKeyType}>`),
+                    this.createMixinDeclaration(`count${pascalCase(pluralTarget)}`, 'BelongsToManyCountAssociationsMixin')
+                ];
+    
+            default:
+                return [];
+        }
+    }
+
+    private static getPrimaryKeyType(dbType: string): string {
+        // Map database types to TypeScript types
+        switch (dbType.toLowerCase()) {
+            case 'uuid':
+                return 'string';
+            case 'varchar':
+            case 'char':
+            case 'text':
+                return 'string';
+            case 'int':
+            case 'integer':
+            case 'smallint':
+            case 'bigint':
+                return 'number';
+            default:
+                return 'number';  // default fallback
+        }
     }
 
     /**
@@ -131,6 +225,7 @@ export class ModelBuilder extends Builder {
      */
     private static buildTableClassDeclaration(
         tableMetadata: ITableMetadata,
+        tablesMetadata: ITablesMetadata,
         dialect: Dialect,
         strict: boolean = true
     ): string {
@@ -154,6 +249,45 @@ export class ModelBuilder extends Builder {
         ));
 
         generatedCode += '\n';
+
+        // Import mixin types from sequelize
+generatedCode += nodeToString(generateNamedImports(
+    [
+        // HasMany mixins
+        'HasManyGetAssociationsMixin',
+        'HasManyAddAssociationMixin',
+        'HasManyAddAssociationsMixin',
+        'HasManySetAssociationsMixin',
+        'HasManyRemoveAssociationMixin',
+        'HasManyRemoveAssociationsMixin',
+        'HasManyHasAssociationMixin',
+        'HasManyHasAssociationsMixin',
+        'HasManyCountAssociationsMixin',
+        'HasManyCreateAssociationMixin',
+        // HasOne mixins
+        'HasOneGetAssociationMixin',
+        'HasOneSetAssociationMixin',
+        'HasOneCreateAssociationMixin',
+        // BelongsTo mixins
+        'BelongsToGetAssociationMixin',
+        'BelongsToSetAssociationMixin',
+        'BelongsToCreateAssociationMixin',
+        // BelongsToMany mixins
+        'BelongsToManyGetAssociationsMixin',
+        'BelongsToManySetAssociationsMixin',
+        'BelongsToManyAddAssociationMixin',
+        'BelongsToManyAddAssociationsMixin',
+        'BelongsToManyCreateAssociationMixin',
+        'BelongsToManyRemoveAssociationMixin',
+        'BelongsToManyRemoveAssociationsMixin',
+        'BelongsToManyHasAssociationMixin',
+        'BelongsToManyHasAssociationsMixin',
+        'BelongsToManyCountAssociationsMixin'
+    ],
+    'sequelize'
+));
+
+generatedCode += '\n';
 
         // Named imports for associations
         const importModels = new Set<string>();
@@ -262,7 +396,7 @@ export class ModelBuilder extends Builder {
             [
                 ...Object.values(columns).map(col => this.buildColumnPropertyDecl(col, dialect)),
                 ...tableMetadata.associations && tableMetadata.associations.length ?
-                    tableMetadata.associations.map(a => this.buildAssociationPropertyDecl(a)) : []
+                    tableMetadata.associations.flatMap(a => this.buildAssociationPropertyDecl(a, tablesMetadata)) : []
             ]
         );
 
@@ -329,7 +463,7 @@ export class ModelBuilder extends Builder {
         for (const tableMetadata of Object.values(tablesMetadata)) {
             console.log(`Processing table ${tableMetadata.originName}`);
             const tableClassDecl =
-                ModelBuilder.buildTableClassDeclaration(tableMetadata, this.dialect, this.config.strict);
+                ModelBuilder.buildTableClassDeclaration(tableMetadata, tablesMetadata, this.dialect, this.config.strict);
 
             writePromises.push((async () => {
                 const outPath = path.join(outDir, `${tableMetadata.name}.ts`);
