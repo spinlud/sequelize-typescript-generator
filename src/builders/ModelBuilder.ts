@@ -328,7 +328,7 @@ generatedCode += '\n';
                     ...(Object.values(columns).map(c => ts.factory.createPropertySignature(
                         undefined,
                         ts.factory.createIdentifier(c.name),
-                        c.autoIncrement || c.allowNull || c.defaultValue !== undefined ?
+                        c.name === 'id' || c.autoIncrement || c.allowNull || c.defaultValue !== undefined ?
                             ts.factory.createToken(ts.SyntaxKind.QuestionToken) : undefined,
                         ts.factory.createTypeReferenceNode(dialect.mapDbTypeToJs(c.type) ?? 'any', undefined)
                     )))
