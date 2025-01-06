@@ -138,6 +138,7 @@ export const buildConfig = (argv: ArgvType): IConfig => {
             ...argv[aliasesMap.HOST] && { host: argv[aliasesMap.HOST] as string },
             ...argv[aliasesMap.PORT] && { port: argv[aliasesMap.PORT] as number },
             ...argv[aliasesMap.DATABASE] && { database: argv[aliasesMap.DATABASE] as string },
+            ...argv[aliasesMap.SCHEMA] && { schema: argv[aliasesMap.SCHEMA] as string },
             ...argv[aliasesMap.USERNAME] && { username: argv[aliasesMap.USERNAME] as string },
             ...argv[aliasesMap.PASSWORD] && { password: argv[aliasesMap.PASSWORD] as string },
             ...argv[aliasesMap.SSL] && { ssl: true },
@@ -164,7 +165,6 @@ export const buildConfig = (argv: ArgvType): IConfig => {
             logging: argv[aliasesMap.ENABLE_SEQUELIZE_LOGS],
         },
         metadata: {
-            ...argv[aliasesMap.SCHEMA] && { schema: argv[aliasesMap.SCHEMA] as string },
             ...argv[aliasesMap.TABLES] && {
                 tables: (argv[aliasesMap.TABLES] as string)
                     .split(',')
