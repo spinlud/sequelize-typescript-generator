@@ -93,7 +93,7 @@ const jsDataTypesMap: { [key: string]: string } = {
     smallint: 'number',
     mediumint: 'number',
     tinyint: 'number',
-    decimal: 'string',
+    decimal: 'number',
     float: 'number',
     double: 'number',
     int: 'number',

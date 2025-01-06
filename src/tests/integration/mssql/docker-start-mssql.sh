@@ -34,8 +34,10 @@ done
 echo "Database online"
 
 # Create test database
-docker exec -i "$CONTAINER_NAME" /opt/mssql-tools/bin/sqlcmd \
+docker exec -i "$CONTAINER_NAME" /opt/mssql-tools18/bin/sqlcmd \
   -S localhost \
+  -N \
+  -C \
   -U "$TEST_DB_USERNAME" \
   -P "$TEST_DB_PASSWORD" \
   -Q "CREATE DATABASE $TEST_DB_DATABASE"
