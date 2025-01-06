@@ -171,7 +171,7 @@ export class DialectPostgres extends Dialect {
     /**
      * Map database data type to javascript data type
      * @param {string} dbType
-     * @returns {string
+     * @returns {string}
      */
     public mapDbTypeToJs(dbType: string): string {
         return jsDataTypesMap[dbType];
@@ -305,7 +305,7 @@ export class DialectPostgres extends Dialect {
                         this.mapDbTypeToSequelize(column.udt_name).key
                             .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
                 },
-                allowNull: !!column.is_nullable && !column.is_primary,
+                allowNull: column.is_nullable === 'YES' && !column.is_primary,
                 primaryKey: column.is_primary,
                 autoIncrement: column.is_sequence,
                 indices: [],
