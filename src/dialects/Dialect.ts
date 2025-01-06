@@ -151,14 +151,6 @@ export abstract class Dialect {
         const tablesMetadata: ITablesMetadata = {};
 
         try {
-            // Set schema for Postgres to 'public' if not provided
-            if (config.connection.dialect === 'postgres' && !config.metadata?.schema) {
-                config.metadata = {
-                    ...config.metadata,
-                    ...{ schema: 'public'},
-                };
-            }
-
             connection = createConnection(config.connection);
 
             await connection.authenticate();
@@ -196,7 +188,7 @@ export abstract class Dialect {
                 const tableMetadata: ITableMetadata = {
                     originName: tableName,
                     name: tableName,
-                    ...config.metadata?.schema && { schema: config.metadata!.schema},
+                    schema: config.connection.schema,
                     timestamps: config.metadata?.timestamps ?? false,
                     columns: {},
                     comment: tableComment ?? undefined,

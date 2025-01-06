@@ -14,6 +14,11 @@ export abstract class Builder {
     protected constructor(config: IConfig, dialect: Dialect) {
         this._config = config;
         this._dialect = dialect;
+
+        // Default Postgres schema if not provided
+        if (dialect.name === 'postgres' && !config.connection.schema) {
+            config.connection.schema = 'public';
+        }
     }
 
     get config(): IConfig {

@@ -26,11 +26,6 @@ const foreignKeyDecorator = 'ForeignKey';
  */
 export class ModelBuilder extends Builder {
     constructor(config: IConfig, dialect: Dialect) {
-        // Force 'public' schema on Postgres if not specified
-        if (dialect.name === 'postgres' && config.metadata && !config.metadata.schema) {
-            config.metadata.schema = 'public';
-        }
-
         super(config, dialect);
     }
 

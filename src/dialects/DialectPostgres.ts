@@ -203,7 +203,7 @@ export class DialectPostgres extends Dialect {
             FROM information_schema.tables t
             JOIN pg_class pc
                 ON t.table_name = pc.relname
-            WHERE t.table_schema='${config.metadata!.schema}' AND pc.relkind = 'r';
+            WHERE t.table_schema='${config.connection.schema}' AND pc.relkind = 'r';
         `;
 
         const tables: ITable[] = (await connection.query(
@@ -247,7 +247,7 @@ export class DialectPostgres extends Dialect {
                    FROM pg_attribute a
                     LEFT OUTER JOIN pg_index x
                         ON a.attnum = ANY (x.indkey) AND a.attrelid = x.indrelid
-                    WHERE a.attrelid = '${config.metadata!.schema}.\"${table}\"'::regclass AND a.attnum > 0
+                    WHERE a.attrelid = '${config.connection.schema}.\"${table}\"'::regclass AND a.attnum > 0
                         AND c.ordinal_position = a.attnum AND x.indisprimary IS TRUE
                 ) AS is_primary,
                 c.*,
@@ -273,11 +273,11 @@ export class DialectPostgres extends Dialect {
                               ON (attrib.attnum = dep.refobjsubid AND attrib.attrelid = dep.refobjid)
                          JOIN pg_namespace pn
                               ON seqclass.relnamespace = pn.oid
-                WHERE pn.nspname = '${config.metadata!.schema}' AND depclass.relname = '${table}'
+                WHERE pn.nspname = '${config.connection.schema}' AND depclass.relname = '${table}'
             ) seq
                  ON c.table_schema = seq.schema_name AND c.table_name = seq.table_name AND
                     c.column_name = seq.column_name
-            WHERE c.table_schema = '${config.metadata!.schema}' AND c.table_name = '${table}'
+            WHERE c.table_schema = '${config.connection.schema}' AND c.table_name = '${table}'
             ORDER BY c.ordinal_position;
         `;
 
@@ -373,7 +373,7 @@ export class DialectPostgres extends Dialect {
                 ON x.indexrelid = pc.oid
             INNER JOIN pg_am am
                 ON pc.relam = am.oid
-            WHERE a.attrelid = '${config.metadata!.schema}.\"${table}\"'::regclass AND a.attnum > 0 
+            WHERE a.attrelid = '${config.connection.schema}.\"${table}\"'::regclass AND a.attnum > 0 
                 AND a.attname = '${column}';
         `;
 

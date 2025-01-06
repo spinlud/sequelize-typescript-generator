@@ -24,7 +24,6 @@ export const TransformCases = new Set<TransformCase>([
 ]);
 
 export interface IConfigMetadata {
-    schema?: 'public' | string; // Postgres only
     tables?: string[];
     skipTables?: string[];
     indices?: boolean;
