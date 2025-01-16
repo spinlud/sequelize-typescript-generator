@@ -88,19 +88,22 @@ export class ModelBuilder extends Builder {
      * @param {IAssociationMetadata} association
      */
     private static buildAssociationPropertyDecl(association: IAssociationMetadata): ts.PropertyDeclaration {
-        const { associationName, targetModel, joinModel } = association;
+        const { associationName, targetModel, joinModel, sourceKey, foreignKey } = association;
 
         const targetModels = [ targetModel ];
         joinModel && targetModels.push(joinModel);
 
         return ts.factory.createPropertyDeclaration(
             [
-                ...(association.sourceKey ?
+                ...(sourceKey ?
                         [
                             generateArrowDecorator(
                                 associationName,
                                 targetModels,
-                                { sourceKey: association.sourceKey }
+                                {
+                                    sourceKey: sourceKey,
+                                    ...(foreignKey && { foreignKey: foreignKey }),
+                                }
                             )
                         ]
                         : [
