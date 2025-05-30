@@ -82,7 +82,7 @@ export class ModelBuilder extends Builder {
                 )
             ],
             col.name,
-            (col.autoIncrement || col.allowNull || col.defaultValue !== undefined) ?
+            (col.autoIncrement || col.allowNull) ?
                 ts.factory.createToken(ts.SyntaxKind.QuestionToken) : ts.factory.createToken(ts.SyntaxKind.ExclamationToken),
             ts.factory.createTypeReferenceNode(dialect.mapDbTypeToJs(col.type) ?? 'any', undefined),
             undefined,
