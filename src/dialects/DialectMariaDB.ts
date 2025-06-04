@@ -32,6 +32,7 @@ interface IColumnMetadataMariaDB {
     COLUMN_COMMENT: string;
     TABLE_COMMENT: string;
     GENERATION_EXPRESSION: string;
+    CHECK_CLAUSE: string;
 }
 
 interface IIndexMetadataMariaDB {
@@ -124,7 +125,7 @@ const jsDataTypesMap: { [key: string]: string } = {
     multipolygon: 'object',
     geometry: 'object',
     geometrycollection: 'object',
-    json: 'string',
+    json: 'object',
 };
 
 const defaultValuesMap: { [key: string]: string } = {
@@ -236,10 +237,13 @@ export class DialectMariaDB extends Dialect {
                 c.COLUMN_KEY,
                 c.EXTRA,
                 c.COLUMN_COMMENT,
-                t.TABLE_COMMENT                        
+                t.TABLE_COMMENT,
+                cc.CHECK_CLAUSE
             FROM information_schema.columns c
             INNER JOIN information_schema.tables t
-                ON c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME                    
+                ON c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME
+            LEFT JOIN  information_schema.CHECK_CONSTRAINTS cc
+                ON c.TABLE_SCHEMA = cc.CONSTRAINT_SCHEMA AND c.TABLE_NAME = cc.TABLE_NAME AND c.COLUMN_NAME = cc.CONSTRAINT_NAME
             WHERE c.TABLE_SCHEMA='${config.connection.database}' AND c.TABLE_NAME = '${table}'
             ORDER BY c.ORDINAL_POSITION;            
         `;
@@ -292,6 +296,13 @@ export class DialectMariaDB extends Dialect {
                 case 'char':
                 case 'varchar':
                     columnMetadata.dataType += generatePrecisionSignature(column.CHARACTER_MAXIMUM_LENGTH);
+                    break;
+
+                case 'longtext':
+                    if (column.CHECK_CLAUSE == `json_valid(\`${column.COLUMN_NAME}\`)`) {
+                        columnMetadata.dataType = 'DataType.JSON';
+                        columnMetadata.type = 'json';
+                    }
                     break;
             }
 
