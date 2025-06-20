@@ -94,37 +94,46 @@ export class ModelBuilder extends Builder {
      * @param {IAssociationMetadata} association
      */
     private static buildAssociationPropertyDecl(association: IAssociationMetadata, tablesMetadata: ITablesMetadata): ts.PropertyDeclaration[] {
-        const { associationName, targetModel, joinModel } = association;
-
+        const { associationName, targetModel, joinModel, alias } = association;
+    
         const targetModels = [ targetModel ];
         joinModel && targetModels.push(joinModel);
-
+    
+        // Use alias if provided, otherwise use target model name
+        const nameBase = alias || targetModel;
+        const propertyName = associationName.includes('Many') ?
+            pluralize.plural(nameBase) : pluralize.singular(nameBase);
+    
+        let decorator;
+        if (associationName === 'BelongsToMany') {
+            // For BelongsToMany, don't pass alias in decorator options
+            // The alias will be handled by the property name
+            decorator = generateArrowDecorator(associationName, targetModels);
+        } else {
+            // For other associations, pass options normally
+            const options = {
+                ...(association.sourceKey && { sourceKey: association.sourceKey }),
+                ...(alias && { as: alias })
+            };
+            decorator = generateArrowDecorator(
+                associationName, 
+                targetModels, 
+                Object.keys(options).length > 0 ? options : undefined
+            );
+        }
+    
         const mainProperty = ts.factory.createPropertyDeclaration(
-            [
-                ...(association.sourceKey ?
-                        [
-                            generateArrowDecorator(
-                                associationName,
-                                targetModels,
-                                { sourceKey: association.sourceKey }
-                            )
-                        ]
-                        : [
-                            generateArrowDecorator(associationName, targetModels)
-                        ]
-                ),
-            ],
-            associationName.includes('Many') ?
-                pluralize.plural(targetModel) : pluralize.singular(targetModel),
+            [decorator],
+            propertyName,
             ts.factory.createToken(ts.SyntaxKind.QuestionToken),
             associationName.includes('Many') ?
                 ts.factory.createArrayTypeNode(ts.factory.createTypeReferenceNode(targetModel, undefined)) :
                 ts.factory.createTypeReferenceNode(targetModel, undefined),
             undefined,
         );
-
+    
         const mixinDeclarations = this.generateAssociationMixins(association, tablesMetadata);
-
+    
         return [mainProperty, ...mixinDeclarations];
     }
 
@@ -138,10 +147,13 @@ export class ModelBuilder extends Builder {
         );
     }
 
-    private static generateAssociationMixins(association: IAssociationMetadata,     tablesMetadata: ITablesMetadata): ts.PropertyDeclaration[] {
-        const { associationName, targetModel } = association;
-        const singularTarget = pluralize.singular(targetModel);
-        const pluralTarget = pluralize.plural(targetModel);
+    private static generateAssociationMixins(association: IAssociationMetadata, tablesMetadata: ITablesMetadata): ts.PropertyDeclaration[] {
+        const { associationName, targetModel, alias } = association;
+        
+        // Use alias if provided, otherwise use target model name
+        const nameBase = alias || targetModel;
+        const singularTarget = pluralize.singular(nameBase);
+        const pluralTarget = pluralize.plural(nameBase);
     
         // Get the primary key type from the target table's metadata
         const targetTable = tablesMetadata[targetModel];
@@ -149,7 +161,7 @@ export class ModelBuilder extends Builder {
         const primaryKeyType = primaryKeyColumn ? 
             this.getPrimaryKeyType(primaryKeyColumn.type) : 
             'number';  // fallback to number if not found
-
+    
         switch (associationName) {
             case 'HasMany':
                 return [

@@ -13,7 +13,9 @@ type AssociationRow = [
     string, // right key
     string, // left table
     string, // right table
-    string? // [join table]
+    string?, // [join table]
+    string?, // [left alias] - alias used by leftModel when referring to rightModel
+    string? // [right alias] - alias used by rightModel when referring to leftModel
 ];
 
 export interface IAssociationMetadata {
@@ -21,6 +23,7 @@ export interface IAssociationMetadata {
     targetModel: string;
     joinModel?: string;
     sourceKey?: string; // Left table key for HasOne and HasMany associations
+    alias?: string; // Optional alias for the association
 }
 
 export interface IForeignKey {
@@ -42,7 +45,9 @@ const validateRow = (row: AssociationRow): void => {
         rightKey,
         leftTable,
         rightTable,
-        joinTable
+        joinTable,
+        leftAlias,
+        rightAlias
     ] = row;
 
     if (!cardinalities.has(cardinality)) {
@@ -67,6 +72,15 @@ const validateRow = (row: AssociationRow): void => {
 
     if (cardinality === 'N:N' && (!joinTable || !joinTable.length)) {
         throw new Error(`Association N:N requires a joinTable in the association row`);
+    }
+
+    // Validate aliases are not empty strings if provided
+    if (leftAlias !== undefined && leftAlias.length === 0) {
+        throw new Error(`Left alias cannot be empty string. Use undefined or omit the field instead.`);
+    }
+
+    if (rightAlias !== undefined && rightAlias.length === 0) {
+        throw new Error(`Right alias cannot be empty string. Use undefined or omit the field instead.`);
     }
 }
 
@@ -109,7 +123,9 @@ export class AssociationsParser {
                 rightKey,
                 leftModel,
                 rightModel,
-                joinModel
+                joinModel,
+                leftAlias,
+                rightAlias
             ] = row;
 
             const [
@@ -135,15 +151,19 @@ export class AssociationsParser {
 
             // 1:1 and 1:N association
             if (cardinality !== 'N:N') {
+                // Left model association (HasOne/HasMany)
                 associationsMetadata[leftModel].associations.push({
                     associationName: rightCardinality === '1' ? 'HasOne' : 'HasMany',
                     targetModel: rightModel,
                     sourceKey: leftKey,
+                    ...(leftAlias && { alias: leftAlias })
                 });
 
+                // Right model association (BelongsTo)
                 associationsMetadata[rightModel].associations.push({
                     associationName: 'BelongsTo',
                     targetModel: leftModel,
+                    ...(rightAlias && { alias: rightAlias })
                 });
 
                 associationsMetadata[rightModel].foreignKeys.push({
@@ -161,16 +181,20 @@ export class AssociationsParser {
                     };
                 }
 
+                // Left model BelongsToMany association
                 associationsMetadata[leftModel].associations.push({
                     associationName: 'BelongsToMany',
                     targetModel: rightModel,
                     joinModel: joinModel,
+                    ...(leftAlias && { alias: leftAlias })
                 });
 
+                // Right model BelongsToMany association
                 associationsMetadata[rightModel].associations.push({
                     associationName: 'BelongsToMany',
                     targetModel: leftModel,
                     joinModel: joinModel,
+                    ...(rightAlias && { alias: rightAlias })
                 });
 
                 associationsMetadata[joinModel!].foreignKeys.push({
