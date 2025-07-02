@@ -93,6 +93,7 @@ export const AUTHORS_TABLE_CREATES = [
             full_name       VARCHAR(80)     not null
         );
     `,
+    `COMMENT ON COLUMN public.authors.author_id IS 'This column stores the PK';`
 ];
 export const AUTHORS_TABLE_INSERTS = [
     `INSERT INTO ${SCHEMA_NAME}.${AUTHORS_TABLE_NAME} VALUES (1, 'Isasc Asimov');`,

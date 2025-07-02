@@ -81,6 +81,12 @@ export const AUTHORS_TABLE_CREATES = [
             full_name       VARCHAR(80)     not null
         );
     `,
+    `EXEC sp_addextendedproperty 
+      @name = N'MS_Description', 
+      @value = 'This column stores the PK', 
+      @level0type = N'SCHEMA', @level0name = 'dbo', 
+      @level1type = N'TABLE',  @level1name = 'authors', 
+      @level2type = N'COLUMN', @level2name = 'author_id';`
 ];
 export const AUTHORS_TABLE_INSERTS = [
     `INSERT INTO ${AUTHORS_TABLE_NAME} VALUES (1, 'Isasc Asimov');`,

@@ -186,13 +186,17 @@ export class ModelBuilder extends Builder {
                 undefined,
                 undefined,
                 [
-                    ...(Object.values(columns).map(c => ts.factory.createPropertySignature(
-                        undefined,
-                        ts.factory.createIdentifier(c.name),
-                        c.autoIncrement || c.allowNull || c.defaultValue !== undefined ?
+                    ...(Object.values(columns).map(c => {
+                        const property = ts.factory.createPropertySignature(
+                          undefined,
+                          ts.factory.createIdentifier(c.name),
+                          c.autoIncrement || c.allowNull || c.defaultValue !== undefined ?
                             ts.factory.createToken(ts.SyntaxKind.QuestionToken) : undefined,
-                        ts.factory.createTypeReferenceNode(dialect.mapDbTypeToJs(c.type) ?? 'any', undefined)
-                    )))
+                          ts.factory.createTypeReferenceNode(dialect.mapDbTypeToJs(c.type) ?? 'any', undefined)
+                          ) 
+                        return c.comment ? ts.addSyntheticLeadingComment(property, ts.SyntaxKind.MultiLineCommentTrivia, `* ${c.comment}`, true) : property
+                      })
+                    )
                 ]
             );
 

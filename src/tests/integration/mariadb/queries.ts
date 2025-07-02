@@ -70,7 +70,7 @@ export const AUTHORS_TABLE_CREATES = [
     `
         CREATE TABLE ${AUTHORS_TABLE_NAME}
         (
-            author_id       INT             primary key,
+            author_id       INT             primary key COMMENT 'This column stores the PK',
             full_name       VARCHAR(80)     not null
         );
     `,
