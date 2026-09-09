@@ -1,23 +1,31 @@
-import { Linter } from 'eslint';
+import type { Linter } from 'eslint';
+import stylistic from '@stylistic/eslint-plugin';
+import tsParser from '@typescript-eslint/parser';
 
-export const eslintDefaultConfig: Linter.Config = {
-    parser:  '@typescript-eslint/parser',
-    parserOptions:  {
-        ecmaVersion:  2019,
-        sourceType:  'module',
+export const eslintDefaultConfig: Linter.Config[] = [
+    {
+        files: ['**/*.ts', '**/*.tsx'],
+        languageOptions: {
+            parser: tsParser,
+            parserOptions: {
+                ecmaVersion: 2019,
+                sourceType: 'module',
+            },
+        },
+        plugins: {
+            '@stylistic': stylistic,
+        },
+        rules: {
+            '@stylistic/padded-blocks': ['error', { blocks: 'always', classes: 'always', switches: 'always' }],
+            '@stylistic/lines-between-class-members': ['error', 'always'],
+            '@stylistic/object-curly-newline': ['error', {
+                'ObjectExpression': 'always',
+                'ObjectPattern': { 'multiline': true },
+                'ImportDeclaration': { 'multiline': true, 'minProperties': 3 },
+                'ExportDeclaration': { 'multiline': true, 'minProperties': 3 },
+            }],
+            '@stylistic/object-property-newline': ['error'],
+            '@stylistic/indent': ['error', 'tab'],
+        },
     },
-    plugins: [],
-    extends:  [],
-    rules:  {
-        'padded-blocks': ['error', { blocks: 'always', classes: 'always', switches: 'always' }],
-        'lines-between-class-members': ['error', 'always' ],
-        'object-curly-newline': ['error', {
-            'ObjectExpression': 'always',
-            'ObjectPattern': { 'multiline': true },
-            'ImportDeclaration': { 'multiline': true, 'minProperties': 3 },
-            'ExportDeclaration': { 'multiline': true, 'minProperties': 3 },
-        }],
-        'object-property-newline': ['error'],
-        'indent': ['error', 'tab'],
-    },
-};
+];

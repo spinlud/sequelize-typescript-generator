@@ -1,5 +1,4 @@
 import { Options } from 'sequelize';
-import { ESLint } from 'eslint';
 
 export type TransformCase = 'UPPER' | 'LOWER' | 'UNDERSCORE' | 'CAMEL' | 'PASCAL' | 'CONST';
 
@@ -38,10 +37,15 @@ export interface IConfigOutput {
     outDir: string; // output directory
 }
 
+export interface ILintOptions {
+    configFile: string; // path to an ESLint flat config file
+    fix?: boolean; // apply fixable rules to the generated files
+}
+
 export interface IConfig {
     connection: Options;
     metadata?: IConfigMetadata;
     output: IConfigOutput;
-    lintOptions?: ESLint.Options;
+    lintOptions?: ILintOptions;
     strict?: boolean;
 }
