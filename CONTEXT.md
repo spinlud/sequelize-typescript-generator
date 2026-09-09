@@ -8,7 +8,11 @@ Domain glossary for the tool that generates TypeScript Sequelize models directly
 
 **Dialect**:
 One supported database engine (Postgres, MySQL, MariaDB, SQL Server, SQLite) together with the adapter that inspects its schema metadata: tables, columns, indexes, foreign keys, and views.
-_Avoid_: Engine, driver, database type
+_Avoid_: Engine, database type
+
+**Driver**:
+The npm package a dialect uses to open the database connection (for example `pg`, `mysql2`, `@vscode/sqlite3`). Installed by the user in their own project, never a dependency of the generator.
+_Avoid_: Client, connector, dialect module
 
 ### Output
 

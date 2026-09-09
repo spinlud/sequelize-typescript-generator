@@ -12,6 +12,8 @@ Sequelize v6 only. A new default **native** output format (plain Sequelize class
 |---|---|---|
 | Sequelize version | v6 only; v7 out of scope while alpha | map |
 | Output formats | `--format native\|decorators`, native default, hence a new major | map, [#69](https://github.com/spinlud/sequelize-typescript-generator/issues/69) |
+| Programmatic API | `IConfig.format`; single `ModelBuilder` entry; `createDialect`; explicit root re-export list; `build()` throws, never exits | [#82](https://github.com/spinlud/sequelize-typescript-generator/issues/82) |
+| Migration guide | README checklist + `docs/migration/12-to-13.md`; Release notes are the changelog; `12.x` cut in phase 1 | [#83](https://github.com/spinlud/sequelize-typescript-generator/issues/83) |
 | Emitter approach | TypeScript compiler API, structured like `ModelBuilder.ts`; no templates | [#68](https://github.com/spinlud/sequelize-typescript-generator/issues/68) |
 | Module format | ESM-only (dual build revised away); ADR written in phase 2 | [#71](https://github.com/spinlud/sequelize-typescript-generator/issues/71) |
 | Runtime floor | `engines.node >=22.13.0`; single Node version in CI | [#71](https://github.com/spinlud/sequelize-typescript-generator/issues/71), [#72](https://github.com/spinlud/sequelize-typescript-generator/issues/72) |
@@ -43,16 +45,16 @@ Phases run in order; each phase issue is blocked by the previous one. Effort is 
 Implements [#67](https://github.com/spinlud/sequelize-typescript-generator/issues/67).
 
 - Entry: none; unblocked at plan creation.
-- Work: replace the six value imports of `sequelize-typescript` (`createConnection.ts` and the five dialect files) with `Sequelize` and `DataTypes` from `sequelize`; move `sequelize-typescript` to an optional peer dependency, kept in `devDependencies`; keep `reflect-metadata` dev-only; add a guard that fails when shipped source value-imports `sequelize-typescript`.
-- Exit: no `require("sequelize-typescript")` in `build/`; guard active; existing tests green.
+- Work: tag the 12.0.1 commit `v12.0.1` and cut branch `12.x` from it; replace the six value imports of `sequelize-typescript` (`createConnection.ts` and the five dialect files) with `Sequelize` and `DataTypes` from `sequelize`; move `sequelize-typescript` to an optional peer dependency, kept in `devDependencies`; keep `reflect-metadata` dev-only; add a guard that fails when shipped source value-imports `sequelize-typescript`.
+- Exit: no `require("sequelize-typescript")` in `build/`; guard active; existing tests green; `v12.0.1` tag and `12.x` branch pushed.
 
 ### Phase 2: toolchain
 
 Implements [#71](https://github.com/spinlud/sequelize-typescript-generator/issues/71), built on research [#64](https://github.com/spinlud/sequelize-typescript-generator/issues/64) and [#65](https://github.com/spinlud/sequelize-typescript-generator/issues/65).
 
 - Entry: phase 1 closed.
-- Work: ESM-only build with plain `tsc`, `module: nodenext`, `"type": "module"`, `exports` map with a single root entry plus `./package.json`; `.js` suffix on relative imports; `yargs(hideBin(process.argv))`; `engines.node >=22.13.0`; TypeScript 6.0.x build, peer range `>=5.7 <6.1`, drop `downlevelIteration`; Jest 30 with the ts-jest ESM preset and `jest.config.cjs`; `tsx` for dev scripts; ESLint 10 flat config with `@stylistic/eslint-plugin`, `@typescript-eslint/parser` 8.x; default lint path uses `overrideConfigFile: true` with `baseConfig`; `--lint-file` passes `overrideConfigFile`; legacy eslintrc files and objects fail fast with a pointer to the ESLint migration guide; SQLite dialect resolves `@vscode/sqlite3` from the user's project as `dialectModule`; ADR for ESM-only in `docs/adr/`; glossary term **Driver** in `CONTEXT.md`.
-- Exit: builds and runs ESM-only on Node 22.13; suite green under Jest 30; both lint paths tested; legacy eslintrc rejected; ADR committed.
+- Work: ESM-only build with plain `tsc`, `module: nodenext`, `"type": "module"`, `exports` map with a single root entry plus `./package.json`; `.js` suffix on relative imports; `yargs(hideBin(process.argv))`; `engines.node >=22.13.0`; TypeScript 6.0.x build, peer range `>=5.7 <6.1`, drop `downlevelIteration`; Jest 30 with the ts-jest ESM preset and `jest.config.cjs`; `tsx` for dev scripts; ESLint 10 flat config with `@stylistic/eslint-plugin`, `@typescript-eslint/parser` 8.x; default lint path uses `overrideConfigFile: true` with `baseConfig`; `--lint-file` passes `overrideConfigFile`; legacy eslintrc files and objects fail fast with a pointer to the ESLint migration guide; SQLite dialect resolves `@vscode/sqlite3` from the user's project as `dialectModule`; ADR for ESM-only in `docs/adr/`; glossary term **Driver** in `CONTEXT.md`; programmatic API (#82): root barrel re-exports `Dialect`, `DialectName`, `createDialect`, the `IConfig*`/`Transform*` types and the metadata interfaces, `Builder`/`Linter`/utils stay private, `build()` throws instead of `process.exit`.
+- Exit: builds and runs ESM-only on Node 22.13; suite green under Jest 30; both lint paths tested; legacy eslintrc rejected; ADR committed; root entry loads via `require()` from CommonJS (no top-level await).
 
 ### Phase 3: test and CI matrix
 
@@ -83,7 +85,7 @@ Implements [#70](https://github.com/spinlud/sequelize-typescript-generator/issue
 Implements [#69](https://github.com/spinlud/sequelize-typescript-generator/issues/69), [#68](https://github.com/spinlud/sequelize-typescript-generator/issues/68), [#63](https://github.com/spinlud/sequelize-typescript-generator/issues/63), and the native parts of [#70](https://github.com/spinlud/sequelize-typescript-generator/issues/70) and [#73](https://github.com/spinlud/sequelize-typescript-generator/issues/73).
 
 - Entry: phase 5 closed **and** [Specify the programmatic API shape for the native format](https://github.com/spinlud/sequelize-typescript-generator/issues/82) closed.
-- Work: `--format native|decorators` with native default; compiler API renderer sharing `ModelBuilder.ts` helpers; one file per model, `initModels.ts`, `index.ts`; flag behaviours per the native specification; decorators dependency warning via `require.resolve` from the output directory, never failing.
+- Work: `--format native|decorators` with native default; compiler API renderer sharing `ModelBuilder.ts` helpers; one file per model, `initModels.ts`, `index.ts`; flag behaviours per the native specification; decorators dependency warning via `require.resolve` from the output directory, never failing; programmatic API (#82): `IConfig.format` top level defaulting to `native`, `ModelBuilder` dispatches on format internally, `initModel` returns the class, `initModels` contract native-only.
 - Exit: both formats run in every matrix job; native output passes strict `tsc --noEmit` and runtime assertions on all dialects; native golden fixture committed; README documents `--format`; `13.0.0-beta.3` published on `next`.
 
 ### Phase 7: release
@@ -91,14 +93,14 @@ Implements [#69](https://github.com/spinlud/sequelize-typescript-generator/issue
 Implements the release strategy from [#74](https://github.com/spinlud/sequelize-typescript-generator/issues/74).
 
 - Entry: phase 6 closed **and** [Decide the 12.x to 13.x migration guide contents](https://github.com/spinlud/sequelize-typescript-generator/issues/83) closed.
-- Work: migration guide, changelog, GitHub Release notes as the breaking-change notice (no `npm deprecate`); branch `12.x` cut from the last 12 tag; optional final 12.x patch with a one-line README pointer to the guide; tag `v13.0.0` so the full matrix publishes with provenance.
-- Exit: `13.0.0` on npm `latest`; GitHub Release published; `12.x` branch exists; README and guide merged.
+- Work: README section "Migrating from 12.x" plus `docs/migration/12-to-13.md` per [#83](https://github.com/spinlud/sequelize-typescript-generator/issues/83); GitHub Release notes on the fixed template as breaking-change notice and changelog (no `CHANGELOG.md`, no `npm deprecate`); tag `v13.0.0` so the full matrix publishes with provenance.
+- Exit: `13.0.0` on npm `latest`; GitHub Release published; README section and guide merged.
 
 ## Release strategy
 
 - Pre-releases `13.0.0-beta.1`, `.2`, `.3` on the npm `next` tag after phases 3, 5 and 6. Each exposes one breaking area in turn: ESM-only packaging, discovery on by default, native output as default.
-- Breaking-change notice: GitHub Release notes plus a README migration section. No `npm deprecate` on 12.x.
-- `12.x` branch receives security fixes only, until 2027-03-31. The window is stated in the migration guide.
+- Breaking-change notice: GitHub Release notes on a fixed template (summary, breaking changes copied from the README checklist, guide link, install command, auto-generated commits), used for the betas too. No `CHANGELOG.md`, no `npm deprecate` on 12.x.
+- `12.x` branch cut from the retro-tagged `v12.0.1` commit at the start of phase 1; security fixes only until 2027-03-31, stated in the migration guide. No final 12.x pointer patch.
 
 ## Breaking changes in 13.0.0
 
@@ -112,8 +114,7 @@ Implements the release strategy from [#74](https://github.com/spinlud/sequelize-
 
 ## Decisions still open before implementation reaches them
 
-- [Specify the programmatic API shape for the native format](https://github.com/spinlud/sequelize-typescript-generator/issues/82), gate for phase 6.
-- [Decide the 12.x to 13.x migration guide contents](https://github.com/spinlud/sequelize-typescript-generator/issues/83), gate for phase 7.
+None. Both gates are resolved; see Standing decisions.
 
 ## Post-13 backlog
 
@@ -126,3 +127,4 @@ Ruled out of version 13 but worth keeping in view:
 - Junction table heuristic to discover many-to-many associations.
 - Moving the lint stack to optional peer dependencies.
 - Sequelize v7 support, as a fresh effort if a v7 beta ships.
+- `ModelBuilder.build()` returning the list of written file paths.
