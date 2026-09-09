@@ -34,6 +34,7 @@
     "test-postgres": "npm run docker-remove-containers && npm run docker-start-postgres && NODE_OPTIONS=--experimental-vm-modules jest src/tests/integration/postgres",
     "test-mssql": "npm run docker-remove-containers && npm run docker-start-mssql && NODE_OPTIONS=--experimental-vm-modules jest src/tests/integration/mssql",
     "test-sqlite": "npm run docker-remove-containers && NODE_OPTIONS=--experimental-vm-modules jest src/tests/integration/sqlite",
+    "pretest": "npm run build",
     "test": "npm run test-sqlite && npm run test-mysql && npm run test-mariadb && npm run test-postgres && npm run test-mssql",
     "dev": "tsx src/bin/cli.ts -D mysql -u root -x mysql -d dbtest --dialect-options '{\"timezone\": \"local\"}' --case const:camel --clean --logs",
     "usage": "tsx src/bin/cli.ts --help"
@@ -60,7 +61,7 @@
     "pg-hstore": "^2.3.4",
     "reflect-metadata": "^0.2.1",
     "sequelize-typescript": "^2.1.6",
-    "sqlite3": "^5.1.7",
+    "@vscode/sqlite3": "^5.1.14-vscode",
     "tedious": "^18.6.1",
     "ts-jest": "^29.4.12",
     "tsx": "^4.23.13",

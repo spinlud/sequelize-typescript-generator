@@ -53,19 +53,21 @@ export interface ITable {
     comment?: string;
 }
 
-type DialectName = 'postgres' | 'mysql' | 'mariadb' | 'sqlite' | 'mssql';
+export const DIALECT_NAMES = [
+    'postgres',
+    'mysql',
+    'mariadb',
+    'sqlite',
+    'mssql',
+] as const;
+
+export type DialectName = typeof DIALECT_NAMES[number];
 
 export abstract class Dialect {
     /**
      * Accepted dialects
      */
-    public static dialects: Set<string> = new Set([
-        'postgres',
-        'mysql',
-        'mariadb',
-        'sqlite',
-        'mssql',
-    ]);
+    public static dialects: Set<string> = new Set(DIALECT_NAMES);
 
     /**
      * Dialect name
@@ -202,8 +204,7 @@ export abstract class Dialect {
             }
         }
         catch(err) {
-            console.error(err);
-            process.exit(1);
+            throw new Error('Failed to build tables metadata from the source database', { cause: err });
         }
         finally {
             connection && await connection.close();

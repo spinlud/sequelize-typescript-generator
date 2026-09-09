@@ -302,13 +302,12 @@ export class ModelBuilder extends Builder {
         try {
             await fs.access(outDir);
         }
-        catch(err: any) {
-            if (err.code && err.code === 'ENOENT') {
+        catch(err: unknown) {
+            if (err instanceof Error && 'code' in err && err.code === 'ENOENT') {
                 await fs.mkdir(outDir, { recursive: true });
             }
             else {
-                console.error(err);
-                process.exit(1);
+                throw new Error(`Failed to access output directory '${outDir}'`, { cause: err });
             }
         }
 

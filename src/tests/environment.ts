@@ -1,4 +1,5 @@
 import { Options, Dialect as DialectType } from 'sequelize';
+import { resolveSqliteDriver } from '../connection/index.js';
 
 const setEnv = (): void => {
     if (!process.env['TEST_DB_HOST']) {
@@ -47,6 +48,7 @@ export const buildSequelizeOptions = (dialect: DialectType): Options => {
 
         ...dialect === 'sqlite' && {
             storage: 'memory',
+            dialectModule: resolveSqliteDriver(),
         }
     };
 

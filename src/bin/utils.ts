@@ -2,14 +2,7 @@ import path from 'path';
 import fs from 'fs';
 import { Dialect as DialectType } from 'sequelize';
 import { Dialect } from '../dialects/Dialect.js';
-
-import {
-    DialectMySQL,
-    DialectPostgres,
-    DialectMSSQL,
-    DialectMariaDB,
-    DialectSQLite,
-} from '../dialects/index.js';
+import { createDialect } from '../dialects/createDialect.js';
 
 import {
     IConfig,
@@ -207,29 +200,13 @@ export const buildConfig = (argv: ArgvType): IConfig => {
  * Returns {Dialect}
  */
 export const buildDialect = (argv: ArgvType): Dialect => {
-    let dialect: Dialect;
-
-    switch (argv[aliasesMap.DIALECT]) {
-        case 'postgres':
-            dialect = new DialectPostgres();
-            break;
-        case 'mysql':
-            dialect = new DialectMySQL();
-            break;
-        case 'mariadb':
-            dialect = new DialectMariaDB();
-            break;
-        case 'sqlite':
-            dialect = new DialectSQLite();
-            break;
-        case 'mssql':
-            dialect = new DialectMSSQL();
-            break;
-        default:
-            error(`Unknown dialect ${argv[aliasesMap.DIALECT]}`);
+    try {
+        return createDialect(argv[aliasesMap.DIALECT]);
     }
-
-    return dialect!;
+    catch (err) {
+        error(err instanceof Error ? err.message : String(err));
+        throw err;
+    }
 };
 
 /**

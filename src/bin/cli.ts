@@ -151,7 +151,15 @@ export const cli = async (): Promise<void> => {
     const dialect = buildDialect(argv);
 
     const builder = new ModelBuilder(config, dialect);
-    await builder.build();
+
+    try {
+        await builder.build();
+    }
+    catch (err) {
+        console.error(err);
+        process.exit(1);
+    }
+
     console.log(`All done!`);
 };
 

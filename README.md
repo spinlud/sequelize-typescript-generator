@@ -39,11 +39,15 @@ You should also install the specific driver library for your database, see
 npm install -S pg pg-hstore # Postgres
 npm install -S mysql2 # MySQL
 npm install -S mariadb # MariaDB
-npm install -S sqlite3 # SQLite
+npm install -S @vscode/sqlite3 # SQLite
 npm install -S tedious # Microsoft SQL Server
 ```
 
 ## Installation
+This package is ESM-only and requires Node `>=22.13`. CommonJS consumers can load it through
+`require()` of the ESM entry. SQLite support requires the `@vscode/sqlite3` driver installed in
+your project (see [Prerequisites](#prerequisites)).
+
 Local install
 ```shell
 npm install -S sequelize-typescript-generator
@@ -156,7 +160,7 @@ stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --in
 You can use the library programmatically, as shown in the following example:
 
 ```ts
-import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-generator';
+import { IConfig, ModelBuilder, createDialect } from 'sequelize-typescript-generator';
 
 (async () => {
     const config: IConfig = {
@@ -177,7 +181,7 @@ import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-genera
         strict: true,
     };
 
-    const dialect = new DialectMySQL();
+    const dialect = createDialect('mysql');
 
     const builder = new ModelBuilder(config, dialect);
 
@@ -187,7 +191,7 @@ import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-genera
     catch(err) {
         console.error(err);
         process.exit(1);
-    }    
+    }
 })();
 ```
 
@@ -434,7 +438,7 @@ stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --as
 Or programmatically:
 
 ```ts
-import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-generator';
+import { IConfig, ModelBuilder, createDialect } from 'sequelize-typescript-generator';
 
 (async () => {
     const config: IConfig = {
@@ -454,7 +458,7 @@ import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-genera
         }
     };
 
-    const dialect = new DialectMySQL();
+    const dialect = createDialect('mysql');
 
     const builder = new ModelBuilder(config, dialect);
 
@@ -464,7 +468,7 @@ import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-genera
     catch(err) {
         console.error(err);
         process.exit(1);
-    }    
+    }
 })();
 ```
 
@@ -869,7 +873,7 @@ stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --li
 Or you can pass `eslint` options programmatically:
 
 ```ts
-import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-generator';
+import { IConfig, ModelBuilder, createDialect } from 'sequelize-typescript-generator';
 
 (async () => {
     const config: IConfig = {
@@ -889,7 +893,7 @@ import { IConfig, ModelBuilder, DialectMySQL } from 'sequelize-typescript-genera
         },
     };
 
-    const dialect = new DialectMySQL();
+    const dialect = createDialect('mysql');
 
     const builder = new ModelBuilder(config, dialect);
 
