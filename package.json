@@ -10,7 +10,8 @@
   "scripts": {
     "clean": "rm -fr build",
     "lint": "eslint --fix --ext .ts output/*.ts",
-    "build": "npm run clean && tsc",
+    "build": "npm run clean && tsc && npm run check-deps",
+    "check-deps": "node scripts/check-no-sequelize-typescript.js",
     "audit": "npm audit",
     "docker-remove-containers": "./src/tests/integration/docker-remove-containers.sh",
     "docker-start-mysql": "./src/tests/integration/mysql/docker-start-mysql.sh",
