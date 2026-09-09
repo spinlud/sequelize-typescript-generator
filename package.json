@@ -26,6 +26,7 @@
     "audit": "npm audit",
     "test:unit": "NODE_OPTIONS=--experimental-vm-modules jest src/tests/unit",
     "test:sqlite": "NODE_OPTIONS=--experimental-vm-modules jest src/tests/integration/sqlite",
+    "test:golden:update": "NODE_OPTIONS=--experimental-vm-modules GOLDEN_UPDATE=1 jest src/tests/integration/sqlite -t 'golden'",
     "test:integration": "NODE_OPTIONS=--experimental-vm-modules jest src/tests/integration/$TEST_DB_DIALECT",
     "test:postgres": "docker compose --profile postgres up -d && TEST_DB_DIALECT=postgres tsx src/tests/integration/wait-for-db.ts && TEST_DB_DIALECT=postgres npm run test:integration; status=$?; docker compose --profile postgres down -v; exit $status",
     "test:mysql": "docker compose --profile mysql up -d && TEST_DB_DIALECT=mysql tsx src/tests/integration/wait-for-db.ts && TEST_DB_DIALECT=mysql npm run test:integration; status=$?; docker compose --profile mysql down -v; exit $status",
