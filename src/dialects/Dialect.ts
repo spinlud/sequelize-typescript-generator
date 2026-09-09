@@ -1,9 +1,9 @@
 import { IndexType, IndexMethod, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize } from 'sequelize';
-import { IConfig } from '../config';
-import { createConnection } from "../connection";
-import { AssociationsParser, IAssociationsParsed, IAssociationMetadata } from './AssociationsParser'
-import { caseTransformer } from './utils';
+import { IConfig } from '../config/index.js';
+import { createConnection } from "../connection/index.js";
+import { AssociationsParser, IAssociationsParsed, IAssociationMetadata } from './AssociationsParser.js'
+import { caseTransformer } from './utils.js';
 
 export interface ITablesMetadata {
     [tableName: string]: ITableMetadata;

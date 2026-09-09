@@ -1,8 +1,8 @@
 import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize, DataTypes } from 'sequelize';
-import { IConfig } from '../config';
-import { IColumnMetadata, IIndexMetadata, Dialect, ITable } from './Dialect';
-import { generatePrecisionSignature, warnUnknownMappingForDataType } from './utils';
+import { IConfig } from '../config/index.js';
+import { IColumnMetadata, IIndexMetadata, Dialect, ITable } from './Dialect.js';
+import { generatePrecisionSignature, warnUnknownMappingForDataType } from './utils.js';
 
 interface ITableRow {
     table_name: string;

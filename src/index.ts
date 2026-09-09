@@ -1,3 +1,3 @@
-export * from './config';
-export * from './dialects';
-export * from './builders';
+export * from './config/index.js';
+export * from './dialects/index.js';
+export * from './builders/index.js';

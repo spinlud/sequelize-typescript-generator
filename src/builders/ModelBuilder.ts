@@ -2,20 +2,20 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import * as ts from 'typescript';
 import pluralize from 'pluralize';
-import { Linter } from '../lint';
+import { Linter } from '../lint/index.js';
 import { ModelAttributeColumnOptions } from 'sequelize';
 import type { IndexOptions, IndexFieldOptions } from 'sequelize-typescript';
-import { IConfig } from '../config';
-import {IColumnMetadata, ITableMetadata, IIndexMetadata, Dialect, ITablesMetadata} from '../dialects/Dialect';
-import { IAssociationMetadata } from '../dialects/AssociationsParser';
-import { Builder } from './Builder';
+import { IConfig } from '../config/index.js';
+import {IColumnMetadata, ITableMetadata, IIndexMetadata, Dialect, ITablesMetadata} from '../dialects/Dialect.js';
+import { IAssociationMetadata } from '../dialects/AssociationsParser.js';
+import { Builder } from './Builder.js';
 import {
     nodeToString,
     generateArrowDecorator,
     generateNamedImports,
     generateObjectLiteralDecorator,
     generateIndexExport,
-} from './utils';
+} from './utils.js';
 
 const foreignKeyDecorator = 'ForeignKey';
 

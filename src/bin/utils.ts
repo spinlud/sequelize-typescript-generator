@@ -1,7 +1,7 @@
 import path from 'path';
 import fs from 'fs';
 import { Dialect as DialectType } from 'sequelize';
-import { Dialect } from '../dialects/Dialect';
+import { Dialect } from '../dialects/Dialect.js';
 
 import {
     DialectMySQL,
@@ -9,7 +9,7 @@ import {
     DialectMSSQL,
     DialectMariaDB,
     DialectSQLite,
-} from '../dialects';
+} from '../dialects/index.js';
 
 import {
     IConfig,
@@ -17,7 +17,7 @@ import {
     TransformCase,
     TransformMap,
     TransformTarget
-} from '../config/IConfig';
+} from '../config/IConfig.js';
 
 export type ArgvType = { [key: string]: any };
 

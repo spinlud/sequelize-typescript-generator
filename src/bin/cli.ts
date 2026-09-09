@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 
 import yargs from 'yargs';
-import { ModelBuilder } from '../builders';
+import { hideBin } from 'yargs/helpers';
+import { ModelBuilder } from '../builders/index.js';
 import {
     defaultOutputDir,
     aliasesMap,
     validateArgs,
     buildConfig,
     buildDialect,
-} from './utils';
+} from './utils.js';
 
 process.on('unhandledRejection', (reason, promise) => {
     console.error(reason, promise);
@@ -21,7 +22,7 @@ export const cli = async (): Promise<void> => {
     usage += `-t [tables] -T [skip-tables] -V [no-views] -i [indices] -C [case] -S [storage] -L [lint-file] `;
     usage += `-l [ssl] -r [protocol] -n [dialect-options] -c [clean] -g [logs]`;
 
-    const {argv} = yargs
+    const {argv} = yargs(hideBin(process.argv))
         .usage(usage)
         .demand(['dialect'])
         .option('h', {

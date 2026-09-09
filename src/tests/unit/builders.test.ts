@@ -1,4 +1,4 @@
-import { nodeToString, generateNamedImports } from '../../builders/utils';
+import { nodeToString, generateNamedImports } from '../../builders/utils.js';
 
 describe('Builder utils', () => {
 

@@ -1,5 +1,5 @@
-export { DialectMySQL } from './DialectMySQL';
-export { DialectPostgres } from './DialectPostgres';
-export { DialectMSSQL } from './DialectMSSQL';
-export { DialectMariaDB } from './DialectMariaDB';
-export { DialectSQLite } from './DialectSQLite';
+export { DialectMySQL } from './DialectMySQL.js';
+export { DialectPostgres } from './DialectPostgres.js';
+export { DialectMSSQL } from './DialectMSSQL.js';
+export { DialectMariaDB } from './DialectMariaDB.js';
+export { DialectSQLite } from './DialectSQLite.js';

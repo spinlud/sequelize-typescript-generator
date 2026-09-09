@@ -1,7 +1,7 @@
 import { Sequelize } from 'sequelize-typescript';
 import { QueryTypes } from 'sequelize';
-import { ITestMetadata } from '../ITestMetadata';
-import { TestRunner } from '../TestRunner';
+import { ITestMetadata } from '../ITestMetadata.js';
+import { TestRunner } from '../TestRunner.js';
 import {
     DATA_TYPES_TABLE_NAME,
     DATA_TYPES_TABLE_DROP,
@@ -37,7 +37,7 @@ import {
     PASSPORT_TABLE_DROP,
     PASSPORT_TABLE_CREATES,
     PASSPORT_TABLE_INSERTS,
-} from './queries';
+} from './queries.js';
 
 interface INativeType {
     DATA_TYPE: string;

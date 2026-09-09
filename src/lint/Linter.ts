@@ -1,5 +1,5 @@
 import { ESLint } from 'eslint';
-import { eslintDefaultConfig } from './eslintDefaultConfig';
+import { eslintDefaultConfig } from './eslintDefaultConfig.js';
 
 /**
  * @class Linter

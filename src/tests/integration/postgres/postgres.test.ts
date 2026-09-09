@@ -1,6 +1,6 @@
-import { ITestMetadata } from '../ITestMetadata';
+import { ITestMetadata } from '../ITestMetadata.js';
 import { Sequelize } from 'sequelize-typescript';
-import { TestRunner } from '../TestRunner';
+import { TestRunner } from '../TestRunner.js';
 import { QueryTypes } from 'sequelize';
 import {
     SCHEMA_DROP,
@@ -39,7 +39,7 @@ import {
     PASSPORT_TABLE_DROP,
     PASSPORT_TABLE_CREATES,
     PASSPORT_TABLE_INSERTS,
-} from "./queries";
+} from "./queries.js";
 
 interface INativeType {
     udt_name: string;

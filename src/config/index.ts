@@ -1,1 +1,1 @@
-export { IConfig } from './IConfig';
+export { IConfig } from './IConfig.js';

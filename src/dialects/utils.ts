@@ -1,5 +1,5 @@
-import { ITableMetadata } from './Dialect';
-import { TransformCase, TransformFn, TransformMap, TransformTarget } from '../config/IConfig';
+import { ITableMetadata } from './Dialect.js';
+import { TransformCase, TransformFn, TransformMap, TransformTarget } from '../config/IConfig.js';
 import { camelCase, constantCase, pascalCase, snakeCase } from "change-case";
 
 type CaseTransformer = (s: string) => string;

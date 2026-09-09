@@ -1,27 +1,30 @@
 import path from 'path';
 import { promises as fs } from 'fs';
+import { createRequire } from 'module';
+import { jest } from '@jest/globals';
 import pluralize from 'pluralize';
-import { ITestMetadata } from './ITestMetadata';
+import { ITestMetadata } from './ITestMetadata.js';
 import { Sequelize } from 'sequelize-typescript';
 import { QueryTypes } from 'sequelize';
-import { buildSequelizeOptions } from '../environment';
-import { IConfig } from '../../config';
-import { Dialect } from '../../dialects/Dialect';
-import { getTransformer } from '../../dialects/utils';
-import { ModelBuilder } from '../../builders';
-import { TransformCases, TransformTarget, TransformFn } from '../../config/IConfig';
+import { buildSequelizeOptions } from '../environment.js';
+import { IConfig } from '../../config/index.js';
+import { Dialect } from '../../dialects/Dialect.js';
+import { getTransformer } from '../../dialects/utils.js';
+import { ModelBuilder } from '../../builders/index.js';
+import { TransformCases, TransformTarget, TransformFn } from '../../config/IConfig.js';
 import {
     DialectMySQL,
     DialectPostgres,
     DialectMSSQL,
     DialectMariaDB,
     DialectSQLite,
-} from '../../dialects';
+} from '../../dialects/index.js';
 
 /**
  * Workaround: deprecated GeomFromText function for MySQL
  */
 const applyGeomFromTextWorkaroundMySQL = (): void => { // Reference: https://github.com/sequelize/sequelize/issues/9786
+    const require = createRequire(import.meta.url);
     const Sequelize = require('sequelize');
     const wkx = require('wkx');
 
