@@ -3,9 +3,7 @@ import os from 'os';
 import path from 'path';
 import { createRequire } from 'module';
 import { pathToFileURL } from 'url';
-import { Linter, assertFlatConfig } from '../../lint/Linter.js';
-
-const MIGRATION_GUIDE_URL = 'https://eslint.org/docs/latest/use/configure/migration-guide';
+import { Linter, assertFlatConfig, ESLINT_MIGRATION_GUIDE_URL } from '../../lint/Linter.js';
 
 const makeTempDir = (): string => fs.mkdtempSync(path.join(os.tmpdir(), 'stg-linter-'));
 
@@ -17,7 +15,7 @@ describe('Linter', () => {
             const sourcePath = '/tmp/legacy-extends.js';
 
             expect(() => assertFlatConfig({ extends: ['eslint:recommended'] }, sourcePath))
-                .toThrow(MIGRATION_GUIDE_URL);
+                .toThrow(ESLINT_MIGRATION_GUIDE_URL);
             expect(() => assertFlatConfig({ extends: ['eslint:recommended'] }, sourcePath))
                 .toThrow(sourcePath);
         });
@@ -26,14 +24,14 @@ describe('Linter', () => {
             const sourcePath = '/tmp/legacy-env.js';
 
             expect(() => assertFlatConfig({ env: { node: true } }, sourcePath))
-                .toThrow(MIGRATION_GUIDE_URL);
+                .toThrow(ESLINT_MIGRATION_GUIDE_URL);
         });
 
         it('should reject a config object with a string "parser"', () => {
             const sourcePath = '/tmp/legacy-parser.js';
 
             expect(() => assertFlatConfig({ parser: '@typescript-eslint/parser' }, sourcePath))
-                .toThrow(MIGRATION_GUIDE_URL);
+                .toThrow(ESLINT_MIGRATION_GUIDE_URL);
         });
 
         it('should reject a legacy element nested inside a config array', () => {
@@ -43,7 +41,7 @@ describe('Linter', () => {
                 { env: { browser: true } },
             ];
 
-            expect(() => assertFlatConfig(config, sourcePath)).toThrow(MIGRATION_GUIDE_URL);
+            expect(() => assertFlatConfig(config, sourcePath)).toThrow(ESLINT_MIGRATION_GUIDE_URL);
         });
 
         it('should accept a flat config array with an object parser in languageOptions', () => {
@@ -70,7 +68,7 @@ describe('Linter', () => {
             const configFile = path.join(dir, '.eslintrc.json');
             fs.writeFileSync(configFile, JSON.stringify({ rules: {} }));
 
-            expect(() => new Linter({ configFile })).toThrow(MIGRATION_GUIDE_URL);
+            expect(() => new Linter({ configFile })).toThrow(ESLINT_MIGRATION_GUIDE_URL);
         });
 
     });

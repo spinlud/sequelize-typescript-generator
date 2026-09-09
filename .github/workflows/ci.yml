@@ -29,8 +29,7 @@ jobs:
       - name: Install
         run: npm ci
 
-      # The repo has no lint script for its own source (the "lint" script targets
-      # generated output); a strict type check stands in as the lint gate.
+      # Type check stands in for lint: the repo has no ESLint config for its own source.
       - name: Lint (type check)
         run: npx tsc --noEmit
 

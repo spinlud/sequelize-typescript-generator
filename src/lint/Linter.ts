@@ -4,7 +4,7 @@ import { ESLint } from 'eslint';
 import { eslintDefaultConfig } from './eslintDefaultConfig.js';
 import { ILintOptions } from '../config/IConfig.js';
 
-const ESLINT_MIGRATION_GUIDE_URL = 'https://eslint.org/docs/latest/use/configure/migration-guide';
+export const ESLINT_MIGRATION_GUIDE_URL = 'https://eslint.org/docs/latest/use/configure/migration-guide';
 
 const LEGACY_ESLINTRC_BASENAME_PATTERN = /^\.eslintrc(\.(js|cjs|json|yaml|yml))?$/;
 
@@ -85,7 +85,7 @@ const importConfigModule = async (configFile: string): Promise<unknown> => {
  * @param {string[]} paths
  * @returns {string}
  */
-const commonBaseDir = (paths: string[]): string => {
+const findCommonBaseDir = (paths: string[]): string => {
     const directories = paths.map(p => path.dirname(path.resolve(p)));
 
     if (directories.length === 0) {
@@ -130,7 +130,7 @@ export class Linter {
     }
 
     async lintFiles(paths: string[]): Promise<void> {
-        const cwd = commonBaseDir(paths);
+        const cwd = findCommonBaseDir(paths);
         let engine: ESLint;
 
         if (this.configFile) {

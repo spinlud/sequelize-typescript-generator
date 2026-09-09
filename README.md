@@ -831,43 +831,73 @@ export class authors_books extends Model<authors_booksAttributes, authors_booksA
 ```
 
 ## Lint
-By default each generated model will be linted with a predefined set of rules to improve readability:
+By default each generated model will be linted with a predefined ESLint flat config to improve readability:
 
 ```ts
-export const eslintDefaultConfig = {
-    parser:  '@typescript-eslint/parser',
-    parserOptions:  {
-        ecmaVersion:  2018,
-        sourceType:  'module',
+import stylistic from '@stylistic/eslint-plugin';
+import tsParser from '@typescript-eslint/parser';
+
+export const eslintDefaultConfig = [
+    {
+        files: ['**/*.ts', '**/*.tsx'],
+        languageOptions: {
+            parser: tsParser,
+            parserOptions: {
+                ecmaVersion: 2019,
+                sourceType: 'module',
+            },
+        },
+        plugins: {
+            '@stylistic': stylistic,
+        },
+        rules: {
+            '@stylistic/padded-blocks': ['error', { blocks: 'always', classes: 'always', switches: 'always' }],
+            '@stylistic/lines-between-class-members': ['error', 'always'],
+            '@stylistic/object-curly-newline': ['error', {
+                'ObjectExpression': 'always',
+                'ObjectPattern': { 'multiline': true },
+                'ImportDeclaration': { 'multiline': true, 'minProperties': 3 },
+                'ExportDeclaration': { 'multiline': true, 'minProperties': 3 },
+            }],
+            '@stylistic/object-property-newline': ['error'],
+            '@stylistic/indent': ['error', 'tab'],
+        },
     },
-    plugins: [
-        '@typescript-eslint',
-    ],
-    extends:  [],
-    rules:  {
-        'padded-blocks': ['error', { blocks: 'always', classes: 'always', switches: 'always' }],
-        'lines-between-class-members': ['error', 'always' ],
-        'object-curly-newline': ['error', {
-            'ObjectExpression': 'always',
-            'ObjectPattern': { 'multiline': true },
-            'ImportDeclaration': { 'multiline': true, 'minProperties': 3 },
-            'ExportDeclaration': { 'multiline': true, 'minProperties': 3 },
-        }],
-        'object-property-newline': ['error'],
-        'indent': ['error', 'tab'],
-    },
-};
+];
 ```
 
-You can provide your own set of rules that matches your coding style. Just define a file with the linting rules 
-(see [eslint](https://www.npmjs.com/package/eslint) docs) and pass it to the `cli` like the following:
+You can provide your own rules by passing a config file to `--lint-file` / `-L`. Only ESLint flat config files are
+accepted: `.mjs`, `.js`, or `.cjs` modules that export a config array. Legacy `.eslintrc*` files, and configs using
+`extends`, `env`, or a string `parser`, are rejected — see the
+[ESLint flat config migration guide](https://eslint.org/docs/latest/use/configure/migration-guide).
+
+A minimal flat config looks like this:
+
+```js
+import stylistic from '@stylistic/eslint-plugin';
+import parser from '@typescript-eslint/parser';
+
+export default [
+    {
+        files: ['**/*.ts', '**/*.tsx'],
+        languageOptions: {
+            parser,
+            parserOptions: { ecmaVersion: 2019, sourceType: 'module' },
+        },
+        plugins: { '@stylistic': stylistic },
+        rules: { '@stylistic/indent': ['error', 'tab'] },
+    },
+];
+```
+
+Pass it to the `cli` like the following:
 ```shell
-npx stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --lint-file path/to/lint-file --out-dir models --clean 
+npx stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --lint-file path/to/flat.config.mjs --out-dir models --clean 
 ```
 
 Globally:
 ```shell
-stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --lint-file path/to/lint-file --out-dir models --clean 
+stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --lint-file path/to/flat.config.mjs --out-dir models --clean 
 ```
 
 Or you can pass `eslint` options programmatically:

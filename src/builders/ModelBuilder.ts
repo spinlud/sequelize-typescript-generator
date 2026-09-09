@@ -20,6 +20,14 @@ import {
 const foreignKeyDecorator = 'ForeignKey';
 
 /**
+ * Type guard for Node.js system errors carrying an errno `code`.
+ * @param {unknown} err
+ * @returns {err is NodeJS.ErrnoException}
+ */
+const isErrnoException = (err: unknown): err is NodeJS.ErrnoException =>
+    typeof err === 'object' && err !== null && 'code' in err;
+
+/**
  * @class ModelGenerator
  * @constructor
  * @param {Dialect} dialect
@@ -303,7 +311,7 @@ export class ModelBuilder extends Builder {
             await fs.access(outDir);
         }
         catch(err: unknown) {
-            if (err instanceof Error && 'code' in err && err.code === 'ENOENT') {
+            if (isErrnoException(err) && err.code === 'ENOENT') {
                 await fs.mkdir(outDir, { recursive: true });
             }
             else {

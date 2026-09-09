@@ -1,15 +1,14 @@
-import { Sequelize, Dialect } from 'sequelize';
+import { Sequelize } from 'sequelize';
 import { buildSequelizeOptions } from '../environment.js';
+import { DIALECT_NAMES, DialectName } from '../../dialects/Dialect.js';
 
 const DEFAULT_TIMEOUT_MS = 60_000;
 const MSSQL_TIMEOUT_MS = 120_000;
 const DEFAULT_RETRY_DELAY_MS = 2_000;
 const DEFAULT_DATABASE_NAME = 'testdb';
 
-const SUPPORTED_DIALECTS: readonly Dialect[] = ['mysql', 'postgres', 'mariadb', 'mssql', 'sqlite'];
-
-const isSupportedDialect = (value: string): value is Dialect =>
-    SUPPORTED_DIALECTS.some((dialect) => dialect === value);
+const isSupportedDialect = (value: string): value is DialectName =>
+    DIALECT_NAMES.some((dialect) => dialect === value);
 
 const parsePositiveInt = (value: string | undefined, fallback: number): number => {
     if (!value) {
@@ -25,23 +24,26 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => {
     setTimeout(resolve, ms);
 });
 
-const toMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+const getErrorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+
+interface RetryPolicy {
+    deadline: number;
+    timeoutMs: number;
+    retryDelayMs: number;
+}
 
 /**
  * Retry an asynchronous action until it succeeds or the deadline passes.
  * @param {string} label
- * @param {number} deadline
- * @param {number} timeoutMs
- * @param {number} retryDelayMs
+ * @param {RetryPolicy} policy
  * @param {() => Promise<void>} action
  */
 const waitUntil = async (
     label: string,
-    deadline: number,
-    timeoutMs: number,
-    retryDelayMs: number,
+    policy: RetryPolicy,
     action: () => Promise<void>,
 ): Promise<void> => {
+    const { deadline, timeoutMs, retryDelayMs } = policy;
     let lastError: unknown;
 
     while (Date.now() < deadline) {
@@ -56,7 +58,7 @@ const waitUntil = async (
         }
     }
 
-    throw new Error(`Timed out after ${timeoutMs} ms waiting for ${label}: ${toMessage(lastError)}`);
+    throw new Error(`Timed out after ${timeoutMs} ms waiting for ${label}: ${getErrorMessage(lastError)}`);
 };
 
 const main = async (): Promise<void> => {
@@ -67,7 +69,7 @@ const main = async (): Promise<void> => {
     }
 
     if (!isSupportedDialect(dialectArg)) {
-        throw new Error(`Unsupported dialect "${dialectArg}". Supported dialects: ${SUPPORTED_DIALECTS.join(', ')}.`);
+        throw new Error(`Unsupported dialect "${dialectArg}". Supported dialects: ${DIALECT_NAMES.join(', ')}.`);
     }
 
     const dialect = dialectArg;
@@ -77,14 +79,18 @@ const main = async (): Promise<void> => {
         dialect === 'mssql' ? MSSQL_TIMEOUT_MS : DEFAULT_TIMEOUT_MS,
     );
     const retryDelayMs = parsePositiveInt(process.env.TEST_DB_WAIT_RETRY_DELAY_MS, DEFAULT_RETRY_DELAY_MS);
-    const deadline = Date.now() + timeoutMs;
+    const retryPolicy: RetryPolicy = {
+        deadline: Date.now() + timeoutMs,
+        timeoutMs,
+        retryDelayMs,
+    };
 
     // SQL Server starts without the test database; connect to "master" and create it on demand.
     if (dialect === 'mssql') {
         const databaseName = options.database ?? DEFAULT_DATABASE_NAME;
         const masterOptions = { ...options, database: 'master' };
 
-        await waitUntil('SQL Server (master)', deadline, timeoutMs, retryDelayMs, async () => {
+        await waitUntil('SQL Server (master)', retryPolicy, async () => {
             const master = new Sequelize(masterOptions);
 
             try {
@@ -97,7 +103,7 @@ const main = async (): Promise<void> => {
         });
     }
 
-    await waitUntil(`${dialect} database`, deadline, timeoutMs, retryDelayMs, async () => {
+    await waitUntil(`${dialect} database`, retryPolicy, async () => {
         const sequelize = new Sequelize(options);
 
         try {
@@ -112,6 +118,6 @@ const main = async (): Promise<void> => {
 };
 
 main().catch((error: unknown) => {
-    console.error(toMessage(error));
+    console.error(getErrorMessage(error));
     process.exit(1);
 });

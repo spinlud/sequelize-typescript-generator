@@ -1,6 +1,6 @@
 import os from 'os';
 import path from 'path';
-import { promises as fs, mkdirSync } from 'fs';
+import { promises as fs } from 'fs';
 import { createRequire } from 'module';
 import { pathToFileURL } from 'url';
 import { jest } from '@jest/globals';
@@ -11,21 +11,13 @@ import { Sequelize } from 'sequelize-typescript';
 import { QueryTypes } from 'sequelize';
 import { buildSequelizeOptions } from '../environment.js';
 import { IConfig } from '../../config/index.js';
-import { Dialect } from '../../dialects/Dialect.js';
 import { getTransformer } from '../../dialects/utils.js';
+import { createDialect } from '../../dialects/createDialect.js';
 import { ModelBuilder } from '../../builders/index.js';
 import { TransformCases, TransformTarget, TransformFn } from '../../config/IConfig.js';
 import { compileGeneratedModels } from './compileGeneratedModels.js';
 import { FORMATS, Format } from './formats.js';
-import {
-    DialectMySQL,
-    DialectPostgres,
-    DialectMSSQL,
-    DialectMariaDB,
-    DialectSQLite,
-} from '../../dialects/index.js';
-
-const ESLINT_MIGRATION_GUIDE_URL = 'https://eslint.org/docs/latest/use/configure/migration-guide';
+import { ESLINT_MIGRATION_GUIDE_URL } from '../../lint/Linter.js';
 
 /**
  * Workaround: deprecated GeomFromText function for MySQL
@@ -128,27 +120,6 @@ const initTestDatabase = async (testMetadata: ITestMetadata, connection: Sequeli
     }
 };
 
-/**
- *
- * @param testMetadata
- */
-const buildDialect = (testMetadata: ITestMetadata): Dialect => {
-    switch (testMetadata.dialect) {
-        case 'mysql':
-            return new DialectMySQL();
-        case 'postgres':
-            return new DialectPostgres();
-        case 'mssql':
-            return new DialectMSSQL();
-        case 'mariadb':
-            return new DialectMariaDB();
-        case 'sqlite':
-            return new DialectSQLite();
-        default:
-            throw new Error(`Invalid dialect ${testMetadata.dialect}`);
-    }
-};
-
 export class TestRunner {
     constructor(private testMetadata: ITestMetadata) {}
 
@@ -165,19 +136,9 @@ export class TestRunner {
                 const outDir = path.join(process.cwd(), 'src/tests/integration/output-models', format);
                 const indexDir = path.join(outDir, 'index.ts');
 
-                // Ensure the per-format output directory exists up front. The builder would
-                // create it on demand, but its ENOENT guard relies on `instanceof Error`,
-                // which fails across the Jest VM module realm.
-                mkdirSync(outDir, { recursive: true });
-
-                // Single hook where the future IConfig.format option will be threaded into the
-                // builder config. IConfig has no format field yet (the native format arrives in a
-                // later phase), so for now the format only selects the output directory.
-                const applyFormat = (config: IConfig): IConfig => config;
-
                 const buildModels = async (config: IConfig): Promise<void> => {
-                    const dialect = buildDialect(testMetadata);
-                    const builder = new ModelBuilder(applyFormat(config), dialect);
+                    const dialect = createDialect(testMetadata.dialect);
+                    const builder = new ModelBuilder(config, dialect);
                     await builder.build();
                 };
 
@@ -556,7 +517,7 @@ export class TestRunner {
                     });
 
                     it.each(testMetadata.dataTypes.testValues)('%s', async (typeName, typeValue) => {
-                        const dialect = buildDialect(testMetadata);
+                        const dialect = createDialect(testMetadata.dialect);
                         const DataTypes = connection!.model(testMetadata.dataTypes.dataTypesTable);
                         const columnName = `f_${typeName}`;
 
