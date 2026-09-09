@@ -1,5 +1,5 @@
 import { IndexType, IndexMethod, AbstractDataTypeConstructor } from 'sequelize';
-import { Sequelize } from 'sequelize-typescript';
+import { Sequelize } from 'sequelize';
 import { IConfig } from '../config';
 import { createConnection } from "../connection";
 import { AssociationsParser, IAssociationsParsed, IAssociationMetadata } from './AssociationsParser'

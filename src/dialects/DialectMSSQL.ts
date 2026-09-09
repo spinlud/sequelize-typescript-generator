@@ -1,5 +1,5 @@
 import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
-import { Sequelize, DataType } from 'sequelize-typescript';
+import { Sequelize, DataTypes } from 'sequelize';
 import { IConfig } from '../config';
 import { IColumnMetadata, IIndexMetadata, Dialect, ITable } from './Dialect';
 import { generatePrecisionSignature, warnUnknownMappingForDataType } from './utils';
@@ -88,35 +88,35 @@ const jsDataTypesMap: { [key: string]: string } = {
 };
 
 const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
-    int: DataType.INTEGER,
-    bigint: DataType.BIGINT,
-    tinyint: DataType.INTEGER,
-    smallint: DataType.INTEGER,
-    numeric: DataType.DECIMAL,
-    decimal: DataType.DECIMAL,
-    float: DataType.FLOAT,
-    real: DataType.REAL,
-    money: DataType.STRING,
-    smallmoney: DataType.STRING,
-    char: DataType.STRING,
-    nchar: DataType.STRING,
-    varchar: DataType.STRING,
-    nvarchar: DataType.STRING,
-    text: DataType.STRING,
-    ntext: DataType.STRING,
-    date: DataType.DATEONLY,
-    datetime: DataType.DATE,
-    datetime2: DataType.DATE,
-    timestamp: DataType.DATE,
-    datetimeoffset: DataType.STRING,
-    time: DataType.TIME,
-    smalldatetime: DataType.DATE,
-    bit: DataType.STRING,
-    binary: DataType.STRING,
-    varbinary: DataType.STRING,
-    uniqueidentifier: DataType.STRING,
-    xml: DataType.STRING,
-    geography: DataType.GEOGRAPHY,
+    int: DataTypes.INTEGER,
+    bigint: DataTypes.BIGINT,
+    tinyint: DataTypes.INTEGER,
+    smallint: DataTypes.INTEGER,
+    numeric: DataTypes.DECIMAL,
+    decimal: DataTypes.DECIMAL,
+    float: DataTypes.FLOAT,
+    real: DataTypes.REAL,
+    money: DataTypes.STRING,
+    smallmoney: DataTypes.STRING,
+    char: DataTypes.STRING,
+    nchar: DataTypes.STRING,
+    varchar: DataTypes.STRING,
+    nvarchar: DataTypes.STRING,
+    text: DataTypes.STRING,
+    ntext: DataTypes.STRING,
+    date: DataTypes.DATEONLY,
+    datetime: DataTypes.DATE,
+    datetime2: DataTypes.DATE,
+    timestamp: DataTypes.DATE,
+    datetimeoffset: DataTypes.STRING,
+    time: DataTypes.TIME,
+    smalldatetime: DataTypes.DATE,
+    bit: DataTypes.STRING,
+    binary: DataTypes.STRING,
+    varbinary: DataTypes.STRING,
+    uniqueidentifier: DataTypes.STRING,
+    xml: DataTypes.STRING,
+    geography: DataTypes.GEOGRAPHY,
 };
 
 /**

@@ -4,7 +4,7 @@ import * as ts from 'typescript';
 import pluralize from 'pluralize';
 import { Linter } from '../lint';
 import { ModelAttributeColumnOptions } from 'sequelize';
-import { IndexOptions, IndexFieldOptions } from 'sequelize-typescript';
+import type { IndexOptions, IndexFieldOptions } from 'sequelize-typescript';
 import { IConfig } from '../config';
 import {IColumnMetadata, ITableMetadata, IIndexMetadata, Dialect, ITablesMetadata} from '../dialects/Dialect';
 import { IAssociationMetadata } from '../dialects/AssociationsParser';

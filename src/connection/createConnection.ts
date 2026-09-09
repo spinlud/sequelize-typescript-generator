@@ -1,5 +1,5 @@
 import { Options } from 'sequelize';
-import { Sequelize } from 'sequelize-typescript';
+import { Sequelize } from 'sequelize';
 
 /**
  * Create a new sequelize connection

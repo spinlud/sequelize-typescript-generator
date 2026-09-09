@@ -5,7 +5,6 @@ import { ITestMetadata } from './ITestMetadata';
 import { Sequelize } from 'sequelize-typescript';
 import { QueryTypes } from 'sequelize';
 import { buildSequelizeOptions } from '../environment';
-import { createConnection } from '../../connection';
 import { IConfig } from '../../config';
 import { Dialect } from '../../dialects/Dialect';
 import { getTransformer } from '../../dialects/utils';
@@ -162,7 +161,7 @@ export class TestRunner {
                 };
 
                 beforeEach(async () => {
-                    connection = createConnection({ ...sequelizeOptions });
+                    connection = new Sequelize({ ...sequelizeOptions });
                     await connection.authenticate();
                     await initTestDatabase(testMetadata, connection);
                 });
@@ -194,7 +193,7 @@ export class TestRunner {
                 let connection: Sequelize | undefined;
 
                 beforeAll(async () => {
-                    connection = createConnection({ ...sequelizeOptions });
+                    connection = new Sequelize({ ...sequelizeOptions });
                     await connection.authenticate();
                     await initTestDatabase(testMetadata, connection);
 
@@ -241,7 +240,7 @@ export class TestRunner {
                 let connection: Sequelize | undefined;
 
                 beforeAll(async () => {
-                    connection = createConnection({ ...sequelizeOptions });
+                    connection = new Sequelize({ ...sequelizeOptions });
                     await connection.authenticate();
                     await initTestDatabase(testMetadata, connection);
 
@@ -290,7 +289,7 @@ export class TestRunner {
                     let connection: Sequelize | undefined;
 
                     beforeAll(async () => {
-                        connection = createConnection({ ...sequelizeOptions });
+                        connection = new Sequelize({ ...sequelizeOptions });
                         await connection.authenticate();
                         await initTestDatabase(testMetadata, connection);
 
@@ -336,7 +335,7 @@ export class TestRunner {
                 let connection: Sequelize | undefined;
 
                 beforeEach(async () => {
-                    connection = createConnection({ ...sequelizeOptions });
+                    connection = new Sequelize({ ...sequelizeOptions });
                     await connection.authenticate();
                     await initTestDatabase(testMetadata, connection);
                 });
@@ -446,7 +445,7 @@ export class TestRunner {
                         applyGeomFromTextWorkaroundMySQL();
                     }
 
-                    connection = createConnection({ ...sequelizeOptions });
+                    connection = new Sequelize({ ...sequelizeOptions });
                     await connection.authenticate();
                     await initTestDatabase(testMetadata, connection);
 
@@ -532,7 +531,7 @@ export class TestRunner {
                 let connection: Sequelize | undefined;
 
                 beforeAll(async () => {
-                    connection = createConnection({ ...sequelizeOptions });
+                    connection = new Sequelize({ ...sequelizeOptions });
                     await connection.authenticate();
                     await initTestDatabase(testMetadata, connection);
 

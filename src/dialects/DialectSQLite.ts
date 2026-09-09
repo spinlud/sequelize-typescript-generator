@@ -1,5 +1,5 @@
 import { QueryTypes, AbstractDataTypeConstructor, IndexMethod } from 'sequelize';
-import { Sequelize, DataType } from 'sequelize-typescript';
+import { Sequelize, DataTypes } from 'sequelize';
 import { IConfig } from '../config';
 import { IColumnMetadata, Dialect, IIndexMetadata, ITable } from './Dialect';
 import { warnUnknownMappingForDataType } from './utils';
@@ -49,19 +49,19 @@ export class DialectSQLite extends Dialect {
         const dbTypeUpper = dbType.toUpperCase();
 
         if (dbTypeUpper.includes('INT')) {
-            return DataType.INTEGER;
+            return DataTypes.INTEGER;
         }
         else if (dbTypeUpper.includes('CHAR') || dbTypeUpper.includes('CLOB') || dbTypeUpper.includes('TEXT')) {
-            return DataType.STRING;
+            return DataTypes.STRING;
         }
         else if (dbTypeUpper.includes('BLOB')) {
-            return DataType.BLOB;
+            return DataTypes.BLOB;
         }
         else if (dbTypeUpper.includes('REAL') || dbTypeUpper.includes('FLOA') || dbTypeUpper.includes('DOUB')) {
-            return DataType.REAL;
+            return DataTypes.REAL;
         }
         else {
-            return DataType.DECIMAL;
+            return DataTypes.DECIMAL;
         }
     }
 
