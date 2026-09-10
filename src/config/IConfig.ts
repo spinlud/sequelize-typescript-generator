@@ -1,4 +1,8 @@
 import { Options } from 'sequelize';
+import type { Format } from './format.js';
+
+export { FORMATS, DEFAULT_FORMAT, isFormat } from './format.js';
+export type { Format } from './format.js';
 
 export type TransformCase = 'UPPER' | 'LOWER' | 'UNDERSCORE' | 'CAMEL' | 'PASCAL' | 'CONST';
 
@@ -49,5 +53,6 @@ export interface IConfig {
     metadata?: IConfigMetadata;
     output: IConfigOutput;
     lintOptions?: ILintOptions;
-    strict?: boolean;
+    format?: Format; // undefined means native
+    strict?: boolean; // decorators only; ignored with a notice in native
 }

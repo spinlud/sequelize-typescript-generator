@@ -25,3 +25,6 @@ export type {
     TransformMap,
     TransformFn,
 } from './config/IConfig.js';
+
+export { FORMATS, DEFAULT_FORMAT, isFormat } from './config/format.js';
+export type { Format } from './config/format.js';

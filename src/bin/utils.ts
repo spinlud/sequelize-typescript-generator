@@ -11,6 +11,7 @@ import {
     TransformMap,
     TransformTarget
 } from '../config/IConfig.js';
+import { isFormat } from '../config/format.js';
 
 export type ArgvType = { [key: string]: any };
 
@@ -43,6 +44,7 @@ export const aliasesMap = {
     DIALECT_OPTIONS_FILE: 'dialect-options-file',
     DISABLE_STRICT: 'no-strict',
     DISABLE_VIEWS: 'no-views',
+    FORMAT: 'format',
 };
 
 /**
@@ -186,7 +188,10 @@ export const buildConfig = (argv: ArgvType): IConfig => {
                 : path.join(process.cwd(), defaultOutputDir),
             clean: !!argv[aliasesMap.OUTPUT_DIR_CLEAN],
         },
-        strict: !(!!argv[aliasesMap.DISABLE_STRICT]),
+        // yargs exposes -R through the no-strict alias, while --no-strict is parsed
+        // as strict: false; honour both spellings.
+        strict: !(!!argv[aliasesMap.DISABLE_STRICT] || argv['strict'] === false),
+        ...isFormat(argv[aliasesMap.FORMAT]) && { format: argv[aliasesMap.FORMAT] },
         ...argv[aliasesMap.LINT_FILE] && {
             lintOptions: {
                 configFile: argv[aliasesMap.LINT_FILE],

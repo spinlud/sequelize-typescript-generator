@@ -1,6 +1,5 @@
 /**
  * Output formats the integration suite exercises.
  */
-export type Format = 'decorators';
-
-export const FORMATS: readonly Format[] = ['decorators'];
+export type { Format } from '../../config/format.js';
+export { FORMATS } from '../../config/format.js';

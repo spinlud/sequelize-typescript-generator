@@ -46,4 +46,33 @@ describe('buildConfig', () => {
 
         expect(config.metadata && 'associations' in config.metadata).toBe(false);
     });
+
+    it('maps -F/--format into config.format', () => {
+        expect(buildConfig({ ...baseArgv, [aliasesMap.FORMAT]: 'native' }).format).toBe('native');
+        expect(buildConfig({ ...baseArgv, [aliasesMap.FORMAT]: 'decorators' }).format).toBe('decorators');
+    });
+
+    it('leaves config.format absent for an unknown format value', () => {
+        const config = buildConfig({ ...baseArgv, [aliasesMap.FORMAT]: 'bogus' });
+
+        expect('format' in config).toBe(false);
+    });
+
+    it('sets strict false when -R sets the no-strict alias', () => {
+        const config = buildConfig({ ...baseArgv, [aliasesMap.DISABLE_STRICT]: true });
+
+        expect(config.strict).toBe(false);
+    });
+
+    it('sets strict false when --no-strict is parsed as strict:false', () => {
+        const config = buildConfig({ ...baseArgv, strict: false });
+
+        expect(config.strict).toBe(false);
+    });
+
+    it('defaults strict to true when neither spelling is present', () => {
+        const config = buildConfig(baseArgv);
+
+        expect(config.strict).toBe(true);
+    });
 });

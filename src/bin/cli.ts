@@ -10,6 +10,7 @@ import {
     buildConfig,
     buildDialect,
 } from './utils.js';
+import { FORMATS, DEFAULT_FORMAT } from '../config/format.js';
 
 process.on('unhandledRejection', (reason, promise) => {
     console.error(reason, promise);
@@ -20,7 +21,7 @@ export const cli = async (): Promise<void> => {
     let usage = `Usage: stg -D <dialect> -d [database] -u [username] -x [password] `;
     usage += `-h [host] -p [port] -o [out-dir] -s [schema] -a [associations-file]`;
     usage += `-t [tables] -T [skip-tables] -V [no-views] -i [indices] -P [paranoid] -C [case] -S [storage] -L [lint-file] `;
-    usage += `-l [ssl] -r [protocol] -n [dialect-options] -c [clean] -g [logs] --no-associations`;
+    usage += `-l [ssl] -r [protocol] -n [dialect-options] -c [clean] -g [logs] -F [format] --no-associations`;
 
     const {argv} = yargs(hideBin(process.argv))
         .usage(usage)
@@ -143,7 +144,15 @@ export const cli = async (): Promise<void> => {
         }).option('R', {
             alias: aliasesMap.DISABLE_STRICT,
             boolean: true,
-            describe: `Disable strict typescript class declaration.`,
+            describe: `Disable strict typescript class declaration (decorators format only; ignored in native format).`,
+        }).option('F', {
+            alias: aliasesMap.FORMAT,
+            string: true,
+            choices: FORMATS,
+            default: DEFAULT_FORMAT,
+            describe: `Output format:
+             - native: plain Sequelize classes with declare fields, Model.init and an initModels wiring file (default)
+             - decorators: sequelize-typescript decorators (requires sequelize-typescript in the target project)`,
         }).option('V', {
             alias: aliasesMap.DISABLE_VIEWS,
             boolean: true,
