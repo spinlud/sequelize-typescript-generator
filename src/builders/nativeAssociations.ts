@@ -3,7 +3,7 @@ import { Model } from 'sequelize';
 import type { BelongsToManyOptions, BelongsToOptions, HasManyOptions } from 'sequelize';
 import type { ITableMetadata } from '../dialects/Dialect.js';
 import type { IAssociationMetadata } from '../dialects/AssociationsParser.js';
-import { resolveAssociationPropertyName } from './ModelBuilder.js';
+import { resolveAssociationPropertyName } from './associationNaming.js';
 import { classifyAttribute, resolvePrimaryKeyAttribute } from './nativeAttributes.js';
 
 /**

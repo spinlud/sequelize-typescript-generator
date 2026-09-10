@@ -1,15 +1,19 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import * as ts from 'typescript';
-import pluralize from 'pluralize';
 import { Linter } from '../lint/index.js';
 import { ModelAttributeColumnOptions } from 'sequelize';
 import type { BelongsToOptions, HasManyOptions, HasOneOptions } from 'sequelize';
 import type { IndexOptions, IndexFieldOptions, TableOptions } from 'sequelize-typescript';
 import { IConfig } from '../config/index.js';
+import { resolveFormat, shouldNoticeIgnoredStrict, STRICT_IGNORED_NOTICE } from '../config/format.js';
 import {IColumnMetadata, ITableMetadata, IIndexMetadata, Dialect, ITablesMetadata} from '../dialects/Dialect.js';
 import { IAssociationMetadata } from '../dialects/AssociationsParser.js';
+import { isErrnoException } from '../utils/errors.js';
 import { Builder } from './Builder.js';
+import { resolveAssociationPropertyName } from './associationNaming.js';
+import { IGeneratedFile, renderNativeFiles, writeGeneratedFiles } from './generatedFile.js';
+import { warnWhenDecoratorsDependencyIsMissing } from './decoratorsDependency.js';
 import {
     nodeToString,
     generateArrowDecorator,
@@ -18,15 +22,9 @@ import {
     generateIndexExport,
 } from './utils.js';
 
-const foreignKeyDecorator = 'ForeignKey';
+export { resolveAssociationPropertyName } from './associationNaming.js';
 
-/**
- * Type guard for Node.js system errors carrying an errno `code`.
- * @param {unknown} err
- * @returns {err is NodeJS.ErrnoException}
- */
-const isErrnoException = (err: unknown): err is NodeJS.ErrnoException =>
-    typeof err === 'object' && err !== null && 'code' in err;
+const foreignKeyDecorator = 'ForeignKey';
 
 /**
  * Build the `@Table` decorator options for a table. The `hasTrigger` flag is
@@ -48,22 +46,6 @@ export const buildTableDecoratorProps = (tableMetadata: ITableMetadata): Partial
  * Decorator options accepted by `@BelongsTo`, `@HasOne` and `@HasMany`.
  */
 export type AssociationDecoratorOptions = Partial<BelongsToOptions & HasManyOptions & HasOneOptions>;
-
-/**
- * Resolve the class property name an association is exposed under. When the
- * association carries a discovered alias it wins; otherwise the target model
- * name is pluralized for to-many associations and singularized otherwise.
- * @param {IAssociationMetadata} association
- * @returns {string}
- */
-export const resolveAssociationPropertyName = (association: IAssociationMetadata): string => {
-    if (association.alias) {
-        return association.alias;
-    }
-
-    return association.associationName.includes('Many') ?
-        pluralize.plural(association.targetModel) : pluralize.singular(association.targetModel);
-};
 
 /**
  * Build the decorator options for `@BelongsTo`, `@HasOne` and `@HasMany`. Keys
@@ -340,15 +322,41 @@ export class ModelBuilder extends Builder {
     }
 
     /**
+     * Render the decorators output as one file per table plus the index barrel.
+     * @param {ITablesMetadata} tablesMetadata
+     * @param {Dialect} dialect
+     * @param {boolean | undefined} strict
+     * @returns {IGeneratedFile[]}
+     */
+    private static renderDecoratorsFiles(
+        tablesMetadata: ITablesMetadata,
+        dialect: Dialect,
+        strict: boolean | undefined
+    ): IGeneratedFile[] {
+        const files: IGeneratedFile[] = Object.values(tablesMetadata).map(tableMetadata => ({
+            fileName: `${tableMetadata.name}.ts`,
+            content: ModelBuilder.buildTableClassDeclaration(tableMetadata, dialect, strict),
+        }));
+
+        files.push({ fileName: 'index.ts', content: ModelBuilder.buildIndexExports(tablesMetadata) });
+
+        return files;
+    }
+
+    /**
      * Build models files using the given configuration and dialect
      * @returns {Promise<void>}
      */
     async build(): Promise<void> {
         const { clean, outDir } = this.config.output;
-        const writePromises: Promise<void>[] = [];
+        const format = resolveFormat(this.config);
 
         if (this.config.connection.logging) {
             console.log('CONFIGURATION', this.config);
+        }
+
+        if (shouldNoticeIgnoredStrict(this.config)) {
+            console.warn(STRICT_IGNORED_NOTICE);
         }
 
         console.log(`Fetching metadata from source`);
@@ -380,39 +388,15 @@ export class ModelBuilder extends Builder {
             }
         }
 
-        // Build model files
-        for (const tableMetadata of Object.values(tablesMetadata)) {
-            console.log(`Processing table ${tableMetadata.originName}`);
-            const tableClassDecl =
-                ModelBuilder.buildTableClassDeclaration(tableMetadata, this.dialect, this.config.strict);
+        const files = format === 'native' ?
+            renderNativeFiles(tablesMetadata, this.dialect) :
+            ModelBuilder.renderDecoratorsFiles(tablesMetadata, this.dialect, this.config.strict);
 
-            writePromises.push((async () => {
-                const outPath = path.join(outDir, `${tableMetadata.name}.ts`);
+        await writeGeneratedFiles(outDir, files);
 
-                await fs.writeFile(
-                    outPath,
-                    tableClassDecl,
-                    { flag: 'w' }
-                );
-
-                console.log(`Generated model file at ${outPath}`);
-            })());
+        for (const file of files) {
+            console.log(`Generated file at ${path.join(outDir, file.fileName)}`);
         }
-
-        // Build index file
-        writePromises.push((async () => {
-            const indexPath = path.join(outDir, 'index.ts');
-            const indexContent = ModelBuilder.buildIndexExports(tablesMetadata);
-
-            await fs.writeFile(
-                indexPath,
-                indexContent
-            );
-
-            console.log(`Generated index file at ${indexPath}`);
-        })());
-
-        await Promise.all(writePromises);
 
         // Lint files
         try {
@@ -428,9 +412,9 @@ export class ModelBuilder extends Builder {
             console.log(`Linting files`);
             await linter.lintFiles([path.join(outDir, '*.ts')]);
         }
-        catch(err: any) {
+        catch(err: unknown) {
             // Handle unsupported global eslint usage
-            if (err.code && err.code === 'MODULE_NOT_FOUND') {
+            if (isErrnoException(err) && err.code === 'MODULE_NOT_FOUND') {
                 let msg = `\n[WARNING] Linting models skipped: dependency not found.\n`;
                 msg += `Linting models globally is not supported (eslint library does not support global plugins).\n`;
                 msg += `If you have installed the library globally (--global flag) and you want to automatically lint your generated models,\n`;
@@ -443,5 +427,8 @@ export class ModelBuilder extends Builder {
             }
         }
 
+        if (format === 'decorators') {
+            warnWhenDecoratorsDependencyIsMissing(outDir);
+        }
     }
 }

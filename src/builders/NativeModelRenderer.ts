@@ -34,7 +34,7 @@ import {
     MixinTypeArgument,
     resolveAssociationForeignKey,
 } from './nativeAssociations.js';
-import { resolveAssociationPropertyName } from './ModelBuilder.js';
+import { resolveAssociationPropertyName } from './associationNaming.js';
 
 const NATIVE_NAMESPACE = DATA_TYPE_NAMESPACES.native;
 

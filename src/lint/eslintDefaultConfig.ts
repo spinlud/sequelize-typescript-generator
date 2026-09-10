@@ -16,7 +16,7 @@ export const eslintDefaultConfig: Linter.Config[] = [
             '@stylistic': stylistic,
         },
         rules: {
-            '@stylistic/padded-blocks': ['error', { blocks: 'always', classes: 'always', switches: 'always' }],
+            '@stylistic/padded-blocks': ['error', { blocks: 'never', classes: 'always', switches: 'always' }],
             '@stylistic/lines-between-class-members': ['error', 'always'],
             '@stylistic/object-curly-newline': ['error', {
                 'ObjectExpression': 'always',
