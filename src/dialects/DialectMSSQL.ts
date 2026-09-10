@@ -9,25 +9,17 @@ import {
     DATA_TYPE_NAMESPACES,
     DataTypeArgument,
 } from './dataTypes.js';
-import { groupForeignKeyRows, IForeignKeyColumnRow } from './foreignKeys.js';
+import {
+    groupForeignKeyRows,
+    mapForeignKeyQueryRow,
+    IForeignKeyColumnRow,
+    IForeignKeyQueryRow,
+} from './foreignKeys.js';
 
 interface ITableRow {
     table_name: string;
     table_schema: string;
     table_comment?: string;
-}
-
-interface IForeignKeyRowMSSQL {
-    constraint_name: string;
-    source_table: string;
-    source_column: string;
-    target_schema: string;
-    target_table: string;
-    target_column: string;
-    ordinal_position: number;
-    on_delete: string; // *_referential_action_desc: NO_ACTION | CASCADE | SET_NULL | SET_DEFAULT
-    on_update: string; // *_referential_action_desc: NO_ACTION | CASCADE | SET_NULL | SET_DEFAULT
-    is_source_column_unique: number; // 0/1 result of the single-column unique index check
 }
 
 interface ITriggerCountRow {
@@ -403,7 +395,7 @@ export class DialectMSSQL extends Dialect {
     ): Promise<IForeignKeyConstraintMetadata[]> {
         const schema = table.schema ?? config.connection.schema;
 
-        const foreignKeyRows = await connection.query<IForeignKeyRowMSSQL>(
+        const foreignKeyRows = await connection.query<IForeignKeyQueryRow>(
             `
                 SELECT
                     fk.name     AS constraint_name,
@@ -457,18 +449,7 @@ export class DialectMSSQL extends Dialect {
             }
         );
 
-        const rows: IForeignKeyColumnRow[] = foreignKeyRows.map(row => ({
-            constraintName: row.constraint_name,
-            sourceTable: row.source_table,
-            sourceColumn: row.source_column,
-            targetSchema: row.target_schema,
-            targetTable: row.target_table,
-            targetColumn: row.target_column,
-            ordinalPosition: row.ordinal_position,
-            onDelete: row.on_delete,
-            onUpdate: row.on_update,
-            isSourceColumnUnique: Number(row.is_source_column_unique) === 1,
-        }));
+        const rows: IForeignKeyColumnRow[] = foreignKeyRows.map(mapForeignKeyQueryRow);
 
         return groupForeignKeyRows(rows);
     }

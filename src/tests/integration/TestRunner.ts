@@ -7,7 +7,7 @@ import { jest } from '@jest/globals';
 import * as ts from 'typescript';
 import pluralize from 'pluralize';
 import { ITestMetadata } from './ITestMetadata.js';
-import { Sequelize } from 'sequelize-typescript';
+import { Sequelize, ModelCtor } from 'sequelize-typescript';
 import { QueryTypes } from 'sequelize';
 import { buildSequelizeOptions } from '../environment.js';
 import { IConfig } from '../../config/index.js';
@@ -19,6 +19,29 @@ import { TransformCases, TransformTarget, TransformFn } from '../../config/IConf
 import { compileGeneratedModels } from './compileGeneratedModels.js';
 import { FORMATS, Format } from './formats.js';
 import { ESLINT_MIGRATION_GUIDE_URL } from '../../lint/Linter.js';
+
+/**
+ * Return the connection or throw when it has not been initialised.
+ * @param {Sequelize | undefined} connection
+ * @returns {Sequelize}
+ */
+const requireConnection = (connection: Sequelize | undefined): Sequelize => {
+    if (!connection) {
+        throw new Error('Test connection is not initialised');
+    }
+
+    return connection;
+};
+
+/**
+ * Type guard for a module namespace whose values are Sequelize model constructors.
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+const isModelRecord = (value: unknown): value is Record<string, ModelCtor> =>
+    typeof value === 'object' &&
+    value !== null &&
+    Object.values(value).every(entry => typeof entry === 'function');
 
 /**
  * Workaround: deprecated GeomFromText function for MySQL
@@ -751,7 +774,7 @@ export class TestRunner {
                                 name: 'race_id',
                                 targetModel: 'races',
                                 targetKey: 'race_id',
-                                constraintName: expect.any(String),
+                                constraintName: unitsConstraint.constraintName,
                                 onDelete: unitsConstraint.onDelete,
                                 onUpdate: unitsConstraint.onUpdate,
                                 isUnique: false,
@@ -805,10 +828,13 @@ export class TestRunner {
                         });
 
                         const loadModels = async (paranoidOutDir: string): Promise<void> => {
-                            const models = await import(pathToFileURL(path.join(paranoidOutDir, 'index.ts')).href);
+                            const models: unknown = await import(pathToFileURL(path.join(paranoidOutDir, 'index.ts')).href);
 
-                            // @ts-ignore
-                            connection!.addModels([ ...Object.values(models) ]);
+                            if (!isModelRecord(models)) {
+                                throw new Error('Generated models module did not export model constructors');
+                            }
+
+                            requireConnection(connection).addModels(Object.values(models));
                         };
 
                         beforeEach(async () => {
@@ -829,7 +855,7 @@ export class TestRunner {
                             await buildModels(buildParanoidConfig({ timestamps: true, paranoid: true }, paranoidOutDir));
                             await loadModels(paranoidOutDir);
 
-                            const model = connection!.model(paranoidTableName);
+                            const model = requireConnection(connection).model(paranoidTableName);
 
                             expect(model.options.paranoid).toBe(true);
                             expect(model.options.deletedAt).toBe('deleted_at');
@@ -857,7 +883,7 @@ export class TestRunner {
                                 await buildModels(buildParanoidConfig({ paranoid: true }, paranoidOutDir));
                                 await loadModels(paranoidOutDir);
 
-                                const model = connection!.model(paranoidTableName);
+                                const model = requireConnection(connection).model(paranoidTableName);
 
                                 expect(model.options.paranoid).toBeFalsy();
                                 expect(warnSpy).toHaveBeenCalledWith('[WARNING]', expect.stringContaining('timestamps'));
@@ -893,10 +919,13 @@ export class TestRunner {
 
                             await buildModels(config);
 
-                            const models = await import(indexDir);
+                            const models: unknown = await import(indexDir);
 
-                            // @ts-ignore
-                            connection!.addModels([ ...Object.values(models) ]);
+                            if (!isModelRecord(models)) {
+                                throw new Error('Generated models module did not export model constructors');
+                            }
+
+                            requireConnection(connection).addModels(Object.values(models));
                         });
 
                         afterAll(async () => {
@@ -904,7 +933,7 @@ export class TestRunner {
                         });
 
                         it('emits hasTrigger and can insert into a triggered table', async () => {
-                            const model = connection!.model(triggerTableName);
+                            const model = requireConnection(connection).model(triggerTableName);
 
                             expect(model.options.hasTrigger).toBe(true);
 
@@ -913,7 +942,7 @@ export class TestRunner {
                         });
 
                         it('emits the secondary schema and can query its table', async () => {
-                            const model = connection!.model(secondarySchemaTable.name);
+                            const model = requireConnection(connection).model(secondarySchemaTable.name);
 
                             expect(model.getTableName()).toMatchObject({
                                 schema: secondarySchemaTable.schema,
@@ -926,7 +955,7 @@ export class TestRunner {
                         });
 
                         it('emits the default schema on tables in it', () => {
-                            const model = connection!.model('races');
+                            const model = requireConnection(connection).model('races');
 
                             expect(model.options.schema).toBe('dbo');
                         });

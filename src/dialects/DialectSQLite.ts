@@ -55,6 +55,28 @@ interface ITableInfoRowSQLite {
 }
 
 /**
+ * Build a synthesized constraint name for a SQLite foreign key from its ordered source
+ * columns. SQLite foreign keys are unnamed and two of them may cover the same column set,
+ * so a name already produced for the table is disambiguated with the pragma_foreign_key_list
+ * id; the first occurrence of a name keeps the plain form.
+ * @param {string} table
+ * @param {string[]} columns
+ * @param {number} id
+ * @param {ReadonlySet<string>} takenNames
+ * @returns {string}
+ */
+export const synthesizeSqliteConstraintName = (
+    table: string,
+    columns: string[],
+    id: number,
+    takenNames: ReadonlySet<string>
+): string => {
+    const baseName = `${table}_${columns.join('_')}_fkey`;
+
+    return takenNames.has(baseName) ? `${baseName}_${id}` : baseName;
+};
+
+/**
  * Dialect for SQLite
  * @class DialectSQLite
  */
@@ -319,12 +341,16 @@ export class DialectSQLite extends Dialect {
         }
 
         const rows: IForeignKeyColumnRow[] = [];
+        const takenConstraintNames = new Set<string>();
 
         for (const group of rowsById.values()) {
             const ordered = [...group].sort((a, b) => a.seq - b.seq);
             const sourceColumns = ordered.map(row => row.source_column);
-            const constraintName = `${table.name}_${sourceColumns.join('_')}_fkey`;
-            const [{ target_table: targetTable }] = ordered;
+            const [{ id: constraintId, target_table: targetTable }] = ordered;
+            const constraintName = synthesizeSqliteConstraintName(
+                table.name, sourceColumns, constraintId, takenConstraintNames
+            );
+            takenConstraintNames.add(constraintName);
 
             const needsPrimaryKeyResolution = ordered.some(row => row.target_column === null);
             const targetPrimaryKey = needsPrimaryKeyResolution

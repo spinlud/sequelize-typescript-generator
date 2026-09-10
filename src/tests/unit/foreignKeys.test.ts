@@ -3,7 +3,9 @@ import {
     normalizeReferentialAction,
     groupForeignKeyRows,
     applyForeignKeyConstraintsToColumns,
+    mapForeignKeyQueryRow,
     IForeignKeyColumnRow,
+    IForeignKeyQueryRow,
 } from '../../dialects/foreignKeys.js';
 import { ITableMetadata } from '../../dialects/Dialect.js';
 
@@ -52,6 +54,50 @@ describe('foreign key helpers', () => {
             expect(normalizeReferentialAction('garbage')).toBe('NO ACTION');
             expect(normalizeReferentialAction(null)).toBe('NO ACTION');
             expect(normalizeReferentialAction(undefined)).toBe('NO ACTION');
+        });
+    });
+
+    describe('mapForeignKeyQueryRow', () => {
+        const buildQueryRow = (
+            uniqueness: IForeignKeyQueryRow['is_source_column_unique']
+        ): IForeignKeyQueryRow => ({
+            constraint_name: 'fk',
+            source_table: 'source',
+            source_column: 'source_col',
+            target_schema: 'public',
+            target_table: 'target',
+            target_column: 'target_col',
+            ordinal_position: 1,
+            on_delete: 'CASCADE',
+            on_update: 'NO ACTION',
+            is_source_column_unique: uniqueness,
+        });
+
+        it('maps snake_case query fields onto the normalized row', () => {
+            expect(mapForeignKeyQueryRow(buildQueryRow(0))).toEqual({
+                constraintName: 'fk',
+                sourceTable: 'source',
+                sourceColumn: 'source_col',
+                targetSchema: 'public',
+                targetTable: 'target',
+                targetColumn: 'target_col',
+                ordinalPosition: 1,
+                onDelete: 'CASCADE',
+                onUpdate: 'NO ACTION',
+                isSourceColumnUnique: false,
+            });
+        });
+
+        it('coerces a truthy uniqueness value regardless of its dialect shape', () => {
+            expect(mapForeignKeyQueryRow(buildQueryRow(true)).isSourceColumnUnique).toBe(true);
+            expect(mapForeignKeyQueryRow(buildQueryRow(1)).isSourceColumnUnique).toBe(true);
+            expect(mapForeignKeyQueryRow(buildQueryRow('1')).isSourceColumnUnique).toBe(true);
+        });
+
+        it('coerces a falsy uniqueness value regardless of its dialect shape', () => {
+            expect(mapForeignKeyQueryRow(buildQueryRow(false)).isSourceColumnUnique).toBe(false);
+            expect(mapForeignKeyQueryRow(buildQueryRow(0)).isSourceColumnUnique).toBe(false);
+            expect(mapForeignKeyQueryRow(buildQueryRow('0')).isSourceColumnUnique).toBe(false);
         });
     });
 

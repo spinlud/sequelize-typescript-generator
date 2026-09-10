@@ -269,12 +269,6 @@ export abstract class Dialect {
                         paranoid = true;
                         deletedAt = paranoidColumn.originName;
                     }
-                    else {
-                        console.warn(
-                            '[WARNING]',
-                            `Table '${tableName}' has no deleted_at or deletedAt column; paranoid is not applied to it`
-                        );
-                    }
                 }
 
                 const tableMetadata: ITableMetadata = {

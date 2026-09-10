@@ -9,24 +9,16 @@ import {
     DATA_TYPE_NAMESPACES,
     DataTypeArgument,
 } from './dataTypes.js';
-import { groupForeignKeyRows, IForeignKeyColumnRow } from './foreignKeys.js';
+import {
+    groupForeignKeyRows,
+    mapForeignKeyQueryRow,
+    IForeignKeyColumnRow,
+    IForeignKeyQueryRow,
+} from './foreignKeys.js';
 
 interface ITableRow {
     table_name: string;
     table_comment?: string;
-}
-
-interface IForeignKeyRowPostgres {
-    constraint_name: string;
-    source_table: string;
-    source_column: string;
-    target_schema: string;
-    target_table: string;
-    target_column: string;
-    ordinal_position: number;
-    on_delete: string; // Single-letter pg_constraint code (a/r/c/n/d)
-    on_update: string; // Single-letter pg_constraint code (a/r/c/n/d)
-    is_source_column_unique: boolean;
 }
 
 interface IColumnMetadataPostgres {
@@ -437,7 +429,7 @@ export class DialectPostgres extends Dialect {
         config: IConfig,
         table: ITable
     ): Promise<IForeignKeyConstraintMetadata[]> {
-        const foreignKeyRows = await connection.query<IForeignKeyRowPostgres>(
+        const foreignKeyRows = await connection.query<IForeignKeyQueryRow>(
             `
                 SELECT
                     con.conname     AS constraint_name,
@@ -454,6 +446,7 @@ export class DialectPostgres extends Dialect {
                         FROM pg_index x
                         WHERE x.indrelid = con.conrelid
                             AND x.indisunique
+                            AND x.indisvalid
                             AND x.indpred IS NULL
                             AND x.indnatts = 1
                             AND x.indkey[0] = src_att.attnum
@@ -480,18 +473,7 @@ export class DialectPostgres extends Dialect {
             }
         );
 
-        const rows: IForeignKeyColumnRow[] = foreignKeyRows.map(row => ({
-            constraintName: row.constraint_name,
-            sourceTable: row.source_table,
-            sourceColumn: row.source_column,
-            targetSchema: row.target_schema,
-            targetTable: row.target_table,
-            targetColumn: row.target_column,
-            ordinalPosition: row.ordinal_position,
-            onDelete: row.on_delete,
-            onUpdate: row.on_update,
-            isSourceColumnUnique: row.is_source_column_unique,
-        }));
+        const rows: IForeignKeyColumnRow[] = foreignKeyRows.map(mapForeignKeyQueryRow);
 
         return groupForeignKeyRows(rows);
     }

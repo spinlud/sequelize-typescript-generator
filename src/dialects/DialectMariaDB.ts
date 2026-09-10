@@ -13,8 +13,9 @@ import {
 import {
     groupForeignKeyRows,
     buildInformationSchemaForeignKeysQuery,
+    mapForeignKeyQueryRow,
     IForeignKeyColumnRow,
-    IInformationSchemaForeignKeyRow,
+    IForeignKeyQueryRow,
 } from './foreignKeys.js';
 
 interface ITableRow {
@@ -386,7 +387,7 @@ export class DialectMariaDB extends Dialect {
         config: IConfig,
         table: ITable
     ): Promise<IForeignKeyConstraintMetadata[]> {
-        const foreignKeyRows = await connection.query<IInformationSchemaForeignKeyRow>(
+        const foreignKeyRows = await connection.query<IForeignKeyQueryRow>(
             buildInformationSchemaForeignKeysQuery(config.connection.database, table.name),
             {
                 type: QueryTypes.SELECT,
@@ -394,18 +395,7 @@ export class DialectMariaDB extends Dialect {
             }
         );
 
-        const rows: IForeignKeyColumnRow[] = foreignKeyRows.map(row => ({
-            constraintName: row.constraint_name,
-            sourceTable: row.source_table,
-            sourceColumn: row.source_column,
-            targetSchema: row.target_schema,
-            targetTable: row.target_table,
-            targetColumn: row.target_column,
-            ordinalPosition: row.ordinal_position,
-            onDelete: row.on_delete,
-            onUpdate: row.on_update,
-            isSourceColumnUnique: Number(row.is_source_column_unique) === 1,
-        }));
+        const rows: IForeignKeyColumnRow[] = foreignKeyRows.map(mapForeignKeyQueryRow);
 
         return groupForeignKeyRows(rows);
     }

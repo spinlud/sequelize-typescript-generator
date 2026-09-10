@@ -28,10 +28,12 @@ export interface IForeignKeyColumnRow {
 }
 
 /**
- * One row returned by the shared MySQL and MariaDB foreign key query.
- * `is_source_column_unique` is the 0/1 result of an EXISTS predicate.
+ * One row returned by a dialect foreign key query, one per (constraint, column position).
+ * `is_source_column_unique` carries the uniqueness predicate in whatever shape the dialect
+ * returns it: a boolean (Postgres EXISTS), a 0/1 number (MySQL, MariaDB, MSSQL) or its
+ * string form.
  */
-export interface IInformationSchemaForeignKeyRow {
+export interface IForeignKeyQueryRow {
     constraint_name: string;
     source_table: string;
     source_column: string;
@@ -41,8 +43,27 @@ export interface IInformationSchemaForeignKeyRow {
     ordinal_position: number;
     on_delete: string;
     on_update: string;
-    is_source_column_unique: number;
+    is_source_column_unique: number | boolean | string;
 }
+
+/**
+ * Map a dialect foreign key query row onto a normalized foreign key column row,
+ * coercing the dialect-specific uniqueness value into a boolean.
+ * @param {IForeignKeyQueryRow} row
+ * @returns {IForeignKeyColumnRow}
+ */
+export const mapForeignKeyQueryRow = (row: IForeignKeyQueryRow): IForeignKeyColumnRow => ({
+    constraintName: row.constraint_name,
+    sourceTable: row.source_table,
+    sourceColumn: row.source_column,
+    targetSchema: row.target_schema,
+    targetTable: row.target_table,
+    targetColumn: row.target_column,
+    ordinalPosition: row.ordinal_position,
+    onDelete: row.on_delete,
+    onUpdate: row.on_update,
+    isSourceColumnUnique: row.is_source_column_unique === true || Number(row.is_source_column_unique) === 1,
+});
 
 /**
  * Build the information_schema query that lists foreign key columns for a table.

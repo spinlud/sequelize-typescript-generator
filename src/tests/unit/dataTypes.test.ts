@@ -77,8 +77,9 @@ describe('data types mapper', () => {
             expect(parseEnumValues("enum('a''b','c')")).toEqual(["a'b", 'c']);
         });
 
-        it('returns an empty array when there is no value list', () => {
-            expect(parseEnumValues('varchar(255)')).toEqual(['255']);
+        it('returns an empty array for non-enum types', () => {
+            expect(parseEnumValues('varchar(255)')).toEqual([]);
+            expect(parseEnumValues('int')).toEqual([]);
             expect(parseEnumValues('text')).toEqual([]);
         });
     });

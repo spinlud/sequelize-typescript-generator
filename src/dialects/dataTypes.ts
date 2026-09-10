@@ -110,6 +110,10 @@ export const renderDataTypeExpression = (
  * @returns {string[]}
  */
 export const parseEnumValues = (columnType: string): string[] => {
+    if (!columnType.trim().toLowerCase().startsWith('enum')) {
+        return [];
+    }
+
     const match = columnType.match(/\((.*)\)/);
 
     if (!match) {
