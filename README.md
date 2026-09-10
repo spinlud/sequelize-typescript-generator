@@ -13,9 +13,15 @@
 * [Strict mode](#strict-mode)
 * [Transform case](#transform-case)
 * [Associations](#associations)
-    * [One to One](#one-to-one)
-    * [One to Many](#one-to-many)
-    * [Many to Many](#many-to-many)
+    * [Cardinality](#cardinality)
+    * [Skipped foreign keys](#skipped-foreign-keys)
+    * [Alias rule](#alias-rule)
+    * [Generated decorators](#generated-decorators)
+    * [Disabling discovery](#disabling-discovery)
+    * [Associations file](#associations-file)
+        * [One to One](#one-to-one)
+        * [One to Many](#one-to-many)
+        * [Many to Many](#many-to-many)
 * [Lint](#lint)
 
 <!-- toc stop -->
@@ -86,7 +92,7 @@ stg --help
 Usage: stg -D <dialect> -d [database] -u [username] -x [password] -h [host] -p
 [port] -o [out-dir] -s [schema] -a [associations-file]-t [tables] -T
 [skip-tables] -i [indices] -C [case] -S [storage] -L [lint-file] -l [ssl] -r
-[protocol] -c [clean]
+[protocol] -c [clean] --no-associations
 
 Options:
   --help                      Show help                                [boolean]
@@ -146,7 +152,10 @@ Options:
   -R, --no-strict             Disable strict typescript class declaration.
                                                                        [boolean]    
   -V, --no-views              Disable view generation. Available for: MySQL and MariaDB.
-                                                                       [boolean]                                                                      
+                                                                       [boolean]
+  --associations              Discover one-to-one and one-to-many associations
+                              from foreign keys. Use --no-associations to
+                              disable.                   [boolean] [default: true]
 ```
 
 Local usage example:
@@ -372,24 +381,140 @@ const config: IConfig = {
 NB: please note that currently case transformation is not supported for non ASCII strings.
 
 ## Associations
-Including associations in the generated models requires a bit of manual work unfortunately, but hopefully 
-it will buy you some time instead of defining them from scratch.  
-  
-First you have to define a csv-like text file, let's call it `associations.csv` (but you can call it however you want).   In this file you have to put an entry for each association you want to define. 
-The following associations are supported:
+Associations are discovered automatically from the foreign keys found in your schema, so in most cases you get
+one-to-one and one-to-many relations in the generated models without any extra configuration. Discovery is on by
+default; disable it with `--no-associations`. You can still declare associations explicitly in an
+[associations file](#associations-file), which is applied on top of whatever was discovered.
+
+### Cardinality
+Each foreign key produces a `BelongsTo` on the table that holds the foreign key and a matching relation on the
+referenced table:
+
+- **One to one** when the foreign key column is the single-column primary key of its table, or is covered by a
+single-column unique constraint or unique index. The referenced table gets a `HasOne`.
+- **One to many** in every other case. The referenced table gets a `HasMany`.
+
+Many-to-many is never inferred. Junction tables are generated as plain models, and you declare the
+many-to-many relation yourself in the [associations file](#associations-file).
+
+### Skipped foreign keys
+Some foreign keys cannot be turned into a Sequelize association. In these cases the column is generated as a
+plain attribute and a single warning is printed:
+
+- **Composite foreign keys** that span more than one column. Sequelize associations need a single column.
+- **Cross-schema foreign keys** whose referenced table lives in another schema.
+- **Foreign keys to a table that is not generated**, for example one excluded with `--skip-tables` or by a
+`--tables` filter.
+
+### Alias rule
+Every association is exposed under an alias, used as the class property name and in `include` queries.
+
+When a single foreign key links the two tables (unambiguous):
+
+- the `BelongsTo` side uses the singular of the target model;
+- the reverse side uses the plural of the source model, or its singular for a one-to-one relation.
+
+For example `units.race_id → races` gives `units.race` and `races.units`, and the one-to-one
+`profiles.person_id → person` gives `profiles.person` and `person.profile`.
+
+When two foreign keys point at the same table, or a table references itself (ambiguous), the alias is derived
+from the foreign key column instead. The `_id`, `_fk`, `Id` and `Fk` suffixes are stripped for the `BelongsTo`
+side, and the reverse side is the camelCased composition of that stem and the source model name. For example the
+self-referencing `employees.manager_id → employees` gives `employees.manager` and `employees.managerEmployees`,
+and a `books` table with `author_id` and `editor_id` both referencing `authors` gives `books.author`,
+`books.editor`, `authors.authorBooks` and `authors.editorBooks`. When the column has no strippable suffix the
+alias falls back to the target model combined with the column name. Aliases that would collide with an existing
+field or another alias on the same model receive a numeric suffix.
+
+Aliases follow `--case`: with a case set they are transformed like column names. Without `--case`, singular and
+plural aliases keep the database spelling and only composed aliases are camelCased.
+
+### Generated decorators
+The foreign key column keeps its `@ForeignKey(() => Target)` decorator, and the association is emitted with
+`@BelongsTo`, `@HasOne` or `@HasMany`. Each carries the resolved `as` alias, the `foreignKey`, the referenced
+column as `targetKey` (`BelongsTo`) or `sourceKey` (`HasOne`/`HasMany`), and `onDelete`/`onUpdate` whenever the
+referential action is not `NO ACTION`:
+
+```ts
+@ForeignKey(() => races)
+@Column({
+  type: DataType.INTEGER
+})
+race_id!: number;
+
+@BelongsTo(() => races, {
+  as: "race",
+  foreignKey: "race_id",
+  targetKey: "race_id",
+  onDelete: "CASCADE",
+  onUpdate: "RESTRICT"
+})
+race?: races;
+```
+
+```ts
+@HasMany(() => units, {
+  as: "units",
+  foreignKey: "race_id",
+  sourceKey: "race_id",
+  onDelete: "CASCADE",
+  onUpdate: "RESTRICT"
+})
+units?: units[];
+```
+
+### Disabling discovery
+Pass `--no-associations` to skip discovery entirely. Foreign key columns still get their `@ForeignKey`
+decorator, and an [associations file](#associations-file) is still applied if provided.
+
+```shell
+npx stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --no-associations --out-dir models --clean 
+```
+
+Programmatically, set `associations: false` in the metadata:
+
+```ts
+const config: IConfig = {
+    connection: {
+        dialect: 'mysql',
+        database: 'myDatabase',
+        username: 'myUsername',
+        password: 'myPassword'
+    },
+    metadata: {
+        indices: true,
+        associations: false, // Disable automatic association discovery
+    },
+    output: {
+        clean: true,
+        outDir: 'models'
+    },
+};
+```
+
+### Associations file
+You can declare associations explicitly in a csv-like text file, let's call it `associations.csv` (but you can
+call it however you want). Put an entry for each association you want to define. The following associations are
+supported:
 
 - `1:1`
 - `1:N`
 - `N:N`
 
-Some rules for the association file:
+Some rules for the associations file:
 
 - Names of tables and columns in the associations file must be the native names on the database, not the 
 transformed names generated when using a custom case transformation with the flag `--case`.
 - Only `,` separator is supported.
 - Do not use enclosing quotes.
 
-Note that fields generated by associations will be pluralized or singularized based on cardinality. 
+Note that fields generated by associations file entries will be pluralized or singularized based on cardinality.
+
+The associations file is applied on top of the discovered associations. A row that names the same source table
+and foreign key column replaces the association discovered for that column; any other discovered associations
+are kept. If a file entry ends up with the same alias as a discovered association on the same model, the
+discovered one is dropped in favour of the file entry and a warning is printed. Use this to override discovery
+where you need a different shape, and to add the many-to-many relations that are never inferred.
 
 #### One to One
 In the associations file include an entry with the following structure:
