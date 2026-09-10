@@ -45,6 +45,27 @@ const buildTableMetadata = (): ITableMetadata => ({
     },
 });
 
+const buildTableMetadataWithAssociations = (): ITableMetadata => ({
+    ...buildTableMetadata(),
+    associations: [
+        {
+            associationName: 'BelongsTo',
+            targetModel: 'races',
+            alias: 'race_owner',
+            foreignKey: 'race_id',
+            targetKey: 'race_id',
+            onDelete: 'CASCADE',
+        },
+        {
+            associationName: 'HasMany',
+            targetModel: 'units',
+            alias: 'race_units',
+            foreignKey: 'race_id',
+            sourceKey: 'race_id',
+        },
+    ],
+});
+
 describe('caseTransformer', () => {
 
     const transformMap: TransformMap = { model: 'PASCAL', column: 'CAMEL' };
@@ -76,6 +97,46 @@ describe('caseTransformer', () => {
             onUpdate: 'RESTRICT',
             isUnique: false,
         });
+    });
+
+    it('transforms targetModel, alias, foreignKey, sourceKey and targetKey on associations', () => {
+        const transformed = caseTransformer(buildTableMetadataWithAssociations(), transformMap);
+
+        expect(transformed.associations).toEqual([
+            {
+                associationName: 'BelongsTo',
+                targetModel: 'Races',
+                alias: 'raceOwner',
+                foreignKey: 'raceId',
+                targetKey: 'raceId',
+                onDelete: 'CASCADE',
+            },
+            {
+                associationName: 'HasMany',
+                targetModel: 'Units',
+                alias: 'raceUnits',
+                foreignKey: 'raceId',
+                sourceKey: 'raceId',
+            },
+        ]);
+    });
+
+    it('does not mutate the input metadata', () => {
+        const input = buildTableMetadataWithAssociations();
+        const snapshot = JSON.stringify(input);
+
+        caseTransformer(input, transformMap);
+
+        expect(JSON.stringify(input)).toBe(snapshot);
+    });
+
+    it('does not compound the transformation when applied twice on the same input', () => {
+        const input = buildTableMetadataWithAssociations();
+
+        const once = caseTransformer(input, transformMap);
+        const twice = caseTransformer(input, transformMap);
+
+        expect(twice).toEqual(once);
     });
 
 });

@@ -1,4 +1,4 @@
-import { ITableMetadata } from './Dialect.js';
+import { ITableMetadata, IColumnMetadata } from './Dialect.js';
 import { TransformCase, TransformFn, TransformMap, TransformTarget } from '../config/IConfig.js';
 import { camelCase, constantCase, pascalCase, snakeCase } from "change-case";
 
@@ -120,43 +120,46 @@ export const caseTransformer = (
         },
         ...tableMetadata.foreignKeys !== undefined && { foreignKeys: tableMetadata.foreignKeys },
         ...tableMetadata.associations && {
-            associations: tableMetadata.associations.map(a => {
-                a.targetModel = transformer(a.targetModel, TransformTarget.MODEL);
-
-                if (a.joinModel) {
-                    a.joinModel = transformer(a.joinModel, TransformTarget.MODEL);
-                }
-
-                if (a.sourceKey) {
-                    a.sourceKey = transformer(a.sourceKey, TransformTarget.COLUMN);
-                }
-
-                return a;
-            })
+            associations: tableMetadata.associations.map(association => ({
+                ...association,
+                targetModel: transformer(association.targetModel, TransformTarget.MODEL),
+                ...association.joinModel !== undefined && {
+                    joinModel: transformer(association.joinModel, TransformTarget.MODEL),
+                },
+                ...association.sourceKey !== undefined && {
+                    sourceKey: transformer(association.sourceKey, TransformTarget.COLUMN),
+                },
+                ...association.alias !== undefined && {
+                    alias: transformer(association.alias, TransformTarget.COLUMN),
+                },
+                ...association.foreignKey !== undefined && {
+                    foreignKey: transformer(association.foreignKey, TransformTarget.COLUMN),
+                },
+                ...association.targetKey !== undefined && {
+                    targetKey: transformer(association.targetKey, TransformTarget.COLUMN),
+                },
+            }))
         },
         comment: tableMetadata.comment,
     };
 
     for (const [columnName, columnMetadata] of Object.entries(tableMetadata.columns)) {
-
-        if (columnMetadata.foreignKey) {
-            const foreignKey = columnMetadata.foreignKey;
-
-            columnMetadata.foreignKey = {
-                ...foreignKey,
-                name: transformer(foreignKey.name, TransformTarget.COLUMN),
-                targetModel: transformer(foreignKey.targetModel, TransformTarget.MODEL),
-                ...foreignKey.targetKey !== undefined && {
-                    targetKey: transformer(foreignKey.targetKey, TransformTarget.COLUMN),
+        const transformedColumn: IColumnMetadata = {
+            ...columnMetadata,
+            name: transformer(columnMetadata.originName, TransformTarget.COLUMN),
+            ...columnMetadata.foreignKey && {
+                foreignKey: {
+                    ...columnMetadata.foreignKey,
+                    name: transformer(columnMetadata.foreignKey.name, TransformTarget.COLUMN),
+                    targetModel: transformer(columnMetadata.foreignKey.targetModel, TransformTarget.MODEL),
+                    ...columnMetadata.foreignKey.targetKey !== undefined && {
+                        targetKey: transformer(columnMetadata.foreignKey.targetKey, TransformTarget.COLUMN),
+                    },
                 },
-            }
-        }
+            },
+        };
 
-        transformed.columns[columnName] =  Object.assign(
-            {},
-            columnMetadata,
-            { name: transformer(columnMetadata.originName, TransformTarget.COLUMN) }
-        );
+        transformed.columns[columnName] = transformedColumn;
     }
 
     return transformed;
