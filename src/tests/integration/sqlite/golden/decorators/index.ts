@@ -7,3 +7,8 @@ export * from "./races";
 export * from "./units";
 export * from "./person";
 export * from "./passport";
+export * from "./employees";
+export * from "./profiles";
+export * from "./order_lines";
+export * from "./shipments";
+export * from "./soft_deletes";

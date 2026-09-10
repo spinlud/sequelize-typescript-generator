@@ -11,6 +11,7 @@ import { Sequelize } from 'sequelize-typescript';
 import { QueryTypes } from 'sequelize';
 import { buildSequelizeOptions } from '../environment.js';
 import { IConfig } from '../../config/index.js';
+import { ITablesMetadata } from '../../dialects/Dialect.js';
 import { getTransformer } from '../../dialects/utils.js';
 import { createDialect } from '../../dialects/createDialect.js';
 import { ModelBuilder } from '../../builders/index.js';
@@ -93,16 +94,28 @@ const initTestDatabase = async (testMetadata: ITestMetadata, connection: Sequeli
         await connection.query(createQuery);
     }
 
-    for (const testTable of testMetadata.testTables) {
-        const { createQueries, insertQueries, dropQuery } = testTable;
-        await connection.query(dropQuery);
+    // Drop views first, then tables in reverse dependency order, so a table is
+    // dropped before the tables it references (real foreign keys forbid the reverse).
+    if (testMetadata.testViews) {
+        for (const testView of testMetadata.testViews) {
+            await connection.query(testView.dropQuery);
+        }
+    }
 
-        for (const createQuery of createQueries) {
+    for (const testTable of [...testMetadata.testTables].reverse()) {
+        await connection.query(testTable.dropQuery);
+    }
+
+    // Create tables in dependency order, then seed rows, then create views.
+    for (const testTable of testMetadata.testTables) {
+        for (const createQuery of testTable.createQueries) {
             await connection.query(createQuery);
         }
+    }
 
-        if (insertQueries) {
-            for (const insertQuery of insertQueries) {
+    for (const testTable of testMetadata.testTables) {
+        if (testTable.insertQueries) {
+            for (const insertQuery of testTable.insertQueries) {
                 await connection.query(insertQuery);
             }
         }
@@ -110,10 +123,7 @@ const initTestDatabase = async (testMetadata: ITestMetadata, connection: Sequeli
 
     if (testMetadata.testViews) {
         for (const testView of testMetadata.testViews) {
-            const { createQueries, dropQuery } = testView;
-            await connection.query(dropQuery);
-
-            for (const createQuery of createQueries) {
+            for (const createQuery of testView.createQueries) {
                 await connection.query(createQuery);
             }
         }
@@ -689,6 +699,80 @@ export class TestRunner {
                             expect(book[authorsField].length).toBeGreaterThanOrEqual(1);
                         }
                     });
+                });
+
+                describe('Foreign keys', () => {
+                    let connection: Sequelize | undefined;
+                    let tablesMetadata: ITablesMetadata;
+
+                    const buildForeignKeyConfig = (metadata: IConfig['metadata']): IConfig => ({
+                        connection: sequelizeOptions,
+                        metadata: {
+                            ...testMetadata.schema && { schema: testMetadata.schema.name },
+                            ...metadata,
+                        },
+                        output: {
+                            outDir: outDir,
+                            clean: true,
+                        },
+                    });
+
+                    beforeAll(async () => {
+                        connection = new Sequelize({ ...sequelizeOptions });
+                        await connection.authenticate();
+                        await initTestDatabase(testMetadata, connection);
+
+                        const dialect = createDialect(testMetadata.dialect);
+                        tablesMetadata = await dialect.buildTablesMetadata(buildForeignKeyConfig({}));
+                    });
+
+                    afterAll(async () => {
+                        connection && await connection.close();
+                    });
+
+                    it('exposes the expected constraints per table', () => {
+                        for (const [tableName, expected] of Object.entries(testMetadata.expectedForeignKeys)) {
+                            expect(tablesMetadata[tableName].foreignKeys).toEqual(expected);
+                        }
+                    });
+
+                    if (Object.keys(testMetadata.expectedForeignKeys).length) {
+                        it('copies a single-column foreign key onto its source column', () => {
+                            expect(tablesMetadata['units'].columns['race_id'].foreignKey).toMatchObject({
+                                name: 'race_id',
+                                targetModel: 'races',
+                                targetKey: 'race_id',
+                                constraintName: expect.any(String),
+                                onDelete: 'CASCADE',
+                                onUpdate: 'RESTRICT',
+                                isUnique: false,
+                            });
+                        });
+
+                        it('does not copy composite foreign keys onto columns', () => {
+                            for (const column of Object.values(tablesMetadata['shipments'].columns)) {
+                                expect(column.foreignKey).toBeUndefined();
+                            }
+                        });
+
+                        it('flags a unique single-column foreign key', () => {
+                            expect(tablesMetadata['profiles'].columns['person_id'].foreignKey)
+                                .toMatchObject({ isUnique: true });
+                        });
+
+                        it('resolves a self-referencing foreign key', () => {
+                            expect(tablesMetadata['employees'].columns['manager_id'].foreignKey)
+                                .toMatchObject({ targetModel: 'employees' });
+                        });
+
+                        it('keeps the constraint record but drops the column link when the target is excluded', async () => {
+                            const dialect = createDialect(testMetadata.dialect);
+                            const filtered = await dialect.buildTablesMetadata(buildForeignKeyConfig({ tables: ['units'] }));
+
+                            expect(filtered['units'].foreignKeys).toEqual(testMetadata.expectedForeignKeys['units']);
+                            expect(filtered['units'].columns['race_id'].foreignKey).toBeUndefined();
+                        });
+                    }
                 });
 
                 if (testMetadata.dialect === 'sqlite') {

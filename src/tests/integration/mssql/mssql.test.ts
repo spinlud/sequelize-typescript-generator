@@ -103,6 +103,7 @@ const testMetadata: ITestMetadata = {
     ],
     filterTables: [ DATA_TYPES_TABLE_NAME ],
     filterSkipTables: [ INDICES_TABLE_NAME ],
+    expectedForeignKeys: {},
     dataTypes: {
         dataTypesTable: DATA_TYPES_TABLE_NAME,
         async getColumnNativeDataType(

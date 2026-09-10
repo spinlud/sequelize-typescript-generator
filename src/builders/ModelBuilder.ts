@@ -172,6 +172,9 @@ export class ModelBuilder extends Builder {
             col.foreignKey && importModels.add(col.foreignKey.targetModel);
         });
 
+        // A self-referencing model resolves its own name in the same file.
+        importModels.delete(name);
+
         [...importModels].forEach(modelName => {
             generatedCode += nodeToString(generateNamedImports(
                 [ modelName ],

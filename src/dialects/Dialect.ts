@@ -4,6 +4,7 @@ import { IConfig } from '../config/index.js';
 import { createConnection } from "../connection/index.js";
 import { AssociationsParser, IAssociationsParsed, IAssociationMetadata } from './AssociationsParser.js'
 import { caseTransformer } from './utils.js';
+import { applyForeignKeyConstraintsToColumns } from './foreignKeys.js';
 import type { ReferentialAction } from './foreignKeys.js';
 import type { ISequelizeDataType } from './dataTypes.js';
 
@@ -172,6 +173,35 @@ export abstract class Dialect {
     ): Promise<IIndexMetadata[]>;
 
     /**
+     * Fetch foreign key constraints for the provided table
+     * @param {Sequelize} connection
+     * @param {IConfig} config
+     * @param {ITable} table
+     * @returns {Promise<IForeignKeyConstraintMetadata[]>}
+     */
+    protected abstract fetchForeignKeysMetadata(
+        connection: Sequelize,
+        config: IConfig,
+        table: ITable
+    ): Promise<IForeignKeyConstraintMetadata[]>;
+
+    /**
+     * Report whether the table has at least one enabled trigger. Overridden by
+     * SQL Server; every other dialect keeps the default of no triggers.
+     * @param {Sequelize} connection
+     * @param {IConfig} config
+     * @param {ITable} table
+     * @returns {Promise<boolean>}
+     */
+    protected async fetchTableHasTrigger(
+        connection: Sequelize,
+        config: IConfig,
+        table: ITable
+    ): Promise<boolean> {
+        return false;
+    }
+
+    /**
      * Build tables metadata for the specific dialect and schema
      * @param {IConfig} config
      * @returns {Promise<ITableMetadata[]>}
@@ -205,7 +235,8 @@ export abstract class Dialect {
                     }
                 });
 
-            for (const { name: tableName, comment: tableComment } of tables) {
+            for (const table of tables) {
+                const { name: tableName, comment: tableComment } = table;
                 const columnsMetadata = await this.fetchColumnsMetadata(connection, config, tableName);
 
                 // Fetch indices metadata if required
@@ -215,12 +246,20 @@ export abstract class Dialect {
                     }
                 }
 
+                const foreignKeys = table.isView
+                    ? []
+                    : await this.fetchForeignKeysMetadata(connection, config, table);
+
+                const hasTrigger = await this.fetchTableHasTrigger(connection, config, table);
+
                 const tableMetadata: ITableMetadata = {
                     originName: tableName,
                     name: tableName,
-                    schema: config.connection.schema,
+                    schema: table.schema ?? config.connection.schema,
                     timestamps: config.metadata?.timestamps ?? false,
                     columns: {},
+                    foreignKeys,
+                    ...hasTrigger && { hasTrigger: true },
                     comment: tableComment ?? undefined,
                 };
 
@@ -229,6 +268,14 @@ export abstract class Dialect {
                 }
 
                 tablesMetadata[tableMetadata.originName] = tableMetadata;
+            }
+
+            // Copy single-column foreign key constraints onto their source columns,
+            // limited to constraints whose target table is generated.
+            const generatedTables = new Set(Object.keys(tablesMetadata));
+
+            for (const [tableName, tableMetadata] of Object.entries(tablesMetadata)) {
+                tablesMetadata[tableName] = applyForeignKeyConstraintsToColumns(tableMetadata, generatedTables);
             }
         }
         catch(err) {
@@ -260,9 +307,14 @@ export abstract class Dialect {
                         continue;
                     }
 
+                    // Preserve discovered foreign key fields only when the associations
+                    // file names the same target model.
+                    const discovered = columns[columnName].foreignKey;
+
                     columns[columnName].foreignKey = {
+                        ...(discovered?.targetModel === targetModel ? discovered : {}),
                         name: columnName,
-                        targetModel: targetModel
+                        targetModel: targetModel,
                     };
                 }
             }

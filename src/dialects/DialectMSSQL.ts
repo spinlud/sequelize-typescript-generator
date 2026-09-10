@@ -1,7 +1,7 @@
 import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize, DataTypes } from 'sequelize';
 import { IConfig } from '../config/index.js';
-import { IColumnMetadata, IIndexMetadata, Dialect, ITable } from './Dialect.js';
+import { IColumnMetadata, IIndexMetadata, IForeignKeyConstraintMetadata, Dialect, ITable } from './Dialect.js';
 import { warnUnknownMappingForDataType } from './utils.js';
 import {
     buildSequelizeDataType,
@@ -356,6 +356,21 @@ export class DialectMSSQL extends Dialect {
         }
 
         return indicesMetadata;
+    }
+
+    /**
+     * Foreign key constraints are not inspected on this dialect yet.
+     * @param {Sequelize} connection
+     * @param {IConfig} config
+     * @param {ITable} table
+     * @returns {Promise<IForeignKeyConstraintMetadata[]>}
+     */
+    protected async fetchForeignKeysMetadata(
+        connection: Sequelize,
+        config: IConfig,
+        table: ITable
+    ): Promise<IForeignKeyConstraintMetadata[]> {
+        return [];
     }
 
 }
