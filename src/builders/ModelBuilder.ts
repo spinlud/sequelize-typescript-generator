@@ -37,6 +37,8 @@ export const buildTableDecoratorProps = (tableMetadata: ITableMetadata): Partial
     tableName: tableMetadata.originName,
     ...tableMetadata.schema && { schema: tableMetadata.schema },
     timestamps: tableMetadata.timestamps,
+    ...tableMetadata.paranoid && { paranoid: true },
+    ...tableMetadata.deletedAt && { deletedAt: tableMetadata.deletedAt },
     ...tableMetadata.hasTrigger && { hasTrigger: true },
     ...tableMetadata.comment && { comment: tableMetadata.comment },
 });

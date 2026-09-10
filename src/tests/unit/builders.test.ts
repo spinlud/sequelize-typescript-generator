@@ -43,6 +43,32 @@ describe('buildTableDecoratorProps', () => {
         expect(buildTableDecoratorProps({ ...baseTableMetadata, hasTrigger: false }))
             .not.toHaveProperty('hasTrigger');
     });
+
+    it('emits paranoid and deletedAt right after timestamps and before hasTrigger', () => {
+        const props = buildTableDecoratorProps({
+            ...baseTableMetadata,
+            timestamps: true,
+            paranoid: true,
+            deletedAt: 'deleted_at',
+            hasTrigger: true,
+        });
+
+        expect(props).toEqual({
+            tableName: 'users',
+            timestamps: true,
+            paranoid: true,
+            deletedAt: 'deleted_at',
+            hasTrigger: true,
+        });
+        expect(Object.keys(props)).toEqual(['tableName', 'timestamps', 'paranoid', 'deletedAt', 'hasTrigger']);
+    });
+
+    it('omits paranoid and deletedAt when paranoid is not set', () => {
+        const props = buildTableDecoratorProps(baseTableMetadata);
+
+        expect(props).not.toHaveProperty('paranoid');
+        expect(props).not.toHaveProperty('deletedAt');
+    });
 });
 
 describe('Builder utils', () => {

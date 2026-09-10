@@ -115,6 +115,9 @@ Options:
                               - output-models                           [string]
   -c, --clean                 Clean output directory before running    [boolean]
   -m, --timestamps            Add default timestamps to tables         [boolean]
+  -P, --paranoid              Emit paranoid table options for tables
+                              with a deleted_at or deletedAt column.
+                              Requires --timestamps.                    [boolean]
   -C, --case                  Transform tables and fields names
                               with one of the following cases:
                               - underscore

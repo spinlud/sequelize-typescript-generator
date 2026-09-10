@@ -5,6 +5,8 @@ import {
 export interface soft_deletesAttributes {
 	id?: number;
 	name?: string;
+	createdAt: number;
+	updatedAt: number;
 	deleted_at: number;
 }
 
@@ -30,6 +32,16 @@ export class soft_deletes extends Model<soft_deletesAttributes, soft_deletesAttr
 		type: DataType.STRING 
 	})
 	name?: string;
+
+	@Column({
+		type: DataType.DECIMAL 
+	})
+	createdAt!: number;
+
+	@Column({
+		type: DataType.DECIMAL 
+	})
+	updatedAt!: number;
 
 	@Column({
 		type: DataType.DECIMAL 

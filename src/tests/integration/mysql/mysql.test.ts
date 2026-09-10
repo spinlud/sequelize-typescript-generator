@@ -219,6 +219,7 @@ const testMetadata: ITestMetadata = {
         ],
         [ORDER_LINES_TABLE_NAME]: [],
     },
+    paranoidTable: SOFT_DELETES_TABLE_NAME,
     dataTypes: {
         dataTypesTable: DATA_TYPES_TABLE_NAME,
         async getColumnNativeDataType(

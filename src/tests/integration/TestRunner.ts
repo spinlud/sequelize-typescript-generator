@@ -784,6 +784,91 @@ export class TestRunner {
                     }
                 });
 
+                if (testMetadata.paranoidTable) {
+                    const paranoidTableName = testMetadata.paranoidTable;
+
+                    describe('Paranoid', () => {
+                        let connection: Sequelize | undefined;
+
+                        // A dedicated output directory per test keeps the freshly generated
+                        // models out of the module cache populated by the other describe blocks.
+                        const buildParanoidConfig = (metadata: IConfig['metadata'], paranoidOutDir: string): IConfig => ({
+                            connection: sequelizeOptions,
+                            metadata: {
+                                ...testMetadata.schema && { schema: testMetadata.schema.name },
+                                ...metadata,
+                            },
+                            output: {
+                                outDir: paranoidOutDir,
+                                clean: true,
+                            },
+                        });
+
+                        const loadModels = async (paranoidOutDir: string): Promise<void> => {
+                            const models = await import(pathToFileURL(path.join(paranoidOutDir, 'index.ts')).href);
+
+                            // @ts-ignore
+                            connection!.addModels([ ...Object.values(models) ]);
+                        };
+
+                        beforeEach(async () => {
+                            connection = new Sequelize({ ...sequelizeOptions });
+                            await connection.authenticate();
+                            await initTestDatabase(testMetadata, connection);
+                        });
+
+                        afterEach(async () => {
+                            connection && await connection.close();
+                        });
+
+                        it('emits paranoid options and soft-deletes rows', async () => {
+                            const paranoidOutDir = path.join(
+                                process.cwd(), 'src/tests/integration/output-models', `${format}-paranoid-enabled`
+                            );
+
+                            await buildModels(buildParanoidConfig({ timestamps: true, paranoid: true }, paranoidOutDir));
+                            await loadModels(paranoidOutDir);
+
+                            const model = connection!.model(paranoidTableName);
+
+                            expect(model.options.paranoid).toBe(true);
+                            expect(model.options.deletedAt).toBe('deleted_at');
+
+                            const created = await model.create({ id: 1, name: 'to delete' });
+                            expect(created).toBeDefined();
+
+                            await created.destroy();
+
+                            const visibleRows = await model.findAll();
+                            expect(visibleRows.length).toBe(0);
+
+                            const allRows = await model.findAll({ paranoid: false });
+                            expect(allRows.length).toBe(1);
+                            expect(allRows[0].get('deleted_at')).toBeTruthy();
+                        });
+
+                        it('ignores paranoid and warns when timestamps are missing', async () => {
+                            const paranoidOutDir = path.join(
+                                process.cwd(), 'src/tests/integration/output-models', `${format}-paranoid-no-timestamps`
+                            );
+                            const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+                            try {
+                                await buildModels(buildParanoidConfig({ paranoid: true }, paranoidOutDir));
+                                await loadModels(paranoidOutDir);
+
+                                const model = connection!.model(paranoidTableName);
+
+                                expect(model.options.paranoid).toBeFalsy();
+                                expect(warnSpy).toHaveBeenCalledWith('[WARNING]', expect.stringContaining('timestamps'));
+                            }
+                            finally {
+                                warnSpy.mockRestore();
+                            }
+                        });
+                    });
+                }
+
                 if (testMetadata.triggerTable && testMetadata.secondarySchemaTable) {
                     const triggerTableName = testMetadata.triggerTable;
                     const secondarySchemaTable = testMetadata.secondarySchemaTable;

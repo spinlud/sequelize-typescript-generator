@@ -272,6 +272,8 @@ export const SOFT_DELETES_TABLE_CREATES = [
         (
             id              INT      CONSTRAINT soft_deletes_pk      PRIMARY KEY,
             name            VARCHAR(80)     NOT NULL,
+            createdAt       TIMESTAMP,
+            updatedAt       TIMESTAMP,
             deleted_at      TIMESTAMP
         );
     `,

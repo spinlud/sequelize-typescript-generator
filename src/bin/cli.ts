@@ -19,7 +19,7 @@ process.on('unhandledRejection', (reason, promise) => {
 export const cli = async (): Promise<void> => {
     let usage = `Usage: stg -D <dialect> -d [database] -u [username] -x [password] `;
     usage += `-h [host] -p [port] -o [out-dir] -s [schema] -a [associations-file]`;
-    usage += `-t [tables] -T [skip-tables] -V [no-views] -i [indices] -C [case] -S [storage] -L [lint-file] `;
+    usage += `-t [tables] -T [skip-tables] -V [no-views] -i [indices] -P [paranoid] -C [case] -S [storage] -L [lint-file] `;
     usage += `-l [ssl] -r [protocol] -n [dialect-options] -c [clean] -g [logs]`;
 
     const {argv} = yargs(hideBin(process.argv))
@@ -89,6 +89,11 @@ export const cli = async (): Promise<void> => {
             alias: aliasesMap.TIMESTAMPS,
             boolean: true,
             describe: `Add default timestamps to tables`,
+        })
+        .option('P', {
+            alias: aliasesMap.PARANOID,
+            boolean: true,
+            describe: `Emit paranoid table options for tables with a deleted_at or deletedAt column. Requires --timestamps.`,
         })
         .option('C', {
             alias: aliasesMap.CASE,

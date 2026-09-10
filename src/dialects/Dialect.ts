@@ -5,6 +5,7 @@ import { createConnection } from "../connection/index.js";
 import { AssociationsParser, IAssociationsParsed, IAssociationMetadata } from './AssociationsParser.js'
 import { caseTransformer } from './utils.js';
 import { applyForeignKeyConstraintsToColumns } from './foreignKeys.js';
+import { findParanoidColumn, resolveParanoidOption } from './paranoid.js';
 import type { ReferentialAction } from './foreignKeys.js';
 import type { ISequelizeDataType } from './dataTypes.js';
 
@@ -217,6 +218,12 @@ export abstract class Dialect {
 
             let tables = await this.fetchTables(connection, config);
 
+            const paranoidResolution = resolveParanoidOption(config.metadata);
+
+            if (paranoidResolution.warning) {
+                console.warn('[WARNING]', paranoidResolution.warning);
+            }
+
             // Apply filters
             tables = tables
                 .filter(({ name }) => {
@@ -252,11 +259,31 @@ export abstract class Dialect {
 
                 const hasTrigger = await this.fetchTableHasTrigger(connection, config, table);
 
+                let paranoid = false;
+                let deletedAt: string | undefined;
+
+                if (paranoidResolution.enabled && !table.isView) {
+                    const paranoidColumn = findParanoidColumn(columnsMetadata);
+
+                    if (paranoidColumn) {
+                        paranoid = true;
+                        deletedAt = paranoidColumn.originName;
+                    }
+                    else {
+                        console.warn(
+                            '[WARNING]',
+                            `Table '${tableName}' has no deleted_at or deletedAt column; paranoid is not applied to it`
+                        );
+                    }
+                }
+
                 const tableMetadata: ITableMetadata = {
                     originName: tableName,
                     name: tableName,
                     schema: table.schema ?? config.connection.schema,
                     timestamps: config.metadata?.timestamps ?? false,
+                    ...paranoid && { paranoid: true },
+                    ...deletedAt && { deletedAt },
                     columns: {},
                     foreignKeys,
                     ...hasTrigger && { hasTrigger: true },
