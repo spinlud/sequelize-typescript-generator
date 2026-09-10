@@ -144,7 +144,7 @@ export const cli = async (): Promise<void> => {
         }).option('R', {
             alias: aliasesMap.DISABLE_STRICT,
             boolean: true,
-            describe: `Disable strict typescript class declaration (decorators format only; ignored in native format).`,
+            describe: `Disable strict typescript class declaration (decorators format only).`,
         }).option('F', {
             alias: aliasesMap.FORMAT,
             string: true,

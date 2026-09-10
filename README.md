@@ -164,8 +164,7 @@ Options:
                                               [string] [choices: "native",
                                               "decorators"] [default: "native"]
   -R, --no-strict             Disable strict typescript class declaration
-                              (decorators format only; ignored in native
-                              format).                                 [boolean]
+                              (decorators format only).                [boolean]
   -V, --no-views              Disable view generation. Available for: MySQL and MariaDB.
                                                                        [boolean]
   --associations              Discover one-to-one and one-to-many associations
