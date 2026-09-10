@@ -16,7 +16,7 @@ import { IConfig, ModelBuilder, createDialect } from 'sequelize-typescript-gener
             clean: true,
             outDir: 'models'
         },
-        strict: true,
+        format: 'native',
     };
 
     const dialect = createDialect('mysql');

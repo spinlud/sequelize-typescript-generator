@@ -9,6 +9,7 @@
 * [Prerequisites](#prerequisites)
 * [Installation](#installation)
 * [CLI usage](#cli-usage)
+* [Output formats](#output-formats)
 * [Programmatic usage](#programmatic-usage)
 * [Strict mode](#strict-mode)
 * [Transform case](#transform-case)
@@ -92,7 +93,7 @@ stg --help
 Usage: stg -D <dialect> -d [database] -u [username] -x [password] -h [host] -p
 [port] -o [out-dir] -s [schema] -a [associations-file]-t [tables] -T
 [skip-tables] -i [indices] -C [case] -S [storage] -L [lint-file] -l [ssl] -r
-[protocol] -c [clean] --no-associations
+[protocol] -c [clean] -F [format] --no-associations
 
 Options:
   --help                      Show help                                [boolean]
@@ -149,8 +150,18 @@ Options:
                                                                         [string]
   -f, --dialect-options-file  Dialect native options passed as json file path.
                                                                         [string]
-  -R, --no-strict             Disable strict typescript class declaration.
-                                                                       [boolean]    
+  -F, --format                Output format:
+                              - native: plain Sequelize classes with declare
+                                fields, Model.init and an initModels wiring
+                                file (default)
+                              - decorators: sequelize-typescript decorators
+                                (requires sequelize-typescript in the target
+                                project)
+                                              [string] [choices: "native",
+                                              "decorators"] [default: "native"]
+  -R, --no-strict             Disable strict typescript class declaration
+                              (decorators format only; ignored in native
+                              format).                                 [boolean]
   -V, --no-views              Disable view generation. Available for: MySQL and MariaDB.
                                                                        [boolean]
   --associations              Discover one-to-one and one-to-many associations
@@ -166,6 +177,119 @@ npx stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword 
 Global usage example:
 ```shell
 stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --dialect-options-file path/to/dialectOptions.json --case camel --out-dir models --clean 
+```
+
+## Output formats
+The generator emits models in one of two formats, selected with `-F` / `--format` (or the `format`
+option in [programmatic usage](#programmatic-usage)):
+
+- `native` (default): framework-free [`sequelize`](https://www.npmjs.com/package/sequelize) models.
+- `decorators`: [`sequelize-typescript`](https://www.npmjs.com/package/sequelize-typescript) decorated classes.
+
+**Breaking change:** `native` is the default from version 13. Earlier versions always emitted decorators, so
+to keep the previous output you must now pass `--format decorators` explicitly.
+
+### Native format
+Each model is a plain `sequelize` class. Attributes are typed with `InferAttributes` and
+`InferCreationAttributes`, `declare`d rather than assigned, and wrapped with `CreationOptional`,
+`ForeignKey` and `NonAttribute` where appropriate. Every model exposes a `static initModel(sequelize)`
+method instead of decorator metadata:
+
+```ts
+import {
+	CreationOptional, DataTypes, ForeignKey, InferAttributes, InferCreationAttributes, Model, Sequelize
+} from "sequelize";
+import type { races } from "./races";
+
+export class units extends Model<InferAttributes<units>, InferCreationAttributes<units>> {
+
+	declare unit_id: CreationOptional<number>;
+
+	declare unit_name: string;
+
+	declare race_id: ForeignKey<races["race_id"]>;
+
+	static initModel(sequelize: Sequelize): typeof units {
+		units.init({
+			unit_id: {
+				type: DataTypes.INTEGER,
+				primaryKey: true,
+				autoIncrement: true
+			},
+			unit_name: {
+				type: DataTypes.STRING,
+				allowNull: false
+			},
+			race_id: {
+				type: DataTypes.INTEGER,
+				allowNull: false
+			}
+		}, {
+			sequelize,
+			tableName: "units",
+			freezeTableName: true,
+			timestamps: false
+		});
+		return units;
+	}
+
+}
+```
+
+Alongside the model files the generator emits an `initModels.ts` wiring file and an `index.ts` barrel.
+The wiring file calls every model's `initModel` and declares all associations, and exports a `Models`
+type derived from its return value:
+
+```ts
+import { Sequelize } from "sequelize";
+import { races } from "./races";
+import { units } from "./units";
+
+export function initModels(sequelize: Sequelize) {
+	races.initModel(sequelize);
+	units.initModel(sequelize);
+	races.hasMany(units, { as: "units", foreignKey: "race_id", sourceKey: "race_id" });
+	units.belongsTo(races, { as: "race", foreignKey: "race_id", targetKey: "race_id" });
+	return {
+		races,
+		units
+	};
+}
+
+export type Models = ReturnType<typeof initModels>;
+```
+
+Wire the models against a `Sequelize` instance and use them straight away:
+
+```ts
+import { Sequelize } from "sequelize";
+import { initModels } from "./models/initModels";
+
+const sequelize = new Sequelize("myDatabase", "myUsername", "myPassword", { dialect: "mysql" });
+
+const models = initModels(sequelize);
+
+const units = await models.units.findAll({ include: models.races });
+```
+
+`initModels`, the `Models` type and the `static initModel` methods are native-only. Native models
+depend on `sequelize` alone; `sequelize-typescript` is not required.
+
+### Decorators format
+Pass `--format decorators` to emit `sequelize-typescript` decorated classes (the output shown in the
+[Associations](#associations) examples below). This format requires `sequelize-typescript` to be
+installed in the target project; if it cannot be resolved from the output directory a warning is
+printed (the generator never throws for this). Register the generated models with `sequelize-typescript`
+rather than a wiring file:
+
+```ts
+import { Sequelize } from "sequelize-typescript";
+import { units } from "./models/units";
+import { races } from "./models/races";
+
+const sequelize = new Sequelize("myDatabase", "myUsername", "myPassword", { dialect: "mysql" });
+
+sequelize.addModels([units, races]);
 ```
 
 ## Programmatic usage
@@ -190,7 +314,7 @@ import { IConfig, ModelBuilder, createDialect } from 'sequelize-typescript-gener
             clean: true,
             outDir: 'models'
         },
-        strict: true,
+        format: 'native',
     };
 
     const dialect = createDialect('mysql');
@@ -207,7 +331,15 @@ import { IConfig, ModelBuilder, createDialect } from 'sequelize-typescript-gener
 })();
 ```
 
+The `format` option accepts `'native'` (default) or `'decorators'` and mirrors the `--format` CLI flag;
+omit it to get the native format. See [Output formats](#output-formats) for the difference between them.
+
 ## Strict mode
+Strict mode applies to the [decorators format](#decorators-format) only. In the native format it is
+ignored, because native models always type their attributes with `InferAttributes` /
+`InferCreationAttributes`; passing `--no-strict` together with the native format prints a notice and
+has no other effect.
+
 By default strict mode will be used for models class declaration:
 
 `STRICT ENABLED`
@@ -979,7 +1111,7 @@ export const eslintDefaultConfig = [
             '@stylistic': stylistic,
         },
         rules: {
-            '@stylistic/padded-blocks': ['error', { blocks: 'always', classes: 'always', switches: 'always' }],
+            '@stylistic/padded-blocks': ['error', { blocks: 'never', classes: 'always', switches: 'always' }],
             '@stylistic/lines-between-class-members': ['error', 'always'],
             '@stylistic/object-curly-newline': ['error', {
                 'ObjectExpression': 'always',
