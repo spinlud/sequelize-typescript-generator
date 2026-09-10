@@ -44,6 +44,51 @@ const isModelRecord = (value: unknown): value is Record<string, ModelCtor> =>
     Object.values(value).every(entry => typeof entry === 'function');
 
 /**
+ * Type guard for the native wiring module, which exports `initModels`.
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+const hasInitModels = (value: unknown): value is { initModels: (sequelize: Sequelize) => unknown } =>
+    typeof value === 'object' &&
+    value !== null &&
+    'initModels' in value &&
+    typeof value.initModels === 'function';
+
+/**
+ * Register the generated models into the connection for the given format. The
+ * decorators output self-registers through `addModels`; the native output is
+ * wired by importing its `initModels.ts` and calling `initModels(connection)`.
+ * @param {Sequelize} connection
+ * @param {string} outDir
+ * @param {Format} format
+ * @returns {Promise<void>}
+ */
+const registerGeneratedModels = async (
+    connection: Sequelize,
+    outDir: string,
+    format: Format
+): Promise<void> => {
+    if (format === 'decorators') {
+        const models: unknown = await import(pathToFileURL(path.join(outDir, 'index.ts')).href);
+
+        if (!isModelRecord(models)) {
+            throw new Error('Generated models module did not export model constructors');
+        }
+
+        connection.addModels(Object.values(models));
+        return;
+    }
+
+    const wiring: unknown = await import(pathToFileURL(path.join(outDir, 'initModels.ts')).href);
+
+    if (!hasInitModels(wiring)) {
+        throw new Error('Generated wiring module did not export initModels');
+    }
+
+    wiring.initModels(connection);
+};
+
+/**
  * Workaround: deprecated GeomFromText function for MySQL
  */
 const applyGeomFromTextWorkaroundMySQL = (): void => { // Reference: https://github.com/sequelize/sequelize/issues/9786
@@ -178,9 +223,18 @@ export class TestRunner {
 
                 const buildModels = async (config: IConfig): Promise<void> => {
                     const dialect = createDialect(testMetadata.dialect);
-                    const builder = new ModelBuilder(config, dialect);
+                    const builder = new ModelBuilder({ ...config, format }, dialect);
                     await builder.build();
                 };
+
+                // Native always emits the association alias, so an eager load must reference it
+                // by `as`; decorators only emit an alias when it differs from the default and can
+                // be included by model.
+                const includeTarget = (
+                    model: ModelCtor,
+                    alias: string
+                ): ModelCtor | { model: ModelCtor; as: string } =>
+                    format === 'decorators' ? model : { model, as: alias };
 
                 describe('Build', () => {
                     const { testTables } = testMetadata;
@@ -202,10 +256,7 @@ export class TestRunner {
                     const test = async () => {
                         await buildModels(config);
 
-                        const models = await import(indexDir);
-
-                        // @ts-ignore
-                        connection!.addModels([ ...Object.values(models) ]);
+                        await registerGeneratedModels(connection!, outDir, format);
 
                         for (const testTable of testTables) {
                             connection!.model(testTable.name);
@@ -270,7 +321,7 @@ export class TestRunner {
                     });
 
                     it('type-checks under strict mode with zero diagnostics', async () => {
-                        const diagnostics = await compileGeneratedModels(outDir);
+                        const diagnostics = await compileGeneratedModels(outDir, format);
 
                         const formatted = ts.formatDiagnosticsWithColorAndContext(diagnostics, {
                             getCurrentDirectory: () => outDir,
@@ -285,6 +336,12 @@ export class TestRunner {
 
                 describe('Tables', () => {
                     const { testTables, filterTables } = testMetadata;
+                    // A dedicated output dir keeps the filtered generation out of the module
+                    // cache the full-set blocks populate, so native's initModels reflects it.
+                    const tablesOutDir = path.join(
+                        process.cwd(), 'src/tests/integration/output-models', `${format}-tables`
+                    );
+                    const tablesIndexDir = path.join(tablesOutDir, 'index.ts');
                     let connection: Sequelize | undefined;
 
                     beforeAll(async () => {
@@ -299,21 +356,31 @@ export class TestRunner {
                                 tables: filterTables,
                             },
                             output: {
-                                outDir: outDir,
+                                outDir: tablesOutDir,
                                 clean: true,
                             }
                         };
 
                         await buildModels(config);
-                        await fs.unlink(indexDir);
+
+                        // The decorators directory-glob registration would also pick up the
+                        // barrel, so it is removed first; native is wired through initModels.
+                        if (format === 'decorators') {
+                            await fs.unlink(tablesIndexDir);
+                        }
                     });
 
                     afterAll(async () => {
                         connection && await connection.close();
                     });
 
-                    it('should add only the provided tables', () => {
-                        connection!.addModels([ outDir ]);
+                    it('should add only the provided tables', async () => {
+                        if (format === 'decorators') {
+                            connection!.addModels([ tablesOutDir ]);
+                        }
+                        else {
+                            await registerGeneratedModels(connection!, tablesOutDir, format);
+                        }
 
                         for (const table of filterTables) {
                             connection!.model(table);
@@ -330,6 +397,12 @@ export class TestRunner {
 
                 describe('Skip tables', () => {
                     const { testTables, filterSkipTables } = testMetadata;
+                    // A dedicated output dir keeps the filtered generation out of the module
+                    // cache the full-set blocks populate, so native's initModels reflects it.
+                    const skipTablesOutDir = path.join(
+                        process.cwd(), 'src/tests/integration/output-models', `${format}-skip-tables`
+                    );
+                    const skipTablesIndexDir = path.join(skipTablesOutDir, 'index.ts');
                     let connection: Sequelize | undefined;
 
                     beforeAll(async () => {
@@ -344,21 +417,31 @@ export class TestRunner {
                                 skipTables: filterSkipTables,
                             },
                             output: {
-                                outDir: outDir,
+                                outDir: skipTablesOutDir,
                                 clean: true,
                             }
                         };
 
                         await buildModels(config);
-                        await fs.unlink(indexDir);
+
+                        // The decorators directory-glob registration would also pick up the
+                        // barrel, so it is removed first; native is wired through initModels.
+                        if (format === 'decorators') {
+                            await fs.unlink(skipTablesIndexDir);
+                        }
                     });
 
                     afterAll(async () => {
                         connection && await connection.close();
                     });
 
-                    it('should skip the provided tables', () => {
-                        connection!.addModels([ outDir ]);
+                    it('should skip the provided tables', async () => {
+                        if (format === 'decorators') {
+                            connection!.addModels([ skipTablesOutDir ]);
+                        }
+                        else {
+                            await registerGeneratedModels(connection!, skipTablesOutDir, format);
+                        }
 
                         for (const table of filterSkipTables) {
                             expect(() => connection!.model(table)).toThrow();
@@ -377,6 +460,12 @@ export class TestRunner {
                     describe('Skip views', () => {
                         const { testTables } = testMetadata;
                         const testViews = testMetadata.testViews!;
+                        // A dedicated output dir keeps this generation out of the module cache
+                        // the full-set blocks populate, so native's initModels reflects it.
+                        const skipViewsOutDir = path.join(
+                            process.cwd(), 'src/tests/integration/output-models', `${format}-skip-views`
+                        );
+                        const skipViewsIndexDir = path.join(skipViewsOutDir, 'index.ts');
                         let connection: Sequelize | undefined;
 
                         beforeAll(async () => {
@@ -391,21 +480,31 @@ export class TestRunner {
                                     noViews: true,
                                 },
                                 output: {
-                                    outDir: outDir,
+                                    outDir: skipViewsOutDir,
                                     clean: true,
                                 }
                             };
 
                             await buildModels(config);
-                            await fs.unlink(indexDir);
+
+                            // The decorators directory-glob registration would also pick up the
+                            // barrel, so it is removed first; native is wired through initModels.
+                            if (format === 'decorators') {
+                                await fs.unlink(skipViewsIndexDir);
+                            }
                         });
 
                         afterAll(async () => {
                             connection && await connection.close();
                         });
 
-                        it('should skip views', () => {
-                            connection!.addModels([ outDir ]);
+                        it('should skip views', async () => {
+                            if (format === 'decorators') {
+                                connection!.addModels([ skipViewsOutDir ]);
+                            }
+                            else {
+                                await registerGeneratedModels(connection!, skipViewsOutDir, format);
+                            }
 
                             for (const { name: tableName } of testTables) {
                                 connection!.model(tableName);
@@ -546,10 +645,7 @@ export class TestRunner {
 
                         await buildModels(config);
 
-                        const models = await import(indexDir);
-
-                        // @ts-ignore
-                        connection!.addModels([ ...Object.values(models) ]);
+                        await registerGeneratedModels(connection!, outDir, format);
                     });
 
                     afterAll(async () => {
@@ -631,10 +727,7 @@ export class TestRunner {
 
                         await buildModels(config);
 
-                        const models = await import(indexDir);
-
-                        // @ts-ignore
-                        connection!.addModels([ ...Object.values(models) ]);
+                        await registerGeneratedModels(connection!, outDir, format);
                     });
 
                     afterAll(async () => {
@@ -647,7 +740,7 @@ export class TestRunner {
                         const personField = pluralize.singular(testMetadata.associations.leftTableOneToOne);
                         const passportField = pluralize.singular(testMetadata.associations.rightTableOneToOne);
 
-                        const personRows = (await personModel.findAll({  include: [ passportModel ] }))
+                        const personRows = (await personModel.findAll({  include: [ includeTarget(passportModel, passportField) ] }))
                             .map(e => e.toJSON());
 
                         for (const person of personRows) {
@@ -656,7 +749,7 @@ export class TestRunner {
                             expect(Array.isArray(person[passportField])).toBeFalsy();
                         }
 
-                        const passportRows = (await passportModel.findAll({  include: [ personModel ] }))
+                        const passportRows = (await passportModel.findAll({  include: [ includeTarget(personModel, personField) ] }))
                             .map(e => e.toJSON());
 
                         for (const passport of passportRows) {
@@ -672,7 +765,7 @@ export class TestRunner {
                         const raceField = pluralize.singular(testMetadata.associations.leftTableOneToMany);
                         const unitsField = pluralize.plural(testMetadata.associations.rightTableOneToMany);
 
-                        const racesRows = (await racesModel.findAll({  include: [ unitsModel ] }))
+                        const racesRows = (await racesModel.findAll({  include: [ includeTarget(unitsModel, unitsField) ] }))
                             .map(e => e.toJSON());
 
                         for (const race of racesRows) {
@@ -695,7 +788,7 @@ export class TestRunner {
                             }
                         }
 
-                        const unitsRows = (await unitsModel.findAll({  include: [ racesModel ] }))
+                        const unitsRows = (await unitsModel.findAll({  include: [ includeTarget(racesModel, raceField) ] }))
                             .map(e => e.toJSON());
 
                         for (const unit of unitsRows) {
@@ -711,7 +804,7 @@ export class TestRunner {
                         const authorsField = pluralize.plural(testMetadata.associations.leftTableManyToMany);
                         const booksField = pluralize.plural(testMetadata.associations.rightTableManyToMany);
 
-                        const authorsRows = (await authorsModel.findAll({  include: [ booksModel ] }))
+                        const authorsRows = (await authorsModel.findAll({  include: [ includeTarget(booksModel, booksField) ] }))
                             .map(e => e.toJSON());
 
                         for (const author of authorsRows) {
@@ -720,7 +813,7 @@ export class TestRunner {
                             expect(author[booksField].length).toBeGreaterThanOrEqual(1);
                         }
 
-                        const booksRows = (await booksModel.findAll({  include: [ authorsModel ] }))
+                        const booksRows = (await booksModel.findAll({  include: [ includeTarget(authorsModel, authorsField) ] }))
                             .map(e => e.toJSON());
 
                         for (const book of booksRows) {
@@ -840,13 +933,7 @@ export class TestRunner {
                     });
 
                     const loadModelsInto = async (targetConnection: Sequelize, dir: string): Promise<void> => {
-                        const models: unknown = await import(pathToFileURL(path.join(dir, 'index.ts')).href);
-
-                        if (!isModelRecord(models)) {
-                            throw new Error('Generated models module did not export model constructors');
-                        }
-
-                        targetConnection.addModels(Object.values(models));
+                        await registerGeneratedModels(targetConnection, dir, format);
                     };
 
                     interface IReferentialActionOptions {
@@ -917,7 +1004,7 @@ export class TestRunner {
                             expect(unitsModel.associations[raceAlias].foreignKey).toBe('race_id');
 
                             const raceRows: Record<string, unknown>[] =
-                                (await racesModel.findAll({ include: [unitsModel] })).map(row => row.toJSON());
+                                (await racesModel.findAll({ include: [includeTarget(unitsModel, unitsAlias)] })).map(row => row.toJSON());
 
                             for (const race of raceRows) {
                                 const relatedUnits = race[unitsAlias];
@@ -936,7 +1023,7 @@ export class TestRunner {
                             }
 
                             const unitRows: Record<string, unknown>[] =
-                                (await unitsModel.findAll({ include: [racesModel] })).map(row => row.toJSON());
+                                (await unitsModel.findAll({ include: [includeTarget(racesModel, raceAlias)] })).map(row => row.toJSON());
 
                             for (const unit of unitRows) {
                                 expect(unit[raceAlias]).toBeDefined();
@@ -952,7 +1039,7 @@ export class TestRunner {
                             expect(profilesModel.associations[personAlias].associationType).toBe('BelongsTo');
 
                             const personRows: Record<string, unknown>[] =
-                                (await personModel.findAll({ include: [profilesModel] })).map(row => row.toJSON());
+                                (await personModel.findAll({ include: [includeTarget(profilesModel, profileAlias)] })).map(row => row.toJSON());
 
                             for (const person of personRows) {
                                 expect(person[profileAlias]).toBeDefined();
@@ -1041,8 +1128,26 @@ export class TestRunner {
                         });
 
                         it('emits no referential actions for file-declared associations', async () => {
-                            const generatedUnits = await fs.readFile(path.join(csvOutDir, `${unitsTable}.ts`), 'utf8');
-                            expect(generatedUnits).not.toContain('onDelete');
+                            if (format === 'decorators') {
+                                // Decorators carry the units wiring on the units model file.
+                                const generatedUnits = await fs.readFile(path.join(csvOutDir, `${unitsTable}.ts`), 'utf8');
+                                expect(generatedUnits).not.toContain('onDelete');
+                                return;
+                            }
+
+                            // Native wires every association in initModels.ts; only the file-declared
+                            // units<->races pair must be free of referential actions (other pairs come
+                            // from discovery and keep theirs).
+                            const generatedWiring = await fs.readFile(path.join(csvOutDir, 'initModels.ts'), 'utf8');
+                            const csvPairStatements = [
+                                ...generatedWiring.matchAll(/(?:units\.belongsTo\(races|races\.hasMany\(units)[^;]*;/g),
+                            ].map(match => match[0]);
+
+                            expect(csvPairStatements.length).toBeGreaterThan(0);
+
+                            for (const statement of csvPairStatements) {
+                                expect(statement).not.toContain('onDelete');
+                            }
                         });
                     });
 
@@ -1079,7 +1184,15 @@ export class TestRunner {
                             const generatedUnits = await fs.readFile(
                                 path.join(disabledOutDir, `${unitsTable}.ts`), 'utf8'
                             );
-                            expect(generatedUnits).toContain(`@ForeignKey(() => ${racesTable})`);
+
+                            // The foreign key stays branded even with associations disabled: a
+                            // `@ForeignKey` decorator for decorators, a `ForeignKey<...>` type for native.
+                            if (format === 'decorators') {
+                                expect(generatedUnits).toContain(`@ForeignKey(() => ${racesTable})`);
+                            }
+                            else {
+                                expect(generatedUnits).toContain(`ForeignKey<${racesTable}[`);
+                            }
                         });
                     });
 
@@ -1106,8 +1219,19 @@ export class TestRunner {
                                 path.join(camelOutDir, `${employeesTable}.ts`), 'utf8'
                             );
 
-                            expect(generatedEmployees).toContain('managerEmployees?: employees[]');
-                            expect(generatedEmployees).toContain('foreignKey: "managerId"');
+                            if (format === 'decorators') {
+                                expect(generatedEmployees).toContain('managerEmployees?: employees[]');
+                                expect(generatedEmployees).toContain('foreignKey: "managerId"');
+                            }
+                            else {
+                                // Native declares the association on the model and wires the foreign key in initModels.ts.
+                                expect(generatedEmployees).toContain('managerEmployees?: NonAttribute<employees[]>');
+
+                                const generatedWiring = await fs.readFile(
+                                    path.join(camelOutDir, 'initModels.ts'), 'utf8'
+                                );
+                                expect(generatedWiring).toContain('foreignKey: "managerId"');
+                            }
                         });
                     });
                 });
@@ -1133,13 +1257,7 @@ export class TestRunner {
                         });
 
                         const loadModels = async (paranoidOutDir: string): Promise<void> => {
-                            const models: unknown = await import(pathToFileURL(path.join(paranoidOutDir, 'index.ts')).href);
-
-                            if (!isModelRecord(models)) {
-                                throw new Error('Generated models module did not export model constructors');
-                            }
-
-                            requireConnection(connection).addModels(Object.values(models));
+                            await registerGeneratedModels(requireConnection(connection), paranoidOutDir, format);
                         };
 
                         beforeEach(async () => {
@@ -1224,13 +1342,7 @@ export class TestRunner {
 
                             await buildModels(config);
 
-                            const models: unknown = await import(indexDir);
-
-                            if (!isModelRecord(models)) {
-                                throw new Error('Generated models module did not export model constructors');
-                            }
-
-                            requireConnection(connection).addModels(Object.values(models));
+                            await registerGeneratedModels(requireConnection(connection), outDir, format);
                         });
 
                         afterAll(async () => {
