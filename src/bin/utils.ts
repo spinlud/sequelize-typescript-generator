@@ -37,6 +37,7 @@ export const aliasesMap = {
     SSL: 'ssl',
     PROTOCOL: 'protocol',
     ASSOCIATIONS_FILE: 'associations-file',
+    ASSOCIATIONS: 'associations',
     ENABLE_SEQUELIZE_LOGS: 'logs',
     DIALECT_OPTIONS: 'dialect-options',
     DIALECT_OPTIONS_FILE: 'dialect-options-file',
@@ -174,6 +175,7 @@ export const buildConfig = (argv: ArgvType): IConfig => {
             paranoid: !!argv[aliasesMap.PARANOID],
             ...argv[aliasesMap.CASE] && { case: parseCase(argv[aliasesMap.CASE]) },
             ...argv[aliasesMap.ASSOCIATIONS_FILE] && { associationsFile: argv[aliasesMap.ASSOCIATIONS_FILE] as string },
+            ...(argv[aliasesMap.ASSOCIATIONS] === false && { associations: false }),
             noViews: !!argv[aliasesMap.DISABLE_VIEWS],
         },
         output: {

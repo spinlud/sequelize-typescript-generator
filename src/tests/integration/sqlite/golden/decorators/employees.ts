@@ -1,5 +1,5 @@
 import {
-	Model, Table, Column, DataType, Index, Sequelize, ForeignKey 
+	Model, Table, Column, DataType, Index, Sequelize, ForeignKey, BelongsTo, HasMany 
 } from "sequelize-typescript";
 
 export interface employeesAttributes {
@@ -36,5 +36,21 @@ export class employees extends Model<employeesAttributes, employeesAttributes> i
 		type: DataType.INTEGER 
 	})
 	manager_id!: number;
+
+	@BelongsTo(() => employees, {
+		as: "manager",
+		foreignKey: "manager_id",
+		targetKey: "employee_id",
+		onDelete: "SET NULL" 
+	})
+	manager?: employees;
+
+	@HasMany(() => employees, {
+		as: "managerEmployees",
+		foreignKey: "manager_id",
+		sourceKey: "employee_id",
+		onDelete: "SET NULL" 
+	})
+	managerEmployees?: employees[];
 
 }

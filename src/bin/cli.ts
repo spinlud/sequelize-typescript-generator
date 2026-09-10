@@ -20,7 +20,7 @@ export const cli = async (): Promise<void> => {
     let usage = `Usage: stg -D <dialect> -d [database] -u [username] -x [password] `;
     usage += `-h [host] -p [port] -o [out-dir] -s [schema] -a [associations-file]`;
     usage += `-t [tables] -T [skip-tables] -V [no-views] -i [indices] -P [paranoid] -C [case] -S [storage] -L [lint-file] `;
-    usage += `-l [ssl] -r [protocol] -n [dialect-options] -c [clean] -g [logs]`;
+    usage += `-l [ssl] -r [protocol] -n [dialect-options] -c [clean] -g [logs] --no-associations`;
 
     const {argv} = yargs(hideBin(process.argv))
         .usage(usage)
@@ -148,6 +148,10 @@ export const cli = async (): Promise<void> => {
             alias: aliasesMap.DISABLE_VIEWS,
             boolean: true,
             describe: `Disable views generation. Available for: MySQL and MariaDB.`,
+        }).option(aliasesMap.ASSOCIATIONS, {
+            boolean: true,
+            default: true,
+            describe: `Discover one-to-one and one-to-many associations from foreign keys. Use --no-associations to disable.`,
         });
 
     validateArgs(argv);

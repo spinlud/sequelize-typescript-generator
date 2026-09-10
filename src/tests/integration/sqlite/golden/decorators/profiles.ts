@@ -1,5 +1,5 @@
 import {
-	Model, Table, Column, DataType, Index, Sequelize, ForeignKey 
+	Model, Table, Column, DataType, Index, Sequelize, ForeignKey, BelongsTo 
 } from "sequelize-typescript";
 import { person } from "./person";
 
@@ -35,5 +35,14 @@ export class profiles extends Model<profilesAttributes, profilesAttributes> impl
 		unique: true 
 	})
 	person_id?: number;
+
+	@BelongsTo(() => person, {
+		as: "person",
+		foreignKey: "person_id",
+		targetKey: "person_id",
+		onDelete: "CASCADE",
+		onUpdate: "CASCADE" 
+	})
+	person?: person;
 
 }

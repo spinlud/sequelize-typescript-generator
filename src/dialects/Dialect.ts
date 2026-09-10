@@ -2,9 +2,11 @@ import { IndexType, IndexMethod, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize } from 'sequelize';
 import { IConfig } from '../config/index.js';
 import { createConnection } from "../connection/index.js";
-import { AssociationsParser, IAssociationsParsed, IAssociationMetadata } from './AssociationsParser.js'
+import { AssociationsParser, IAssociationMetadata } from './AssociationsParser.js'
 import { caseTransformer } from './utils.js';
 import { applyForeignKeyConstraintsToColumns } from './foreignKeys.js';
+import { discoverAssociations, isAssociationDiscoveryEnabled } from './associationDiscovery.js';
+import { applyAssociationsFile } from './associationsFileMerge.js';
 import { findParanoidColumn, resolveParanoidOption } from './paranoid.js';
 import type { ReferentialAction } from './foreignKeys.js';
 import type { ISequelizeDataType } from './dataTypes.js';
@@ -306,48 +308,40 @@ export abstract class Dialect {
             connection && await connection.close();
         }
 
-        // Apply associations if required
+        let finalTablesMetadata: ITablesMetadata = tablesMetadata;
+
+        // Discover associations from foreign key constraints unless disabled.
+        if (isAssociationDiscoveryEnabled(config.metadata)) {
+            const discovery = discoverAssociations(finalTablesMetadata);
+            finalTablesMetadata = discovery.tablesMetadata;
+
+            for (const warning of discovery.warnings) {
+                console.warn('[WARNING]', warning);
+            }
+        }
+
+        // Apply the associations file on top of the discovered associations.
         if (config.metadata?.associationsFile) {
-            const parsedAssociations = AssociationsParser.parse(config.metadata?.associationsFile);
+            const parsedAssociations = AssociationsParser.parse(config.metadata.associationsFile);
+            const merge = applyAssociationsFile(finalTablesMetadata, parsedAssociations);
+            finalTablesMetadata = merge.tablesMetadata;
 
-            for (const [tableName, association] of Object.entries(parsedAssociations)) {
-                if(!tablesMetadata[tableName]) {
-                    console.warn('[WARNING]', `Associated table ${tableName} not found among (${Object.keys(tablesMetadata).join(', ')})`);
-                    continue;
-                }
-
-                // Attach associations to table
-                tablesMetadata[tableName].associations = association.associations;
-
-                const { columns } = tablesMetadata[tableName];
-
-                // Override foreign keys
-                for (const { name: columnName, targetModel } of association.foreignKeys) {
-                    if (!columns[columnName]) {
-                        console.warn('[WARNING]', `Foreign key column ${columnName} not found among (${Object.keys(columns).join(', ')})`);
-                        continue;
-                    }
-
-                    // Preserve discovered foreign key fields only when the associations
-                    // file names the same target model.
-                    const discovered = columns[columnName].foreignKey;
-
-                    columns[columnName].foreignKey = {
-                        ...(discovered?.targetModel === targetModel ? discovered : {}),
-                        name: columnName,
-                        targetModel: targetModel,
-                    };
-                }
+            for (const warning of merge.warnings) {
+                console.warn('[WARNING]', warning);
             }
         }
 
         // Apply transformations if required
         if (config.metadata?.case) {
-            for (const [tableName, tableMetadata] of Object.entries(tablesMetadata)) {
-                tablesMetadata[tableName] = caseTransformer(tableMetadata, config.metadata.case);
+            const transformed: ITablesMetadata = {};
+
+            for (const [tableName, tableMetadata] of Object.entries(finalTablesMetadata)) {
+                transformed[tableName] = caseTransformer(tableMetadata, config.metadata.case);
             }
+
+            finalTablesMetadata = transformed;
         }
 
-        return tablesMetadata;
+        return finalTablesMetadata;
     }
 }

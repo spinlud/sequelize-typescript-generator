@@ -1,6 +1,7 @@
 import {
 	Model, Table, Column, DataType, Index, Sequelize, ForeignKey, HasOne 
 } from "sequelize-typescript";
+import { profiles } from "./profiles";
 import { passport } from "./passport";
 
 export interface personAttributes {
@@ -37,6 +38,15 @@ export class person extends Model<personAttributes, personAttributes> implements
 		type: DataType.INTEGER 
 	})
 	passport_id?: number;
+
+	@HasOne(() => profiles, {
+		as: "profile",
+		foreignKey: "person_id",
+		sourceKey: "person_id",
+		onDelete: "CASCADE",
+		onUpdate: "CASCADE" 
+	})
+	profile?: profiles;
 
 	@HasOne(() => passport, {
 		sourceKey: "passport_id" 
