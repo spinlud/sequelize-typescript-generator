@@ -30,6 +30,7 @@ export interface IConfigMetadata {
     paranoid?: boolean; // Emit paranoid table options; requires timestamps
     case?: TransformCase | TransformMap | TransformFn;
     associationsFile?: string;
+    associations?: boolean; // Discover associations from foreign keys; undefined means enabled
     noViews?: boolean;
 }
 

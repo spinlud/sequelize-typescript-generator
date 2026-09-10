@@ -192,6 +192,55 @@ export const groupForeignKeyRows = (rows: IForeignKeyColumnRow[]): IForeignKeyCo
 };
 
 /**
+ * Reasons a foreign key constraint cannot become a Sequelize association.
+ */
+export const FOREIGN_KEY_SKIP_REASONS = ['composite', 'cross-schema', 'excluded-target'] as const;
+
+export type ForeignKeySkipReason = typeof FOREIGN_KEY_SKIP_REASONS[number];
+
+/**
+ * Outcome of testing a foreign key constraint for association eligibility: eligible,
+ * or the first rule it fails.
+ */
+export type ForeignKeyClassification =
+    | { isEligible: true }
+    | { isEligible: false; reason: ForeignKeySkipReason };
+
+/**
+ * Classify a foreign key constraint for association eligibility. A single-column
+ * constraint whose target table is generated and whose target schema matches the
+ * source schema is eligible; otherwise the first failing rule is returned in the
+ * order composite, cross-schema, excluded-target.
+ * @param {IForeignKeyConstraintMetadata} constraint
+ * @param {string | undefined} sourceSchema
+ * @param {ReadonlySet<string>} generatedTables
+ * @returns {ForeignKeyClassification}
+ */
+export const classifyForeignKeyConstraint = (
+    constraint: IForeignKeyConstraintMetadata,
+    sourceSchema: string | undefined,
+    generatedTables: ReadonlySet<string>
+): ForeignKeyClassification => {
+    if (constraint.sourceColumns.length !== 1) {
+        return { isEligible: false, reason: 'composite' };
+    }
+
+    if (
+        constraint.targetSchema !== undefined &&
+        sourceSchema !== undefined &&
+        constraint.targetSchema !== sourceSchema
+    ) {
+        return { isEligible: false, reason: 'cross-schema' };
+    }
+
+    if (!generatedTables.has(constraint.targetTable)) {
+        return { isEligible: false, reason: 'excluded-target' };
+    }
+
+    return { isEligible: true };
+};
+
+/**
  * Copy single-column foreign key constraints onto the matching column metadata.
  * A constraint is copied only when it targets a single column, the target table is
  * among the generated tables and the target schema matches the source table schema.
@@ -209,20 +258,10 @@ export const applyForeignKeyConstraintsToColumns = (
     const columns = { ...tableMetadata.columns };
 
     for (const constraint of constraints) {
-        if (constraint.sourceColumns.length !== 1) {
-            continue; // Composite constraint
-        }
+        const classification = classifyForeignKeyConstraint(constraint, tableMetadata.schema, generatedTables);
 
-        if (!generatedTables.has(constraint.targetTable)) {
-            continue; // Target table is not generated
-        }
-
-        if (
-            constraint.targetSchema !== undefined &&
-            tableMetadata.schema !== undefined &&
-            constraint.targetSchema !== tableMetadata.schema
-        ) {
-            continue; // Cross-schema constraint
+        if (!classification.isEligible) {
+            continue;
         }
 
         const [sourceColumn] = constraint.sourceColumns;

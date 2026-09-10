@@ -3,11 +3,12 @@ import {
     normalizeReferentialAction,
     groupForeignKeyRows,
     applyForeignKeyConstraintsToColumns,
+    classifyForeignKeyConstraint,
     mapForeignKeyQueryRow,
     IForeignKeyColumnRow,
     IForeignKeyQueryRow,
 } from '../../dialects/foreignKeys.js';
-import { ITableMetadata } from '../../dialects/Dialect.js';
+import { ITableMetadata, IForeignKeyConstraintMetadata } from '../../dialects/Dialect.js';
 
 const buildRow = (overrides: Partial<IForeignKeyColumnRow>): IForeignKeyColumnRow => ({
     constraintName: 'fk',
@@ -131,6 +132,70 @@ describe('foreign key helpers', () => {
             expect(constraint.sourceColumns).toEqual(['first', 'second']);
             expect(constraint.targetColumns).toEqual(['tf', 'ts']);
             expect(constraint.isSourceColumnUnique).toBe(false);
+        });
+    });
+
+    describe('classifyForeignKeyConstraint', () => {
+        const buildConstraint = (
+            overrides: Partial<IForeignKeyConstraintMetadata>
+        ): IForeignKeyConstraintMetadata => ({
+            constraintName: 'fk',
+            sourceTable: 'units',
+            sourceColumns: ['race_id'],
+            targetSchema: 'public',
+            targetTable: 'races',
+            targetColumns: ['race_id'],
+            onDelete: 'NO ACTION',
+            onUpdate: 'NO ACTION',
+            isSourceColumnUnique: false,
+            ...overrides,
+        });
+
+        const generatedTables = new Set(['units', 'races']);
+
+        it('accepts a single-column, same-schema, generated-target constraint', () => {
+            expect(classifyForeignKeyConstraint(buildConstraint({}), 'public', generatedTables)).toEqual({
+                isEligible: true,
+            });
+        });
+
+        it('rejects a composite constraint first', () => {
+            const constraint = buildConstraint({
+                sourceColumns: ['order_id', 'line_no'],
+                targetTable: 'not_generated',
+                targetSchema: 'other',
+            });
+
+            expect(classifyForeignKeyConstraint(constraint, 'public', generatedTables)).toEqual({
+                isEligible: false,
+                reason: 'composite',
+            });
+        });
+
+        it('rejects a cross-schema constraint before an excluded target', () => {
+            const constraint = buildConstraint({ targetSchema: 'other', targetTable: 'not_generated' });
+
+            expect(classifyForeignKeyConstraint(constraint, 'public', generatedTables)).toEqual({
+                isEligible: false,
+                reason: 'cross-schema',
+            });
+        });
+
+        it('rejects a constraint whose target is not generated', () => {
+            const constraint = buildConstraint({ targetTable: 'not_generated' });
+
+            expect(classifyForeignKeyConstraint(constraint, 'public', generatedTables)).toEqual({
+                isEligible: false,
+                reason: 'excluded-target',
+            });
+        });
+
+        it('ignores the schema check when either schema is undefined', () => {
+            const constraint = buildConstraint({ targetSchema: 'other' });
+
+            expect(classifyForeignKeyConstraint(constraint, undefined, generatedTables)).toEqual({
+                isEligible: true,
+            });
         });
     });
 
