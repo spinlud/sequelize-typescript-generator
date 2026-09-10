@@ -4,6 +4,7 @@ import * as ts from 'typescript';
 import pluralize from 'pluralize';
 import { Linter } from '../lint/index.js';
 import { ModelAttributeColumnOptions } from 'sequelize';
+import type { BelongsToOptions, HasManyOptions, HasOneOptions } from 'sequelize';
 import type { IndexOptions, IndexFieldOptions, TableOptions } from 'sequelize-typescript';
 import { IConfig } from '../config/index.js';
 import {IColumnMetadata, ITableMetadata, IIndexMetadata, Dialect, ITablesMetadata} from '../dialects/Dialect.js';
@@ -42,6 +43,79 @@ export const buildTableDecoratorProps = (tableMetadata: ITableMetadata): Partial
     ...tableMetadata.hasTrigger && { hasTrigger: true },
     ...tableMetadata.comment && { comment: tableMetadata.comment },
 });
+
+/**
+ * Decorator options accepted by `@BelongsTo`, `@HasOne` and `@HasMany`.
+ */
+export type AssociationDecoratorOptions = Partial<BelongsToOptions & HasManyOptions & HasOneOptions>;
+
+/**
+ * Resolve the class property name an association is exposed under. When the
+ * association carries a discovered alias it wins; otherwise the target model
+ * name is pluralized for to-many associations and singularized otherwise.
+ * @param {IAssociationMetadata} association
+ * @returns {string}
+ */
+export const resolveAssociationPropertyName = (association: IAssociationMetadata): string => {
+    if (association.alias) {
+        return association.alias;
+    }
+
+    return association.associationName.includes('Many') ?
+        pluralize.plural(association.targetModel) : pluralize.singular(association.targetModel);
+};
+
+/**
+ * Build the decorator options for `@BelongsTo`, `@HasOne` and `@HasMany`. Keys
+ * are emitted in the fixed order as, foreignKey, targetKey, sourceKey, onDelete,
+ * onUpdate, and `as` is emitted only when the association carries an alias.
+ * Returns undefined when no option applies so the decorator is rendered without
+ * an options argument.
+ * @param {IAssociationMetadata} association
+ * @returns {AssociationDecoratorOptions | undefined}
+ */
+export const buildAssociationDecoratorProps = (
+    association: IAssociationMetadata
+): AssociationDecoratorOptions | undefined => {
+    const props: AssociationDecoratorOptions = {
+        ...association.alias && { as: association.alias },
+        ...association.foreignKey && { foreignKey: association.foreignKey },
+        ...association.targetKey && { targetKey: association.targetKey },
+        ...association.sourceKey && { sourceKey: association.sourceKey },
+        ...association.onDelete && { onDelete: association.onDelete },
+        ...association.onUpdate && { onUpdate: association.onUpdate },
+    };
+
+    return Object.keys(props).length ? props : undefined;
+};
+
+/**
+ * Build the association class member for a model.
+ * @param {IAssociationMetadata} association
+ * @returns {ts.PropertyDeclaration}
+ */
+export const buildAssociationPropertyDecl = (association: IAssociationMetadata): ts.PropertyDeclaration => {
+    const { associationName, targetModel, joinModel } = association;
+
+    const targetModels = [ targetModel ];
+    joinModel && targetModels.push(joinModel);
+
+    const decoratorProps = buildAssociationDecoratorProps(association);
+
+    return ts.factory.createPropertyDeclaration(
+        [
+            decoratorProps ?
+                generateArrowDecorator(associationName, targetModels, decoratorProps) :
+                generateArrowDecorator(associationName, targetModels),
+        ],
+        resolveAssociationPropertyName(association),
+        ts.factory.createToken(ts.SyntaxKind.QuestionToken),
+        associationName.includes('Many') ?
+            ts.factory.createArrayTypeNode(ts.factory.createTypeReferenceNode(targetModel, undefined)) :
+            ts.factory.createTypeReferenceNode(targetModel, undefined),
+        undefined,
+    );
+};
 
 /**
  * @class ModelGenerator
@@ -103,41 +177,6 @@ export class ModelBuilder extends Builder {
             (col.autoIncrement || col.allowNull || col.defaultValue !== undefined) ?
                 ts.factory.createToken(ts.SyntaxKind.QuestionToken) : ts.factory.createToken(ts.SyntaxKind.ExclamationToken),
             ts.factory.createTypeReferenceNode(dialect.mapDbTypeToJs(col.type) ?? 'any', undefined),
-            undefined,
-        );
-    }
-
-    /**
-     * Build association class member
-     * @param {IAssociationMetadata} association
-     */
-    private static buildAssociationPropertyDecl(association: IAssociationMetadata): ts.PropertyDeclaration {
-        const { associationName, targetModel, joinModel } = association;
-
-        const targetModels = [ targetModel ];
-        joinModel && targetModels.push(joinModel);
-
-        return ts.factory.createPropertyDeclaration(
-            [
-                ...(association.sourceKey ?
-                        [
-                            generateArrowDecorator(
-                                associationName,
-                                targetModels,
-                                { sourceKey: association.sourceKey }
-                            )
-                        ]
-                        : [
-                            generateArrowDecorator(associationName, targetModels)
-                        ]
-                ),
-            ],
-            associationName.includes('Many') ?
-                pluralize.plural(targetModel) : pluralize.singular(targetModel),
-            ts.factory.createToken(ts.SyntaxKind.QuestionToken),
-            associationName.includes('Many') ?
-                ts.factory.createArrayTypeNode(ts.factory.createTypeReferenceNode(targetModel, undefined)) :
-                ts.factory.createTypeReferenceNode(targetModel, undefined),
             undefined,
         );
     }
@@ -279,7 +318,7 @@ export class ModelBuilder extends Builder {
             [
                 ...Object.values(columns).map(col => this.buildColumnPropertyDecl(col, dialect)),
                 ...tableMetadata.associations && tableMetadata.associations.length ?
-                    tableMetadata.associations.map(a => this.buildAssociationPropertyDecl(a)) : []
+                    tableMetadata.associations.map(a => buildAssociationPropertyDecl(a)) : []
             ]
         );
 
