@@ -807,6 +807,311 @@ export class TestRunner {
                     }
                 });
 
+                describe('Association discovery', () => {
+                    const unitsTable = testMetadata.associations.rightTableOneToMany;
+                    const racesTable = testMetadata.associations.leftTableOneToMany;
+                    const personTable = testMetadata.associations.leftTableOneToOne;
+                    const profilesTable = 'profiles';
+                    const employeesTable = 'employees';
+                    const shipmentsTable = 'shipments';
+                    const orderLinesTable = 'order_lines';
+
+                    // Aliases discovery derives from the database names, mirroring the generator rules.
+                    const raceAlias = pluralize.singular(racesTable);
+                    const unitsAlias = pluralize.plural(unitsTable);
+                    const personAlias = pluralize.singular(personTable);
+                    const profileAlias = pluralize.singular(profilesTable);
+                    const MANAGER_ALIAS = 'manager';
+                    const MANAGER_EMPLOYEES_ALIAS = 'managerEmployees';
+
+                    const buildDiscoveryConfig = (
+                        metadata: IConfig['metadata'],
+                        discoveryOutDir: string
+                    ): IConfig => ({
+                        connection: sequelizeOptions,
+                        metadata: {
+                            ...testMetadata.schema && { schema: testMetadata.schema.name },
+                            ...metadata,
+                        },
+                        output: {
+                            outDir: discoveryOutDir,
+                            clean: true,
+                        },
+                    });
+
+                    const loadModelsInto = async (targetConnection: Sequelize, dir: string): Promise<void> => {
+                        const models: unknown = await import(pathToFileURL(path.join(dir, 'index.ts')).href);
+
+                        if (!isModelRecord(models)) {
+                            throw new Error('Generated models module did not export model constructors');
+                        }
+
+                        targetConnection.addModels(Object.values(models));
+                    };
+
+                    interface IReferentialActionOptions {
+                        onDelete?: string;
+                        onUpdate?: string;
+                    }
+
+                    // Referential actions live on the runtime association options, which Sequelize
+                    // does not surface on the typed Association base class.
+                    const readReferentialActions = (association: unknown): IReferentialActionOptions => {
+                        if (typeof association !== 'object' || association === null || !('options' in association)) {
+                            return {};
+                        }
+
+                        const options: unknown = association.options;
+
+                        if (typeof options !== 'object' || options === null) {
+                            return {};
+                        }
+
+                        const onDelete = 'onDelete' in options && typeof options.onDelete === 'string'
+                            ? options.onDelete
+                            : undefined;
+                        const onUpdate = 'onUpdate' in options && typeof options.onUpdate === 'string'
+                            ? options.onUpdate
+                            : undefined;
+
+                        return { onDelete, onUpdate };
+                    };
+
+                    describe('discovered from foreign keys', () => {
+                        const discoveredOutDir = path.join(
+                            process.cwd(), 'src/tests/integration/output-models', `${format}-assoc-discovered`
+                        );
+                        let connection: Sequelize | undefined;
+                        const warnMessages: string[] = [];
+
+                        beforeAll(async () => {
+                            connection = new Sequelize({ ...sequelizeOptions });
+                            await connection.authenticate();
+                            await initTestDatabase(testMetadata, connection);
+
+                            const warnSpy = jest.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => {
+                                warnMessages.push(args.map(arg => String(arg)).join(' '));
+                            });
+
+                            try {
+                                await buildModels(buildDiscoveryConfig({ indices: true }, discoveredOutDir));
+                            }
+                            finally {
+                                warnSpy.mockRestore();
+                            }
+
+                            await loadModelsInto(requireConnection(connection), discoveredOutDir);
+                        });
+
+                        afterAll(async () => {
+                            connection && await connection.close();
+                        });
+
+                        it('derives a one-to-many association between units and races', async () => {
+                            const racesModel = requireConnection(connection).model(racesTable);
+                            const unitsModel = requireConnection(connection).model(unitsTable);
+
+                            expect(racesModel.associations[unitsAlias].associationType).toBe('HasMany');
+                            expect(racesModel.associations[unitsAlias].foreignKey).toBe('race_id');
+                            expect(unitsModel.associations[raceAlias].associationType).toBe('BelongsTo');
+                            expect(unitsModel.associations[raceAlias].foreignKey).toBe('race_id');
+
+                            const raceRows: Record<string, unknown>[] =
+                                (await racesModel.findAll({ include: [unitsModel] })).map(row => row.toJSON());
+
+                            for (const race of raceRows) {
+                                const relatedUnits = race[unitsAlias];
+                                expect(Array.isArray(relatedUnits)).toBe(true);
+
+                                const raceName = race['race_name'];
+
+                                if (Array.isArray(relatedUnits) && typeof raceName === 'string') {
+                                    switch (raceName) {
+                                        case 'Orcs': expect(relatedUnits.length).toBe(2); break;
+                                        case 'Humans': expect(relatedUnits.length).toBe(1); break;
+                                        case 'Night Elves': expect(relatedUnits.length).toBe(2); break;
+                                        case 'Undead': expect(relatedUnits.length).toBe(2); break;
+                                    }
+                                }
+                            }
+
+                            const unitRows: Record<string, unknown>[] =
+                                (await unitsModel.findAll({ include: [racesModel] })).map(row => row.toJSON());
+
+                            for (const unit of unitRows) {
+                                expect(unit[raceAlias]).toBeDefined();
+                                expect(Array.isArray(unit[raceAlias])).toBe(false);
+                            }
+                        });
+
+                        it('derives a one-to-one association between profiles and person', async () => {
+                            const personModel = requireConnection(connection).model(personTable);
+                            const profilesModel = requireConnection(connection).model(profilesTable);
+
+                            expect(personModel.associations[profileAlias].associationType).toBe('HasOne');
+                            expect(profilesModel.associations[personAlias].associationType).toBe('BelongsTo');
+
+                            const personRows: Record<string, unknown>[] =
+                                (await personModel.findAll({ include: [profilesModel] })).map(row => row.toJSON());
+
+                            for (const person of personRows) {
+                                expect(person[profileAlias]).toBeDefined();
+                                expect(Array.isArray(person[profileAlias])).toBe(false);
+                            }
+                        });
+
+                        it('skips composite foreign keys and warns with the constraint name', () => {
+                            const shipmentsModel = requireConnection(connection).model(shipmentsTable);
+                            const orderLinesModel = requireConnection(connection).model(orderLinesTable);
+
+                            expect(Object.keys(shipmentsModel.associations)).toHaveLength(0);
+                            expect(Object.keys(orderLinesModel.associations)).toHaveLength(0);
+
+                            const [compositeConstraint] = testMetadata.expectedForeignKeys[shipmentsTable];
+                            expect(warnMessages.some(message => message.includes(compositeConstraint.constraintName)))
+                                .toBe(true);
+                        });
+
+                        it('derives aliased self-references on employees', async () => {
+                            const employeesModel = requireConnection(connection).model(employeesTable);
+
+                            expect(employeesModel.associations[MANAGER_ALIAS].associationType).toBe('BelongsTo');
+                            expect(employeesModel.associations[MANAGER_EMPLOYEES_ALIAS].associationType).toBe('HasMany');
+
+                            const employeeRows: Record<string, unknown>[] =
+                                (await employeesModel.findAll({ include: [{ association: MANAGER_ALIAS }] }))
+                                    .map(row => row.toJSON());
+
+                            const managed = employeeRows.find(
+                                row => row['manager_id'] !== null && row['manager_id'] !== undefined
+                            );
+                            expect(managed).toBeDefined();
+
+                            if (managed) {
+                                expect(managed[MANAGER_ALIAS]).toBeDefined();
+                                expect(Array.isArray(managed[MANAGER_ALIAS])).toBe(false);
+                            }
+                        });
+
+                        it('carries referential actions onto the discovered association', () => {
+                            const unitsModel = requireConnection(connection).model(unitsTable);
+                            const [unitsForeignKey] = testMetadata.expectedForeignKeys[unitsTable];
+                            const referentialActions = readReferentialActions(unitsModel.associations[raceAlias]);
+
+                            expect(referentialActions.onDelete).toBe(unitsForeignKey.onDelete);
+
+                            // Some dialects (SQL Server) normalize ON UPDATE RESTRICT to NO ACTION and emit no rule.
+                            if (unitsForeignKey.onUpdate !== 'NO ACTION') {
+                                expect(referentialActions.onUpdate).toBe(unitsForeignKey.onUpdate);
+                            }
+                        });
+                    });
+
+                    describe('overridden by the associations file', () => {
+                        const csvOutDir = path.join(
+                            process.cwd(), 'src/tests/integration/output-models', `${format}-assoc-csv`
+                        );
+                        let connection: Sequelize | undefined;
+
+                        beforeAll(async () => {
+                            connection = new Sequelize({ ...sequelizeOptions });
+                            await connection.authenticate();
+                            await initTestDatabase(testMetadata, connection);
+
+                            await buildModels(buildDiscoveryConfig(
+                                { indices: true, associationsFile: associationsFilePath }, csvOutDir
+                            ));
+
+                            await loadModelsInto(requireConnection(connection), csvOutDir);
+                        });
+
+                        afterAll(async () => {
+                            connection && await connection.close();
+                        });
+
+                        it('exposes only the associations declared in the file', () => {
+                            const unitsModel = requireConnection(connection).model(unitsTable);
+                            const racesModel = requireConnection(connection).model(racesTable);
+                            const personModel = requireConnection(connection).model(personTable);
+
+                            expect(Object.keys(unitsModel.associations).sort()).toEqual([raceAlias].sort());
+                            expect(Object.keys(racesModel.associations).sort()).toEqual([unitsAlias].sort());
+                            expect(Object.keys(personModel.associations).sort())
+                                .toEqual(['passport', profileAlias].sort());
+                        });
+
+                        it('emits no referential actions for file-declared associations', async () => {
+                            const generatedUnits = await fs.readFile(path.join(csvOutDir, `${unitsTable}.ts`), 'utf8');
+                            expect(generatedUnits).not.toContain('onDelete');
+                        });
+                    });
+
+                    describe('disabled with associations: false', () => {
+                        const disabledOutDir = path.join(
+                            process.cwd(), 'src/tests/integration/output-models', `${format}-assoc-none`
+                        );
+                        let connection: Sequelize | undefined;
+
+                        beforeAll(async () => {
+                            connection = new Sequelize({ ...sequelizeOptions });
+                            await connection.authenticate();
+                            await initTestDatabase(testMetadata, connection);
+
+                            await buildModels(buildDiscoveryConfig({ indices: true, associations: false }, disabledOutDir));
+                            await loadModelsInto(requireConnection(connection), disabledOutDir);
+                        });
+
+                        afterAll(async () => {
+                            connection && await connection.close();
+                        });
+
+                        it('generates no associations but keeps the foreign key decorator', async () => {
+                            const tables = [
+                                unitsTable, racesTable, personTable, profilesTable,
+                                employeesTable, shipmentsTable, orderLinesTable,
+                            ];
+
+                            for (const tableName of tables) {
+                                const model = requireConnection(connection).model(tableName);
+                                expect(Object.keys(model.associations)).toHaveLength(0);
+                            }
+
+                            const generatedUnits = await fs.readFile(
+                                path.join(disabledOutDir, `${unitsTable}.ts`), 'utf8'
+                            );
+                            expect(generatedUnits).toContain(`@ForeignKey(() => ${racesTable})`);
+                        });
+                    });
+
+                    describe('with camel case', () => {
+                        const camelOutDir = path.join(
+                            process.cwd(), 'src/tests/integration/output-models', `${format}-assoc-camel`
+                        );
+                        let connection: Sequelize | undefined;
+
+                        beforeAll(async () => {
+                            connection = new Sequelize({ ...sequelizeOptions });
+                            await connection.authenticate();
+                            await initTestDatabase(testMetadata, connection);
+
+                            await buildModels(buildDiscoveryConfig({ indices: true, case: 'CAMEL' }, camelOutDir));
+                        });
+
+                        afterAll(async () => {
+                            connection && await connection.close();
+                        });
+
+                        it('camel-cases association aliases and foreign keys', async () => {
+                            const generatedEmployees = await fs.readFile(
+                                path.join(camelOutDir, `${employeesTable}.ts`), 'utf8'
+                            );
+
+                            expect(generatedEmployees).toContain('managerEmployees?: employees[]');
+                            expect(generatedEmployees).toContain('foreignKey: "managerId"');
+                        });
+                    });
+                });
+
                 if (testMetadata.paranoidTable) {
                     const paranoidTableName = testMetadata.paranoidTable;
 
