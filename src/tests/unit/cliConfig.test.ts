@@ -75,4 +75,22 @@ describe('buildConfig', () => {
 
         expect(config.strict).toBe(true);
     });
+
+    it('sets noViews true when -V sets the no-views alias', () => {
+        const config = buildConfig({ ...baseArgv, [aliasesMap.DISABLE_VIEWS]: true });
+
+        expect(config.metadata?.noViews).toBe(true);
+    });
+
+    it('sets noViews true when --no-views is parsed as views:false', () => {
+        const config = buildConfig({ ...baseArgv, views: false });
+
+        expect(config.metadata?.noViews).toBe(true);
+    });
+
+    it('defaults noViews to false when neither spelling is present', () => {
+        const config = buildConfig(baseArgv);
+
+        expect(config.metadata?.noViews).toBe(false);
+    });
 });

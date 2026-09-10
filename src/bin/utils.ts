@@ -178,7 +178,7 @@ export const buildConfig = (argv: ArgvType): IConfig => {
             ...argv[aliasesMap.CASE] && { case: parseCase(argv[aliasesMap.CASE]) },
             ...argv[aliasesMap.ASSOCIATIONS_FILE] && { associationsFile: argv[aliasesMap.ASSOCIATIONS_FILE] as string },
             ...(argv[aliasesMap.ASSOCIATIONS] === false && { associations: false }),
-            noViews: !!argv[aliasesMap.DISABLE_VIEWS],
+            noViews: !!argv[aliasesMap.DISABLE_VIEWS] || argv['views'] === false,
         },
         output: {
             outDir: argv[aliasesMap.OUTPUT_DIR] ?
