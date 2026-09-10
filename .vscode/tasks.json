@@ -1,0 +1,95 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            // Bring the postgres container up (idempotent) and wait until it accepts connections.
+            "label": "db: postgres (up + wait)",
+            "type": "shell",
+            "command": "docker compose --profile postgres up -d && TEST_DB_DIALECT=postgres TEST_DB_HOST=localhost TEST_DB_PORT=1234 npx tsx src/tests/integration/wait-for-db.ts",
+            "problemMatcher": []
+        },
+        {
+            // Bring the mysql container up (idempotent) and wait until it accepts connections.
+            "label": "db: mysql (up + wait)",
+            "type": "shell",
+            "command": "docker compose --profile mysql up -d && TEST_DB_DIALECT=mysql TEST_DB_HOST=localhost TEST_DB_PORT=1234 npx tsx src/tests/integration/wait-for-db.ts",
+            "problemMatcher": []
+        },
+        {
+            // Bring the mariadb container up (idempotent) and wait until it accepts connections.
+            "label": "db: mariadb (up + wait)",
+            "type": "shell",
+            "command": "docker compose --profile mariadb up -d && TEST_DB_DIALECT=mariadb TEST_DB_HOST=localhost TEST_DB_PORT=1234 npx tsx src/tests/integration/wait-for-db.ts",
+            "problemMatcher": []
+        },
+        {
+            // Bring the mssql container up (idempotent) and wait until it accepts connections.
+            "label": "db: mssql (up + wait)",
+            "type": "shell",
+            "command": "docker compose --profile mssql up -d && TEST_DB_DIALECT=mssql TEST_DB_HOST=localhost TEST_DB_PORT=1234 npx tsx src/tests/integration/wait-for-db.ts",
+            "problemMatcher": []
+        },
+        {
+            // Tear down every dialect container and remove its volumes.
+            "label": "db: down (all)",
+            "type": "shell",
+            "command": "docker compose --profile postgres --profile mysql --profile mariadb --profile mssql down -v",
+            "problemMatcher": []
+        },
+        {
+            // Full postgres integration cycle: up, wait, jest, down.
+            "label": "Integration: postgres (like CI)",
+            "type": "npm",
+            "script": "test:postgres",
+            "problemMatcher": []
+        },
+        {
+            // Full mysql integration cycle: up, wait, jest, down.
+            "label": "Integration: mysql (like CI)",
+            "type": "npm",
+            "script": "test:mysql",
+            "problemMatcher": []
+        },
+        {
+            // Full mariadb integration cycle: up, wait, jest, down.
+            "label": "Integration: mariadb (like CI)",
+            "type": "npm",
+            "script": "test:mariadb",
+            "problemMatcher": []
+        },
+        {
+            // Full mssql integration cycle: up, wait, jest, down.
+            // Requires Node <= 23 locally — tedious/SlowBuffer is broken on Node >= 24.
+            "label": "Integration: mssql (like CI)",
+            "type": "npm",
+            "script": "test:mssql",
+            "problemMatcher": []
+        },
+        {
+            // Run every dialect SEQUENTIALLY: all Docker dialects share host port 1234, and each
+            // wrapper tears its container down before the next starts, so they cannot overlap.
+            "label": "Integration: all dialects (like CI)",
+            "type": "shell",
+            "command": "npm run test:postgres && npm run test:mysql && npm run test:mariadb && npm run test:mssql && npm run test:sqlite",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            // Run the unit test suite.
+            "label": "Test: unit",
+            "type": "npm",
+            "script": "test:unit",
+            "problemMatcher": []
+        },
+        {
+            // Run the sqlite integration suite (no container needed).
+            "label": "Test: sqlite",
+            "type": "npm",
+            "script": "test:sqlite",
+            "problemMatcher": []
+        }
+    ]
+}
