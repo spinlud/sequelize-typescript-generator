@@ -1,6 +1,6 @@
 {
   "name": "sequelize-typescript-generator",
-  "version": "13.0.0",
+  "version": "13.0.1",
   "description": "Automatically generate type-safe Sequelize models from your source database via the TypeScript compiler API — native or sequelize-typescript (decorators) format.",
   "type": "module",
   "main": "build/index.js",
