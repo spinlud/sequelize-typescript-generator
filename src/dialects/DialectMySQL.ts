@@ -10,10 +10,17 @@ import {
     DATA_TYPE_NAMESPACES,
     DataTypeArgument,
 } from './dataTypes.js';
+import {
+    groupForeignKeyRows,
+    buildInformationSchemaForeignKeysQuery,
+    IForeignKeyColumnRow,
+    IInformationSchemaForeignKeyRow,
+} from './foreignKeys.js';
 
 interface ITableRow {
     table_name: string;
     table_comment?: string;
+    table_type?: string;
 }
 
 interface IColumnMetadataMySQL {
@@ -207,11 +214,12 @@ export class DialectMySQL extends Dialect {
         config: IConfig
     ): Promise<ITable[]> {
         const query = `
-            SELECT 
-                table_name      AS table_name, 
-                table_comment   AS table_comment 
+            SELECT
+                table_name      AS table_name,
+                table_comment   AS table_comment,
+                table_type      AS table_type
             FROM information_schema.tables
-            WHERE table_schema = '${config.connection.database}' 
+            WHERE table_schema = '${config.connection.database}'
                 ${config.metadata?.noViews ? 'AND table_type <> \'VIEW\'' : ''};
         `;
 
@@ -221,10 +229,11 @@ export class DialectMySQL extends Dialect {
                 type: QueryTypes.SELECT,
                 raw: true,
             }
-        ) as ITableRow[]).map(({ table_name, table_comment }) => {
+        ) as ITableRow[]).map(({ table_name, table_comment, table_type }) => {
             const t: ITable = {
                 name: table_name,
                 comment: table_comment ?? undefined,
+                isView: table_type === 'VIEW',
             };
 
             return t;
@@ -386,7 +395,9 @@ export class DialectMySQL extends Dialect {
     }
 
     /**
-     * Foreign key constraints are not inspected on this dialect yet.
+     * Fetch foreign key constraints for the provided table. Constraints are read from
+     * information_schema.referential_constraints joined to key_column_usage, and a
+     * source column is flagged unique when it is covered by a single-column unique index.
      * @param {Sequelize} connection
      * @param {IConfig} config
      * @param {ITable} table
@@ -397,6 +408,27 @@ export class DialectMySQL extends Dialect {
         config: IConfig,
         table: ITable
     ): Promise<IForeignKeyConstraintMetadata[]> {
-        return [];
+        const foreignKeyRows = await connection.query<IInformationSchemaForeignKeyRow>(
+            buildInformationSchemaForeignKeysQuery(config.connection.database, table.name),
+            {
+                type: QueryTypes.SELECT,
+                raw: true,
+            }
+        );
+
+        const rows: IForeignKeyColumnRow[] = foreignKeyRows.map(row => ({
+            constraintName: row.constraint_name,
+            sourceTable: row.source_table,
+            sourceColumn: row.source_column,
+            targetSchema: row.target_schema,
+            targetTable: row.target_table,
+            targetColumn: row.target_column,
+            ordinalPosition: row.ordinal_position,
+            onDelete: row.on_delete,
+            onUpdate: row.on_update,
+            isSourceColumnUnique: Number(row.is_source_column_unique) === 1,
+        }));
+
+        return groupForeignKeyRows(rows);
     }
 }

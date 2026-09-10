@@ -41,12 +41,33 @@ import {
     AUTHORS_VIEW_NAME,
     AUTHORS_VIEW_DROP,
     AUTHORS_VIEW_CREATES,
+    EMPLOYEES_TABLE_NAME,
+    EMPLOYEES_TABLE_DROP,
+    EMPLOYEES_TABLE_CREATES,
+    EMPLOYEES_TABLE_INSERTS,
+    PROFILES_TABLE_NAME,
+    PROFILES_TABLE_DROP,
+    PROFILES_TABLE_CREATES,
+    PROFILES_TABLE_INSERTS,
+    ORDER_LINES_TABLE_NAME,
+    ORDER_LINES_TABLE_DROP,
+    ORDER_LINES_TABLE_CREATES,
+    ORDER_LINES_TABLE_INSERTS,
+    SHIPMENTS_TABLE_NAME,
+    SHIPMENTS_TABLE_DROP,
+    SHIPMENTS_TABLE_CREATES,
+    SHIPMENTS_TABLE_INSERTS,
+    SOFT_DELETES_TABLE_NAME,
+    SOFT_DELETES_TABLE_DROP,
+    SOFT_DELETES_TABLE_CREATES,
 } from './queries.js';
 
 interface INativeType {
     DATA_TYPE: string;
     data_type: string;
 }
+
+const DATABASE_NAME = process.env.TEST_DB_DATABASE ?? 'testdb';
 
 const testMetadata: ITestMetadata = {
     name: 'MySQL',
@@ -104,6 +125,35 @@ const testMetadata: ITestMetadata = {
             dropQuery: PASSPORT_TABLE_DROP,
             insertQueries: PASSPORT_TABLE_INSERTS,
         },
+        {
+            name: EMPLOYEES_TABLE_NAME,
+            createQueries: EMPLOYEES_TABLE_CREATES,
+            dropQuery: EMPLOYEES_TABLE_DROP,
+            insertQueries: EMPLOYEES_TABLE_INSERTS,
+        },
+        {
+            name: PROFILES_TABLE_NAME,
+            createQueries: PROFILES_TABLE_CREATES,
+            dropQuery: PROFILES_TABLE_DROP,
+            insertQueries: PROFILES_TABLE_INSERTS,
+        },
+        {
+            name: ORDER_LINES_TABLE_NAME,
+            createQueries: ORDER_LINES_TABLE_CREATES,
+            dropQuery: ORDER_LINES_TABLE_DROP,
+            insertQueries: ORDER_LINES_TABLE_INSERTS,
+        },
+        {
+            name: SHIPMENTS_TABLE_NAME,
+            createQueries: SHIPMENTS_TABLE_CREATES,
+            dropQuery: SHIPMENTS_TABLE_DROP,
+            insertQueries: SHIPMENTS_TABLE_INSERTS,
+        },
+        {
+            name: SOFT_DELETES_TABLE_NAME,
+            createQueries: SOFT_DELETES_TABLE_CREATES,
+            dropQuery: SOFT_DELETES_TABLE_DROP,
+        },
     ],
     testViews: [
         {
@@ -114,7 +164,61 @@ const testMetadata: ITestMetadata = {
     ],
     filterTables: [ DATA_TYPES_TABLE_NAME ],
     filterSkipTables: [ INDICES_TABLE_NAME ],
-    expectedForeignKeys: {},
+    expectedForeignKeys: {
+        [UNITS_TABLE_NAME]: [
+            {
+                constraintName: 'units_race_id_fk',
+                sourceTable: 'units',
+                sourceColumns: ['race_id'],
+                targetSchema: DATABASE_NAME,
+                targetTable: 'races',
+                targetColumns: ['race_id'],
+                onDelete: 'CASCADE',
+                onUpdate: 'RESTRICT',
+                isSourceColumnUnique: false,
+            },
+        ],
+        [EMPLOYEES_TABLE_NAME]: [
+            {
+                constraintName: 'employees_manager_fk',
+                sourceTable: 'employees',
+                sourceColumns: ['manager_id'],
+                targetSchema: DATABASE_NAME,
+                targetTable: 'employees',
+                targetColumns: ['employee_id'],
+                onDelete: 'SET NULL',
+                onUpdate: 'NO ACTION',
+                isSourceColumnUnique: false,
+            },
+        ],
+        [PROFILES_TABLE_NAME]: [
+            {
+                constraintName: 'profiles_person_fk',
+                sourceTable: 'profiles',
+                sourceColumns: ['person_id'],
+                targetSchema: DATABASE_NAME,
+                targetTable: 'person',
+                targetColumns: ['person_id'],
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE',
+                isSourceColumnUnique: true,
+            },
+        ],
+        [SHIPMENTS_TABLE_NAME]: [
+            {
+                constraintName: 'shipments_order_line_fk',
+                sourceTable: 'shipments',
+                sourceColumns: ['order_id', 'line_no'],
+                targetSchema: DATABASE_NAME,
+                targetTable: 'order_lines',
+                targetColumns: ['order_id', 'line_no'],
+                onDelete: 'NO ACTION',
+                onUpdate: 'NO ACTION',
+                isSourceColumnUnique: false,
+            },
+        ],
+        [ORDER_LINES_TABLE_NAME]: [],
+    },
     dataTypes: {
         dataTypesTable: DATA_TYPES_TABLE_NAME,
         async getColumnNativeDataType(

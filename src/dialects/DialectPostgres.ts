@@ -9,10 +9,24 @@ import {
     DATA_TYPE_NAMESPACES,
     DataTypeArgument,
 } from './dataTypes.js';
+import { groupForeignKeyRows, IForeignKeyColumnRow } from './foreignKeys.js';
 
 interface ITableRow {
     table_name: string;
     table_comment?: string;
+}
+
+interface IForeignKeyRowPostgres {
+    constraint_name: string;
+    source_table: string;
+    source_column: string;
+    target_schema: string;
+    target_table: string;
+    target_column: string;
+    ordinal_position: number;
+    on_delete: string; // Single-letter pg_constraint code (a/r/c/n/d)
+    on_update: string; // Single-letter pg_constraint code (a/r/c/n/d)
+    is_source_column_unique: boolean;
 }
 
 interface IColumnMetadataPostgres {
@@ -409,7 +423,10 @@ export class DialectPostgres extends Dialect {
     }
 
     /**
-     * Foreign key constraints are not inspected on this dialect yet.
+     * Fetch foreign key constraints for the provided table. Constraints are read from
+     * pg_constraint, expanded to one row per column position with unnest ... WITH
+     * ORDINALITY, and a source column is flagged unique when it is covered by a
+     * single-column non-partial unique index.
      * @param {Sequelize} connection
      * @param {IConfig} config
      * @param {ITable} table
@@ -420,6 +437,62 @@ export class DialectPostgres extends Dialect {
         config: IConfig,
         table: ITable
     ): Promise<IForeignKeyConstraintMetadata[]> {
-        return [];
+        const foreignKeyRows = await connection.query<IForeignKeyRowPostgres>(
+            `
+                SELECT
+                    con.conname     AS constraint_name,
+                    src.relname     AS source_table,
+                    src_att.attname AS source_column,
+                    tgt_ns.nspname  AS target_schema,
+                    tgt.relname     AS target_table,
+                    tgt_att.attname AS target_column,
+                    cols.ordinal_position AS ordinal_position,
+                    con.confdeltype AS on_delete,
+                    con.confupdtype AS on_update,
+                    EXISTS (
+                        SELECT 1
+                        FROM pg_index x
+                        WHERE x.indrelid = con.conrelid
+                            AND x.indisunique
+                            AND x.indpred IS NULL
+                            AND x.indnatts = 1
+                            AND x.indkey[0] = src_att.attnum
+                    ) AS is_source_column_unique
+                FROM pg_constraint con
+                JOIN pg_class src ON src.oid = con.conrelid
+                JOIN pg_namespace src_ns ON src_ns.oid = src.relnamespace
+                JOIN pg_class tgt ON tgt.oid = con.confrelid
+                JOIN pg_namespace tgt_ns ON tgt_ns.oid = tgt.relnamespace
+                CROSS JOIN LATERAL unnest(con.conkey, con.confkey)
+                    WITH ORDINALITY AS cols(src_attnum, tgt_attnum, ordinal_position)
+                JOIN pg_attribute src_att
+                    ON src_att.attrelid = con.conrelid AND src_att.attnum = cols.src_attnum
+                JOIN pg_attribute tgt_att
+                    ON tgt_att.attrelid = con.confrelid AND tgt_att.attnum = cols.tgt_attnum
+                WHERE con.contype = 'f'
+                    AND src_ns.nspname = '${config.connection.schema}'
+                    AND src.relname = '${table.name}'
+                ORDER BY con.conname, cols.ordinal_position;
+            `,
+            {
+                type: QueryTypes.SELECT,
+                raw: true,
+            }
+        );
+
+        const rows: IForeignKeyColumnRow[] = foreignKeyRows.map(row => ({
+            constraintName: row.constraint_name,
+            sourceTable: row.source_table,
+            sourceColumn: row.source_column,
+            targetSchema: row.target_schema,
+            targetTable: row.target_table,
+            targetColumn: row.target_column,
+            ordinalPosition: row.ordinal_position,
+            onDelete: row.on_delete,
+            onUpdate: row.on_update,
+            isSourceColumnUnique: row.is_source_column_unique,
+        }));
+
+        return groupForeignKeyRows(rows);
     }
 }

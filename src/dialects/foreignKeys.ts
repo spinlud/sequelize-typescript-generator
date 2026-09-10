@@ -28,6 +28,71 @@ export interface IForeignKeyColumnRow {
 }
 
 /**
+ * One row returned by the shared MySQL and MariaDB foreign key query.
+ * `is_source_column_unique` is the 0/1 result of an EXISTS predicate.
+ */
+export interface IInformationSchemaForeignKeyRow {
+    constraint_name: string;
+    source_table: string;
+    source_column: string;
+    target_schema: string;
+    target_table: string;
+    target_column: string;
+    ordinal_position: number;
+    on_delete: string;
+    on_update: string;
+    is_source_column_unique: number;
+}
+
+/**
+ * Build the information_schema query that lists foreign key columns for a table.
+ * MySQL and MariaDB expose identical referential_constraints, key_column_usage and
+ * statistics tables, so both dialects share this query. A source column is reported
+ * unique when it is covered by a single-column non-composite unique index.
+ * @param {string | undefined} database
+ * @param {string} table
+ * @returns {string}
+ */
+export const buildInformationSchemaForeignKeysQuery = (
+    database: string | undefined,
+    table: string
+): string => `
+    SELECT
+        rc.CONSTRAINT_NAME              AS constraint_name,
+        kcu.TABLE_NAME                  AS source_table,
+        kcu.COLUMN_NAME                 AS source_column,
+        kcu.REFERENCED_TABLE_SCHEMA     AS target_schema,
+        kcu.REFERENCED_TABLE_NAME       AS target_table,
+        kcu.REFERENCED_COLUMN_NAME      AS target_column,
+        kcu.ORDINAL_POSITION            AS ordinal_position,
+        rc.DELETE_RULE                  AS on_delete,
+        rc.UPDATE_RULE                  AS on_update,
+        EXISTS (
+            SELECT 1
+            FROM information_schema.statistics s
+            WHERE s.TABLE_SCHEMA = kcu.TABLE_SCHEMA
+                AND s.TABLE_NAME = kcu.TABLE_NAME
+                AND s.COLUMN_NAME = kcu.COLUMN_NAME
+                AND s.NON_UNIQUE = 0
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM information_schema.statistics s2
+                    WHERE s2.TABLE_SCHEMA = s.TABLE_SCHEMA
+                        AND s2.TABLE_NAME = s.TABLE_NAME
+                        AND s2.INDEX_NAME = s.INDEX_NAME
+                        AND s2.SEQ_IN_INDEX > 1
+                )
+        ) AS is_source_column_unique
+    FROM information_schema.referential_constraints rc
+    JOIN information_schema.key_column_usage kcu
+        ON kcu.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA
+        AND kcu.CONSTRAINT_NAME = rc.CONSTRAINT_NAME
+        AND kcu.TABLE_NAME = rc.TABLE_NAME
+    WHERE rc.CONSTRAINT_SCHEMA = '${database}' AND rc.TABLE_NAME = '${table}'
+    ORDER BY rc.CONSTRAINT_NAME, kcu.ORDINAL_POSITION;
+`;
+
+/**
  * Type guard for a referential action.
  * @param {string} value
  * @returns {boolean}
