@@ -2,6 +2,12 @@
 
 ---
 
+### Unreleased
+#### Minor changes and bug fixes:
+* MySQL `BIGINT` columns are now generated with the `string` JS/TS type (was `number`) to avoid precision loss and match the MariaDB and MSSQL dialects.
+
+---
+
 ### 13.0.0
 #### Breaking changes:
 * Native is now the default output format; pass `--format decorators` for the old `sequelize-typescript` decorators output.

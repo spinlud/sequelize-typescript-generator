@@ -18,6 +18,9 @@
   "engines": {
     "node": ">=22.13.0"
   },
+  "files": [
+    "build"
+  ],
   "scripts": {
     "clean": "rm -fr build",
     "lint": "eslint --fix --ext .ts output/*.ts",

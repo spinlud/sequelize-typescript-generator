@@ -35,17 +35,17 @@
 
 This library is tested on the following databases:
 
-- Postgres (11, 14, 16)
-- Mysql (5, 8)
-- MariaDB (10, 11)
-- SQL Server (2019, 2022)
+- Postgres (16, 18)
+- Mysql (8, 9)
+- MariaDB (11, 12)
+- SQL Server (2022, 2025)
 - SQLite (3)
 
 ## Prerequisites
 See [sequelize-typescript installation](https://www.npmjs.com/package/sequelize-typescript#installation).
 
 You should also install the specific driver library for your database, see 
-[sequelize documentation](https://sequelize.org/v5/manual/getting-started.html):
+[sequelize documentation](https://sequelize.org/docs/v6/getting-started/):
 ```shell
 npm install -S pg pg-hstore # Postgres
 npm install -S mysql2 # MySQL
@@ -1460,8 +1460,8 @@ export const eslintDefaultConfig = [
 ];
 ```
 
-You can provide your own rules by passing a config file to `--lint-file` / `-L`. Only ESLint flat config files are
-accepted: `.mjs`, `.js`, or `.cjs` modules that export a config array. Legacy `.eslintrc*` files, and configs using
+You can provide your own rules by passing a config file to `--lint-file` / `-L`. The file must be a JS module that
+exports an ESLint flat config array (loaded via a dynamic `import()`). Legacy `.eslintrc*` files, and configs using
 `extends`, `env`, or a string `parser`, are rejected — see the
 [ESLint flat config migration guide](https://eslint.org/docs/latest/use/configure/migration-guide).
 

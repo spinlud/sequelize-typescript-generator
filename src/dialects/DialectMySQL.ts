@@ -104,7 +104,7 @@ const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
 };
 
 const jsDataTypesMap: { [key: string]: string } = {
-    bigint: 'number',
+    bigint: 'string',
     smallint: 'number',
     mediumint: 'number',
     tinyint: 'number',
