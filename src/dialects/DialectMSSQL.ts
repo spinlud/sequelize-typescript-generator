@@ -2,7 +2,13 @@ import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize, DataTypes } from 'sequelize';
 import { IConfig } from '../config/index.js';
 import { IColumnMetadata, IIndexMetadata, Dialect, ITable } from './Dialect.js';
-import { generatePrecisionSignature, warnUnknownMappingForDataType } from './utils.js';
+import { warnUnknownMappingForDataType } from './utils.js';
+import {
+    buildSequelizeDataType,
+    renderDataTypeExpression,
+    DATA_TYPE_NAMESPACES,
+    DataTypeArgument,
+} from './dataTypes.js';
 
 interface ITableRow {
     table_name: string;
@@ -248,15 +254,43 @@ export class DialectMSSQL extends Dialect {
                 warnUnknownMappingForDataType(column.DATA_TYPE);
             }
 
+            const sequelizeConstructor = this.mapDbTypeToSequelize(column.DATA_TYPE);
+
+            // Data type arguments (precision or length)
+            let dataTypeArgs: Array<DataTypeArgument | null | undefined> = [];
+
+            switch (column.DATA_TYPE) {
+                case 'decimal':
+                case 'numeric':
+                case 'float':
+                case 'double':
+                    dataTypeArgs = [column.NUMERIC_PRECISION, column.NUMERIC_SCALE];
+                    break;
+
+                case 'datetime2':
+                    dataTypeArgs = [column.DATETIME_PRECISION];
+                    break;
+
+                case 'char':
+                case 'nchar':
+                case 'varchar':
+                case 'nvarchar':
+                    dataTypeArgs = [column.CHARACTER_MAXIMUM_LENGTH];
+                    break;
+            }
+
+            const sequelizeType = sequelizeConstructor
+                ? buildSequelizeDataType(sequelizeConstructor, dataTypeArgs)
+                : undefined;
+
             const columnMetadata: IColumnMetadata = {
                 name: column.COLUMN_NAME,
                 originName: column.COLUMN_NAME,
                 type: column.DATA_TYPE,
                 typeExt: column.DATA_TYPE,
-                ...this.mapDbTypeToSequelize(column.DATA_TYPE) && {
-                    dataType: 'DataType.' +
-                        this.mapDbTypeToSequelize(column.DATA_TYPE).key
-                            .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
+                ...sequelizeType && {
+                    sequelizeType,
+                    dataType: renderDataTypeExpression(sequelizeType, DATA_TYPE_NAMESPACES.decorators),
                 },
                 allowNull: column.IS_NULLABLE.toUpperCase() === 'YES' &&
                     column.CONSTRAINT_TYPE?.toUpperCase() !== 'PRIMARY KEY',
@@ -265,28 +299,6 @@ export class DialectMSSQL extends Dialect {
                 indices: [],
                 comment: column.COLUMN_COMMENT ?? undefined,
             };
-
-            // Additional data type information
-            switch (column.DATA_TYPE) {
-                case 'decimal':
-                case 'numeric':
-                case 'float':
-                case 'double':
-                    columnMetadata.dataType +=
-                        generatePrecisionSignature(column.NUMERIC_PRECISION, column.NUMERIC_SCALE);
-                    break;
-
-                case 'datetime2':
-                    columnMetadata.dataType += generatePrecisionSignature(column.DATETIME_PRECISION);
-                    break;
-
-                case 'char':
-                case 'nchar':
-                case 'varchar':
-                case 'nvarchar':
-                    columnMetadata.dataType += generatePrecisionSignature(column.CHARACTER_MAXIMUM_LENGTH);
-                    break;
-            }
 
             columnsMetadata.push(columnMetadata);
         }

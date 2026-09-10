@@ -2,7 +2,13 @@ import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize, DataTypes } from 'sequelize';
 import { IConfig } from '../config/index.js';
 import { IColumnMetadata, IIndexMetadata, Dialect, ITable } from './Dialect.js';
-import { generatePrecisionSignature, warnUnknownMappingForDataType } from './utils.js';
+import { warnUnknownMappingForDataType } from './utils.js';
+import {
+    buildSequelizeDataType,
+    renderDataTypeExpression,
+    DATA_TYPE_NAMESPACES,
+    DataTypeArgument,
+} from './dataTypes.js';
 
 interface ITableRow {
     table_name: string;
@@ -295,15 +301,42 @@ export class DialectPostgres extends Dialect {
                 warnUnknownMappingForDataType(column.udt_name);
             }
 
+            const sequelizeConstructor = this.mapDbTypeToSequelize(column.udt_name);
+
+            // Data type arguments (precision or length)
+            let dataTypeArgs: Array<DataTypeArgument | null | undefined> = [];
+
+            switch (column.udt_name) {
+                case 'decimal':
+                case 'numeric':
+                case 'float':
+                case 'double':
+                    dataTypeArgs = [column.numeric_precision, column.numeric_scale];
+                    break;
+
+                case 'timestamp':
+                case 'timestampz':
+                    dataTypeArgs = [column.datetime_precision];
+                    break;
+
+                case 'bpchar':
+                case 'varchar':
+                    dataTypeArgs = [column.character_maximum_length];
+                    break;
+            }
+
+            const sequelizeType = sequelizeConstructor
+                ? buildSequelizeDataType(sequelizeConstructor, dataTypeArgs)
+                : undefined;
+
             const columnMetadata: IColumnMetadata = {
                 name: column.column_name,
                 originName: column.column_name,
                 type: column.udt_name,
                 typeExt: column.data_type,
-                ...this.mapDbTypeToSequelize(column.udt_name) && {
-                    dataType: 'DataType.' +
-                        this.mapDbTypeToSequelize(column.udt_name).key
-                            .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
+                ...sequelizeType && {
+                    sequelizeType,
+                    dataType: renderDataTypeExpression(sequelizeType, DATA_TYPE_NAMESPACES.decorators),
                 },
                 allowNull: column.is_nullable === 'YES' && !column.is_primary,
                 primaryKey: column.is_primary,
@@ -313,27 +346,6 @@ export class DialectPostgres extends Dialect {
             };
             if (column.column_default) {
                 columnMetadata.defaultValue = `Sequelize.literal("${column.column_default.replace(/\"/g, '\\\"')}")`;
-            }
-
-            // Additional data type information
-            switch (column.udt_name) {
-                case 'decimal':
-                case 'numeric':
-                case 'float':
-                case 'double':
-                    columnMetadata.dataType +=
-                        generatePrecisionSignature(column.numeric_precision, column.numeric_scale);
-                    break;
-
-                case 'timestamp':
-                case 'timestampz':
-                    columnMetadata.dataType += generatePrecisionSignature(column.datetime_precision);
-                    break;
-
-                case 'bpchar':
-                case 'varchar':
-                    columnMetadata.dataType += generatePrecisionSignature(column.character_maximum_length);
-                    break;
             }
 
             columnsMetadata.push(columnMetadata);

@@ -112,6 +112,13 @@ export const caseTransformer = (
         name: transformer(tableMetadata.originName, TransformTarget.MODEL),
         timestamps: tableMetadata.timestamps,
         columns: {},
+        ...tableMetadata.schema !== undefined && { schema: tableMetadata.schema },
+        ...tableMetadata.paranoid !== undefined && { paranoid: tableMetadata.paranoid },
+        ...tableMetadata.hasTrigger !== undefined && { hasTrigger: tableMetadata.hasTrigger },
+        ...tableMetadata.deletedAt !== undefined && {
+            deletedAt: transformer(tableMetadata.deletedAt, TransformTarget.COLUMN),
+        },
+        ...tableMetadata.foreignKeys !== undefined && { foreignKeys: tableMetadata.foreignKeys },
         ...tableMetadata.associations && {
             associations: tableMetadata.associations.map(a => {
                 a.targetModel = transformer(a.targetModel, TransformTarget.MODEL);
@@ -133,11 +140,15 @@ export const caseTransformer = (
     for (const [columnName, columnMetadata] of Object.entries(tableMetadata.columns)) {
 
         if (columnMetadata.foreignKey) {
-            const { name, targetModel } = columnMetadata.foreignKey;
+            const foreignKey = columnMetadata.foreignKey;
 
             columnMetadata.foreignKey = {
-                name: transformer(name, TransformTarget.COLUMN),
-                targetModel: transformer(targetModel, TransformTarget.MODEL),
+                ...foreignKey,
+                name: transformer(foreignKey.name, TransformTarget.COLUMN),
+                targetModel: transformer(foreignKey.targetModel, TransformTarget.MODEL),
+                ...foreignKey.targetKey !== undefined && {
+                    targetKey: transformer(foreignKey.targetKey, TransformTarget.COLUMN),
+                },
             }
         }
 
@@ -161,15 +172,4 @@ export const warnUnknownMappingForDataType = (dataType: string) => {
         `Unknown data type mapping for type '${dataType}'. 
         You should define the data type manually.     
     `);
-};
-
-/**
- * Generates precision signature
- * @param {Array<string|number>} args
- * @returns {string} (80) or (10,4) or ...
- */
-export const generatePrecisionSignature = (...args: Array<string|number|undefined|null>): string => {
-    const tokens = args.filter(arg => !!arg);
-
-    return tokens.length ? `(${tokens.join(',')})` : '';
 };

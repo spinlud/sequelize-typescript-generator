@@ -4,6 +4,8 @@ import { IConfig } from '../config/index.js';
 import { createConnection } from "../connection/index.js";
 import { AssociationsParser, IAssociationsParsed, IAssociationMetadata } from './AssociationsParser.js'
 import { caseTransformer } from './utils.js';
+import type { ReferentialAction } from './foreignKeys.js';
+import type { ISequelizeDataType } from './dataTypes.js';
 
 export interface ITablesMetadata {
     [tableName: string]: ITableMetadata;
@@ -12,13 +14,39 @@ export interface ITablesMetadata {
 export interface ITableMetadata {
     name: string; // Model name
     originName: string; // Database table name
-    schema?: 'public' | string; // Postgres only
+    schema?: 'public' | string; // Postgres and SQL Server
     timestamps?: boolean;
+    paranoid?: boolean; // Set when --paranoid is active and a soft-delete column exists
+    deletedAt?: string; // Model attribute name of the soft-delete column
+    hasTrigger?: boolean; // SQL Server: table has at least one enabled trigger
     columns: {
         [columnName: string]: IColumnMetadata;
     }
+    foreignKeys?: IForeignKeyConstraintMetadata[]; // Every constraint on the table, database names, composite included
     associations?: IAssociationMetadata[];
     comment?: string;
+}
+
+export interface IColumnForeignKeyMetadata {
+    name: string; // Source column (model field name)
+    targetModel: string; // Target model name
+    targetKey?: string; // Target column (model field name); absent for associations-file entries
+    constraintName?: string;
+    onDelete?: ReferentialAction;
+    onUpdate?: ReferentialAction;
+    isUnique?: boolean; // Source column is covered by a single-column primary key, unique constraint or unique index
+}
+
+export interface IForeignKeyConstraintMetadata {
+    constraintName: string;
+    sourceTable: string; // Database table name
+    sourceColumns: string[]; // Database column names in constraint order
+    targetSchema?: string; // Present on dialects with schemas
+    targetTable: string; // Database table name
+    targetColumns: string[]; // Database column names in constraint order
+    onDelete: ReferentialAction;
+    onUpdate: ReferentialAction;
+    isSourceColumnUnique: boolean; // Only meaningful for single-column constraints; false for composite ones
 }
 
 export interface IColumnMetadata {
@@ -26,12 +54,10 @@ export interface IColumnMetadata {
     originName: string; // Database column name
     type: string;
     typeExt: string;
-    dataType?: string;
+    dataType?: string; // Rendered decorators expression, e.g. DataType.DECIMAL(7,3)
+    sequelizeType?: ISequelizeDataType; // Format-neutral Sequelize type (key + arguments)
     primaryKey: boolean;
-    foreignKey?: {
-        name: string;
-        targetModel: string;
-    }
+    foreignKey?: IColumnForeignKeyMetadata;
     allowNull: boolean;
     autoIncrement: boolean;
     indices?: IIndexMetadata[],
@@ -50,6 +76,8 @@ export interface IIndexMetadata {
 
 export interface ITable {
     name: string;
+    schema?: string; // Postgres and SQL Server
+    isView?: boolean; // MySQL and MariaDB list views alongside tables
     comment?: string;
 }
 

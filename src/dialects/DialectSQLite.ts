@@ -3,6 +3,11 @@ import { Sequelize, DataTypes } from 'sequelize';
 import { IConfig } from '../config/index.js';
 import { IColumnMetadata, Dialect, IIndexMetadata, ITable } from './Dialect.js';
 import { warnUnknownMappingForDataType } from './utils.js';
+import {
+    buildSequelizeDataType,
+    renderDataTypeExpression,
+    DATA_TYPE_NAMESPACES,
+} from './dataTypes.js';
 
 interface ITableRow {
     table_name: string;
@@ -155,15 +160,20 @@ export class DialectSQLite extends Dialect {
                 warnUnknownMappingForDataType(column.type);
             }
 
+            const sequelizeConstructor = this.mapDbTypeToSequelize(column.type);
+
+            const sequelizeType = sequelizeConstructor
+                ? buildSequelizeDataType(sequelizeConstructor, [])
+                : undefined;
+
             const columnMetadata: IColumnMetadata = {
                 name: column.name,
                 originName: column.name,
                 type: column.type,
                 typeExt: column.type,
-                ...this.mapDbTypeToSequelize(column.type) && {
-                    dataType: 'DataType.' +
-                        this.mapDbTypeToSequelize(column.type).key
-                            .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
+                ...sequelizeType && {
+                    sequelizeType,
+                    dataType: renderDataTypeExpression(sequelizeType, DATA_TYPE_NAMESPACES.decorators),
                 },
                 allowNull: !!column.notnull,
                 primaryKey: !!column.pk,

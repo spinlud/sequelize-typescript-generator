@@ -27,6 +27,7 @@ export interface IConfigMetadata {
     skipTables?: string[];
     indices?: boolean;
     timestamps?: boolean;
+    paranoid?: boolean; // Emit paranoid table options; requires timestamps
     case?: TransformCase | TransformMap | TransformFn;
     associationsFile?: string;
     noViews?: boolean;

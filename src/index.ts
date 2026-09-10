@@ -5,8 +5,13 @@ export type {
     ITableMetadata,
     IColumnMetadata,
     IIndexMetadata,
+    ITable,
+    IColumnForeignKeyMetadata,
+    IForeignKeyConstraintMetadata,
 } from './dialects/Dialect.js';
 export { createDialect } from './dialects/createDialect.js';
+export type { ReferentialAction } from './dialects/foreignKeys.js';
+export type { ISequelizeDataType, SequelizeDataTypeKey } from './dialects/dataTypes.js';
 export type { IAssociationMetadata } from './dialects/AssociationsParser.js';
 
 export { ModelBuilder } from './builders/index.js';

@@ -2,7 +2,14 @@ import {QueryTypes, AbstractDataTypeConstructor, IndexMethod, col} from 'sequeli
 import { Sequelize, DataTypes } from 'sequelize';
 import { IConfig } from '../config/index.js';
 import { IColumnMetadata, Dialect, IIndexMetadata, ITable } from './Dialect.js';
-import { warnUnknownMappingForDataType, generatePrecisionSignature } from './utils.js';
+import { warnUnknownMappingForDataType } from './utils.js';
+import {
+    buildSequelizeDataType,
+    renderDataTypeExpression,
+    parseEnumValues,
+    DATA_TYPE_NAMESPACES,
+    DataTypeArgument,
+} from './dataTypes.js';
 
 interface ITableRow {
     table_name: string;
@@ -279,15 +286,46 @@ export class DialectMySQL extends Dialect {
                 warnUnknownMappingForDataType(column.DATA_TYPE);
             }
 
+            const sequelizeConstructor = this.mapDbTypeToSequelize(column.DATA_TYPE);
+
+            // Data type arguments (precision, length or ENUM values)
+            let dataTypeArgs: Array<DataTypeArgument | null | undefined> = [];
+
+            switch (column.DATA_TYPE) {
+                case 'decimal':
+                case 'numeric':
+                case 'float':
+                case 'double':
+                    dataTypeArgs = [column.NUMERIC_PRECISION, column.NUMERIC_SCALE];
+                    break;
+
+                case 'datetime':
+                case 'timestamp':
+                    dataTypeArgs = [column.DATETIME_PRECISION];
+                    break;
+
+                case 'char':
+                case 'varchar':
+                    dataTypeArgs = [column.CHARACTER_MAXIMUM_LENGTH];
+                    break;
+
+                case 'enum':
+                    dataTypeArgs = parseEnumValues(column.COLUMN_TYPE);
+                    break;
+            }
+
+            const sequelizeType = sequelizeConstructor
+                ? buildSequelizeDataType(sequelizeConstructor, dataTypeArgs)
+                : undefined;
+
             const columnMetadata: IColumnMetadata = {
                 name: column.COLUMN_NAME,
                 originName: column.COLUMN_NAME,
                 type: column.DATA_TYPE,
                 typeExt: column.COLUMN_TYPE,
-                ...this.mapDbTypeToSequelize(column.DATA_TYPE) && {
-                    dataType: 'DataType.' +
-                        this.mapDbTypeToSequelize(column.DATA_TYPE).key
-                            .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
+                ...sequelizeType && {
+                    sequelizeType,
+                    dataType: renderDataTypeExpression(sequelizeType, DATA_TYPE_NAMESPACES.decorators),
                 },
                 allowNull: column.IS_NULLABLE === 'YES',
                 primaryKey: column.COLUMN_KEY === 'PRI',
@@ -296,32 +334,6 @@ export class DialectMySQL extends Dialect {
                 comment: column.COLUMN_COMMENT,
                 ...column.COLUMN_DEFAULT && { defaultValue: getDefaultValue(column.COLUMN_DEFAULT) },
             };
-
-            // Additional data type informations
-            switch (column.DATA_TYPE) {
-                case 'decimal':
-                case 'numeric':
-                case 'float':
-                case 'double':
-                    columnMetadata.dataType +=
-                        generatePrecisionSignature(column.NUMERIC_PRECISION, column.NUMERIC_SCALE);
-                    break;
-
-                case 'datetime':
-                case 'timestamp':
-                    columnMetadata.dataType += generatePrecisionSignature(column.DATETIME_PRECISION);
-                    break;
-
-                case 'char':
-                case 'varchar':
-                    columnMetadata.dataType += generatePrecisionSignature(column.CHARACTER_MAXIMUM_LENGTH);
-                    break;
-            }
-
-            // ENUM: add values to data type -> DataType.ENUM('v1', 'v2')
-            if (column.DATA_TYPE === 'enum') {
-                columnMetadata.dataType += columnMetadata.typeExt.match(/\(.*\)/)![0];
-            }
 
             columnsMetadata.push(columnMetadata);
         }

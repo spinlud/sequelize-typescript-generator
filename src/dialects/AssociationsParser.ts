@@ -1,5 +1,6 @@
 import fs from 'fs';
 import readline from 'readline';
+import type { ReferentialAction } from './foreignKeys.js';
 
 const cardinalities = new Set([
     '1:1',
@@ -21,6 +22,11 @@ export interface IAssociationMetadata {
     targetModel: string;
     joinModel?: string;
     sourceKey?: string; // Left table key for HasOne and HasMany associations
+    alias?: string; // Property name the association is exposed under
+    foreignKey?: string; // Concrete foreign key column (model field name)
+    targetKey?: string; // Referenced column on the target model (BelongsTo)
+    onDelete?: ReferentialAction;
+    onUpdate?: ReferentialAction;
 }
 
 export interface IForeignKey {
