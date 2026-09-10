@@ -1,5 +1,5 @@
-import { IConfig } from '../config';
-import { Dialect } from '../dialects/Dialect';
+import { IConfig } from '../config/index.js';
+import { Dialect } from '../dialects/Dialect.js';
 
 /**
  * @class Builder

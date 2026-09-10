@@ -163,7 +163,9 @@ export const UNITS_TABLE_CREATES = [
         (
             unit_id             INT             PRIMARY KEY,
             unit_name           VARCHAR(80)     NOT NULL,
-            race_id             INT             NOT NULL
+            race_id             INT             NOT NULL,
+            CONSTRAINT units_race_id_fk FOREIGN KEY (race_id)
+                REFERENCES ${SCHEMA_NAME}.${RACES_TABLE_NAME}(race_id) ON DELETE CASCADE ON UPDATE RESTRICT
         );
     `,
 ];
@@ -206,4 +208,92 @@ export const PASSPORT_TABLE_CREATES = [
 ];
 export const PASSPORT_TABLE_INSERTS = [
     `INSERT INTO ${SCHEMA_NAME}.${PASSPORT_TABLE_NAME} VALUES(1, 'Frostmourne');`,
+];
+
+export const EMPLOYEES_TABLE_NAME = 'employees';
+export const EMPLOYEES_TABLE_DROP = `DROP TABLE IF EXISTS ${EMPLOYEES_TABLE_NAME} CASCADE`;
+export const EMPLOYEES_TABLE_CREATES = [
+    `
+        CREATE TABLE ${SCHEMA_NAME}.${EMPLOYEES_TABLE_NAME}
+        (
+            employee_id     INT             PRIMARY KEY,
+            name            VARCHAR(80)     NOT NULL,
+            manager_id      INT,
+            CONSTRAINT employees_manager_fk FOREIGN KEY (manager_id)
+                REFERENCES ${SCHEMA_NAME}.${EMPLOYEES_TABLE_NAME}(employee_id) ON DELETE SET NULL
+        );
+    `,
+];
+export const EMPLOYEES_TABLE_INSERTS = [
+    `INSERT INTO ${SCHEMA_NAME}.${EMPLOYEES_TABLE_NAME} VALUES(1, 'Grand Admiral', NULL);`,
+    `INSERT INTO ${SCHEMA_NAME}.${EMPLOYEES_TABLE_NAME} VALUES(2, 'Captain', 1);`,
+];
+
+export const PROFILES_TABLE_NAME = 'profiles';
+export const PROFILES_TABLE_DROP = `DROP TABLE IF EXISTS ${PROFILES_TABLE_NAME} CASCADE`;
+export const PROFILES_TABLE_CREATES = [
+    `
+        CREATE TABLE ${SCHEMA_NAME}.${PROFILES_TABLE_NAME}
+        (
+            profile_id      INT             PRIMARY KEY,
+            person_id       INT             NOT NULL     UNIQUE,
+            CONSTRAINT profiles_person_fk FOREIGN KEY (person_id)
+                REFERENCES ${SCHEMA_NAME}.${PERSON_TABLE_NAME}(person_id) ON DELETE CASCADE ON UPDATE CASCADE
+        );
+    `,
+];
+export const PROFILES_TABLE_INSERTS = [
+    `INSERT INTO ${SCHEMA_NAME}.${PROFILES_TABLE_NAME} VALUES(1, 1);`,
+];
+
+export const ORDER_LINES_TABLE_NAME = 'order_lines';
+export const ORDER_LINES_TABLE_DROP = `DROP TABLE IF EXISTS ${ORDER_LINES_TABLE_NAME} CASCADE`;
+export const ORDER_LINES_TABLE_CREATES = [
+    `
+        CREATE TABLE ${SCHEMA_NAME}.${ORDER_LINES_TABLE_NAME}
+        (
+            order_line_id   INT             PRIMARY KEY,
+            order_id        INT             NOT NULL,
+            line_no         INT             NOT NULL,
+            CONSTRAINT order_lines_uk UNIQUE (order_id, line_no)
+        );
+    `,
+];
+export const ORDER_LINES_TABLE_INSERTS = [
+    `INSERT INTO ${SCHEMA_NAME}.${ORDER_LINES_TABLE_NAME} VALUES(1, 1, 1);`,
+    `INSERT INTO ${SCHEMA_NAME}.${ORDER_LINES_TABLE_NAME} VALUES(2, 1, 2);`,
+];
+
+export const SHIPMENTS_TABLE_NAME = 'shipments';
+export const SHIPMENTS_TABLE_DROP = `DROP TABLE IF EXISTS ${SHIPMENTS_TABLE_NAME} CASCADE`;
+export const SHIPMENTS_TABLE_CREATES = [
+    `
+        CREATE TABLE ${SCHEMA_NAME}.${SHIPMENTS_TABLE_NAME}
+        (
+            shipment_id     INT             PRIMARY KEY,
+            order_id        INT             NOT NULL,
+            line_no         INT             NOT NULL,
+            CONSTRAINT shipments_order_line_fk FOREIGN KEY (order_id, line_no)
+                REFERENCES ${SCHEMA_NAME}.${ORDER_LINES_TABLE_NAME}(order_id, line_no)
+                ON DELETE NO ACTION ON UPDATE NO ACTION
+        );
+    `,
+];
+export const SHIPMENTS_TABLE_INSERTS = [
+    `INSERT INTO ${SCHEMA_NAME}.${SHIPMENTS_TABLE_NAME} VALUES(1, 1, 1);`,
+];
+
+export const SOFT_DELETES_TABLE_NAME = 'soft_deletes';
+export const SOFT_DELETES_TABLE_DROP = `DROP TABLE IF EXISTS ${SOFT_DELETES_TABLE_NAME} CASCADE`;
+export const SOFT_DELETES_TABLE_CREATES = [
+    `
+        CREATE TABLE ${SCHEMA_NAME}.${SOFT_DELETES_TABLE_NAME}
+        (
+            id              INT             PRIMARY KEY,
+            name            VARCHAR(80)     NOT NULL,
+            "createdAt"     TIMESTAMP,
+            "updatedAt"     TIMESTAMP,
+            deleted_at      TIMESTAMP
+        );
+    `,
 ];

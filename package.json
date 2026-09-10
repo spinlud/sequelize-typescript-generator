@@ -1,30 +1,41 @@
 {
   "name": "sequelize-typescript-generator",
-  "version": "12.0.1",
+  "version": "13.0.0",
   "description": "Automatically generates typescript models compatible with sequelize-typescript library (https://www.npmjs.com/package/sequelize-typescript) directly from your source database.",
+  "type": "module",
   "main": "build/index.js",
   "types": "build/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "default": "./build/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "bin": {
     "stg": "build/bin/cli.js"
+  },
+  "engines": {
+    "node": ">=22.13.0"
   },
   "scripts": {
     "clean": "rm -fr build",
     "lint": "eslint --fix --ext .ts output/*.ts",
-    "build": "npm run clean && tsc",
+    "build": "npm run clean && tsc && npm run check-deps",
+    "check-deps": "node scripts/check-no-sequelize-typescript.cjs",
     "audit": "npm audit",
-    "docker-remove-containers": "./src/tests/integration/docker-remove-containers.sh",
-    "docker-start-mysql": "./src/tests/integration/mysql/docker-start-mysql.sh",
-    "docker-start-mariadb": "./src/tests/integration/mariadb/docker-start-mariadb.sh",
-    "docker-start-postgres": "./src/tests/integration/postgres/docker-start-postgres.sh",
-    "docker-start-mssql": "./src/tests/integration/mssql/docker-start-mssql.sh",
-    "test-mysql": "npm run docker-remove-containers && npm run docker-start-mysql && jest src/tests/integration/mysql",
-    "test-mariadb": "npm run docker-remove-containers && npm run docker-start-mariadb && jest src/tests/integration/mariadb",
-    "test-postgres": "npm run docker-remove-containers && npm run docker-start-postgres && jest src/tests/integration/postgres",
-    "test-mssql": "npm run docker-remove-containers && npm run docker-start-mssql && jest src/tests/integration/mssql",
-    "test-sqlite": "npm run docker-remove-containers && jest src/tests/integration/sqlite",
-    "test": "npm run test-sqlite && npm run test-mysql && npm run test-mariadb && npm run test-postgres && npm run test-mssql",
-    "dev": "npx ts-node-dev src/bin/cli.ts -D mysql -u root -x mysql -d dbtest --dialect-options '{\"timezone\": \"local\"}' --case const:camel --clean --logs",
-    "usage": "npx ts-node-dev src/bin/cli.ts --help"
+    "test:unit": "NODE_OPTIONS=--experimental-vm-modules jest src/tests/unit",
+    "test:sqlite": "NODE_OPTIONS=--experimental-vm-modules jest src/tests/integration/sqlite",
+    "test:golden:update": "NODE_OPTIONS=--experimental-vm-modules GOLDEN_UPDATE=1 jest src/tests/integration/sqlite -t 'golden'",
+    "test:integration": "NODE_OPTIONS=--experimental-vm-modules jest src/tests/integration/$TEST_DB_DIALECT",
+    "test:postgres": "docker compose --profile postgres up -d && TEST_DB_DIALECT=postgres tsx src/tests/integration/wait-for-db.ts && TEST_DB_DIALECT=postgres npm run test:integration; status=$?; docker compose --profile postgres down -v; exit $status",
+    "test:mysql": "docker compose --profile mysql up -d && TEST_DB_DIALECT=mysql tsx src/tests/integration/wait-for-db.ts && TEST_DB_DIALECT=mysql npm run test:integration; status=$?; docker compose --profile mysql down -v; exit $status",
+    "test:mariadb": "docker compose --profile mariadb up -d && TEST_DB_DIALECT=mariadb tsx src/tests/integration/wait-for-db.ts && TEST_DB_DIALECT=mariadb npm run test:integration; status=$?; docker compose --profile mariadb down -v; exit $status",
+    "test:mssql": "docker compose --profile mssql up -d && TEST_DB_DIALECT=mssql tsx src/tests/integration/wait-for-db.ts && TEST_DB_DIALECT=mssql npm run test:integration; status=$?; docker compose --profile mssql down -v; exit $status",
+    "pretest": "npm run build",
+    "test": "npm run test:unit && npm run test:sqlite",
+    "dev": "tsx src/bin/cli.ts -D mysql -u root -x mysql -d dbtest --dialect-options '{\"timezone\": \"local\"}' --case const:camel --clean --logs",
+    "usage": "tsx src/bin/cli.ts --help"
   },
   "author": "Ludovico Fabbri",
   "license": "ISC",
@@ -36,36 +47,42 @@
   "devDependencies": {
     "@types/bluebird": "^3.5.42",
     "@types/estree": "^1.0.6",
-    "@types/jest": "^29.5.14",
-    "@types/node": "^20.11.28",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.13.0",
     "@types/pluralize": "0.0.33",
     "@types/validator": "^13.12.2",
     "@types/yargs": "^17.0.33",
-    "jest": "^29.7.0",
+    "jest": "^30.5.1",
     "mariadb": "^3.4.0",
     "mysql2": "^3.12.0",
     "pg": "^8.13.1",
     "pg-hstore": "^2.3.4",
     "reflect-metadata": "^0.2.1",
-    "sqlite3": "^5.1.7",
+    "sequelize-typescript": "^2.1.6",
+    "@vscode/sqlite3": "^5.1.14-vscode",
     "tedious": "^18.6.1",
-    "ts-jest": "^29.2.5",
-    "ts-node-dev": "^2.0.0",
+    "ts-jest": "^29.4.12",
+    "tsx": "^4.23.13",
     "wkx": "^0.5.0"
   },
   "dependencies": {
-    "@types/eslint": "^8.56.5",
-    "@typescript-eslint/parser": "^7.2.0",
+    "@stylistic/eslint-plugin": "^5.10.0",
+    "@typescript-eslint/parser": "^8.70.0",
     "change-case": "^4.1.2",
-    "eslint": "^8.57.0",
+    "eslint": "^10.10.0",
     "pluralize": "^8.0.0",
     "sequelize": "^6.37.5",
-    "sequelize-typescript": "^2.1.6",
-    "typescript": "^5.7.2",
+    "typescript": ">=5.7 <6.1",
     "yargs": "^17.7.2"
   },
   "peerDependencies": {
-    "typescript": "^5.0.4"
+    "typescript": ">=5.7 <6.1",
+    "sequelize-typescript": "^2.1.6"
+  },
+  "peerDependenciesMeta": {
+    "sequelize-typescript": {
+      "optional": true
+    }
   },
   "keywords": [
     "sequelize",

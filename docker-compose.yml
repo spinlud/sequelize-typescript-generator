@@ -1,0 +1,65 @@
+# Local integration database services, one profile per dialect.
+# Credentials and ports match the defaults in src/tests/environment.ts so the
+# test suites run unchanged. Start a single dialect with, for example:
+#   docker compose --profile postgres up -d
+# The npm run test:<dialect> scripts drive these profiles automatically.
+
+services:
+  postgres:
+    profiles: ["postgres"]
+    image: postgres:18
+    environment:
+      POSTGRES_DB: testdb
+      POSTGRES_USER: sa
+      POSTGRES_PASSWORD: Passw0rd88!
+    ports:
+      - "1234:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sa -d testdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  mysql:
+    profiles: ["mysql"]
+    image: mysql:9.7
+    environment:
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: sa
+      MYSQL_PASSWORD: Passw0rd88!
+      MYSQL_ROOT_PASSWORD: Passw0rd88!
+    ports:
+      - "1234:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -pPassw0rd88!"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  mariadb:
+    profiles: ["mariadb"]
+    image: mariadb:12.3
+    environment:
+      MARIADB_DATABASE: testdb
+      MARIADB_USER: sa
+      MARIADB_PASSWORD: Passw0rd88!
+      MARIADB_ROOT_PASSWORD: Passw0rd88!
+    ports:
+      - "1234:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "healthcheck.sh --connect --innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  mssql:
+    profiles: ["mssql"]
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    # The SQL Server image ships amd64 only; on Apple Silicon it runs under Rosetta emulation.
+    platform: linux/amd64
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: Passw0rd88!
+      MSSQL_SA_PASSWORD: Passw0rd88!
+    ports:
+      - "1234:1433"

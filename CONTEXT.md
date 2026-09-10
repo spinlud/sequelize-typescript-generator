@@ -11,7 +11,7 @@ One supported database engine (Postgres, MySQL, MariaDB, SQL Server, SQLite) tog
 _Avoid_: Engine, database type
 
 **Driver**:
-The npm package a dialect uses to open the database connection (for example `pg`, `mysql2`, `@vscode/sqlite3`). Installed by the user in their own project, never a dependency of the generator.
+The Node package Sequelize loads to talk to a database (`pg`, `mysql2`, `tedious`, `@vscode/sqlite3`), installed by the user in their own project and never bundled by the generator. For SQLite the generator resolves `@vscode/sqlite3` from the user's project and passes it to Sequelize as `dialectModule`; the `sqlite3` package is no longer documented or tested.
 _Avoid_: Client, connector, dialect module
 
 ### Output

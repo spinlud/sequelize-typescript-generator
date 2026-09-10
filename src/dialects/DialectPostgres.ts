@@ -1,8 +1,20 @@
 import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
-import { Sequelize, DataType } from 'sequelize-typescript';
-import { IConfig } from '../config';
-import { IColumnMetadata, IIndexMetadata, Dialect, ITable } from './Dialect';
-import { generatePrecisionSignature, warnUnknownMappingForDataType } from './utils';
+import { Sequelize, DataTypes } from 'sequelize';
+import { IConfig } from '../config/index.js';
+import { IColumnMetadata, IIndexMetadata, IForeignKeyConstraintMetadata, Dialect, ITable } from './Dialect.js';
+import { warnUnknownMappingForDataType } from './utils.js';
+import {
+    buildSequelizeDataType,
+    renderDataTypeExpression,
+    DATA_TYPE_NAMESPACES,
+    DataTypeArgument,
+} from './dataTypes.js';
+import {
+    groupForeignKeyRows,
+    mapForeignKeyQueryRow,
+    IForeignKeyColumnRow,
+    IForeignKeyQueryRow,
+} from './foreignKeys.js';
 
 interface ITableRow {
     table_name: string;
@@ -70,43 +82,43 @@ interface IIndexMetadataPostgres {
 }
 
 const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
-    int2: DataType.INTEGER,
-    int4: DataType.INTEGER,
-    int8: DataType.BIGINT,
-    numeric: DataType.DECIMAL,
-    float4: DataType.FLOAT,
-    float8: DataType.DOUBLE,
-    money: DataType.NUMBER,
-    varchar: DataType.STRING,
-    bpchar: DataType.STRING,
-    text: DataType.STRING,
-    bytea: DataType.BLOB,
-    timestamp: DataType.DATE,
-    timestamptz: DataType.DATE,
-    date: DataType.STRING,
-    time: DataType.STRING,
-    timetz: DataType.STRING,
-    // interval: DataType.STRING,
-    bool: DataType.BOOLEAN,
-    point: DataType.GEOMETRY,
-    line: DataType.GEOMETRY,
-    lseg: DataType.GEOMETRY,
-    box: DataType.GEOMETRY,
-    path: DataType.GEOMETRY,
-    polygon: DataType.GEOMETRY,
-    circle: DataType.GEOMETRY,
-    geometry: DataType.GEOMETRY,
-    cidr: DataType.STRING,
-    inet: DataType.STRING,
-    macaddr: DataType.STRING,
-    macaddr8: DataType.STRING,
-    bit: DataType.STRING,
-    varbit: DataType.STRING,
-    uuid: DataType.UUID,
-    xml: DataType.STRING,
-    json: DataType.JSON,
-    jsonb: DataType.JSONB,
-    jsonpath: DataType.JSON,
+    int2: DataTypes.INTEGER,
+    int4: DataTypes.INTEGER,
+    int8: DataTypes.BIGINT,
+    numeric: DataTypes.DECIMAL,
+    float4: DataTypes.FLOAT,
+    float8: DataTypes.DOUBLE,
+    money: DataTypes.NUMBER,
+    varchar: DataTypes.STRING,
+    bpchar: DataTypes.STRING,
+    text: DataTypes.STRING,
+    bytea: DataTypes.BLOB,
+    timestamp: DataTypes.DATE,
+    timestamptz: DataTypes.DATE,
+    date: DataTypes.STRING,
+    time: DataTypes.STRING,
+    timetz: DataTypes.STRING,
+    // interval: DataTypes.STRING,
+    bool: DataTypes.BOOLEAN,
+    point: DataTypes.GEOMETRY,
+    line: DataTypes.GEOMETRY,
+    lseg: DataTypes.GEOMETRY,
+    box: DataTypes.GEOMETRY,
+    path: DataTypes.GEOMETRY,
+    polygon: DataTypes.GEOMETRY,
+    circle: DataTypes.GEOMETRY,
+    geometry: DataTypes.GEOMETRY,
+    cidr: DataTypes.STRING,
+    inet: DataTypes.STRING,
+    macaddr: DataTypes.STRING,
+    macaddr8: DataTypes.STRING,
+    bit: DataTypes.STRING,
+    varbit: DataTypes.STRING,
+    uuid: DataTypes.UUID,
+    xml: DataTypes.STRING,
+    json: DataTypes.JSON,
+    jsonb: DataTypes.JSONB,
+    jsonpath: DataTypes.JSON,
 }
 
 const jsDataTypesMap: { [key: string]: string } = {
@@ -295,15 +307,42 @@ export class DialectPostgres extends Dialect {
                 warnUnknownMappingForDataType(column.udt_name);
             }
 
+            const sequelizeConstructor = this.mapDbTypeToSequelize(column.udt_name);
+
+            // Data type arguments (precision or length)
+            let dataTypeArgs: Array<DataTypeArgument | null | undefined> = [];
+
+            switch (column.udt_name) {
+                case 'decimal':
+                case 'numeric':
+                case 'float':
+                case 'double':
+                    dataTypeArgs = [column.numeric_precision, column.numeric_scale];
+                    break;
+
+                case 'timestamp':
+                case 'timestampz':
+                    dataTypeArgs = [column.datetime_precision];
+                    break;
+
+                case 'bpchar':
+                case 'varchar':
+                    dataTypeArgs = [column.character_maximum_length];
+                    break;
+            }
+
+            const sequelizeType = sequelizeConstructor
+                ? buildSequelizeDataType(sequelizeConstructor, dataTypeArgs)
+                : undefined;
+
             const columnMetadata: IColumnMetadata = {
                 name: column.column_name,
                 originName: column.column_name,
                 type: column.udt_name,
                 typeExt: column.data_type,
-                ...this.mapDbTypeToSequelize(column.udt_name) && {
-                    dataType: 'DataType.' +
-                        this.mapDbTypeToSequelize(column.udt_name).key
-                            .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
+                ...sequelizeType && {
+                    sequelizeType,
+                    dataType: renderDataTypeExpression(sequelizeType, DATA_TYPE_NAMESPACES.decorators),
                 },
                 allowNull: column.is_nullable === 'YES' && !column.is_primary,
                 primaryKey: column.is_primary,
@@ -313,27 +352,6 @@ export class DialectPostgres extends Dialect {
             };
             if (column.column_default) {
                 columnMetadata.defaultValue = `Sequelize.literal("${column.column_default.replace(/\"/g, '\\\"')}")`;
-            }
-
-            // Additional data type information
-            switch (column.udt_name) {
-                case 'decimal':
-                case 'numeric':
-                case 'float':
-                case 'double':
-                    columnMetadata.dataType +=
-                        generatePrecisionSignature(column.numeric_precision, column.numeric_scale);
-                    break;
-
-                case 'timestamp':
-                case 'timestampz':
-                    columnMetadata.dataType += generatePrecisionSignature(column.datetime_precision);
-                    break;
-
-                case 'bpchar':
-                case 'varchar':
-                    columnMetadata.dataType += generatePrecisionSignature(column.character_maximum_length);
-                    break;
             }
 
             columnsMetadata.push(columnMetadata);
@@ -394,5 +412,69 @@ export class DialectPostgres extends Dialect {
         }
 
         return indicesMetadata;
+    }
+
+    /**
+     * Fetch foreign key constraints for the provided table. Constraints are read from
+     * pg_constraint, expanded to one row per column position with unnest ... WITH
+     * ORDINALITY, and a source column is flagged unique when it is covered by a
+     * single-column non-partial unique index.
+     * @param {Sequelize} connection
+     * @param {IConfig} config
+     * @param {ITable} table
+     * @returns {Promise<IForeignKeyConstraintMetadata[]>}
+     */
+    protected async fetchForeignKeysMetadata(
+        connection: Sequelize,
+        config: IConfig,
+        table: ITable
+    ): Promise<IForeignKeyConstraintMetadata[]> {
+        const foreignKeyRows = await connection.query<IForeignKeyQueryRow>(
+            `
+                SELECT
+                    con.conname     AS constraint_name,
+                    src.relname     AS source_table,
+                    src_att.attname AS source_column,
+                    tgt_ns.nspname  AS target_schema,
+                    tgt.relname     AS target_table,
+                    tgt_att.attname AS target_column,
+                    cols.ordinal_position AS ordinal_position,
+                    con.confdeltype AS on_delete,
+                    con.confupdtype AS on_update,
+                    EXISTS (
+                        SELECT 1
+                        FROM pg_index x
+                        WHERE x.indrelid = con.conrelid
+                            AND x.indisunique
+                            AND x.indisvalid
+                            AND x.indpred IS NULL
+                            AND x.indnatts = 1
+                            AND x.indkey[0] = src_att.attnum
+                    ) AS is_source_column_unique
+                FROM pg_constraint con
+                JOIN pg_class src ON src.oid = con.conrelid
+                JOIN pg_namespace src_ns ON src_ns.oid = src.relnamespace
+                JOIN pg_class tgt ON tgt.oid = con.confrelid
+                JOIN pg_namespace tgt_ns ON tgt_ns.oid = tgt.relnamespace
+                CROSS JOIN LATERAL unnest(con.conkey, con.confkey)
+                    WITH ORDINALITY AS cols(src_attnum, tgt_attnum, ordinal_position)
+                JOIN pg_attribute src_att
+                    ON src_att.attrelid = con.conrelid AND src_att.attnum = cols.src_attnum
+                JOIN pg_attribute tgt_att
+                    ON tgt_att.attrelid = con.confrelid AND tgt_att.attnum = cols.tgt_attnum
+                WHERE con.contype = 'f'
+                    AND src_ns.nspname = '${config.connection.schema}'
+                    AND src.relname = '${table.name}'
+                ORDER BY con.conname, cols.ordinal_position;
+            `,
+            {
+                type: QueryTypes.SELECT,
+                raw: true,
+            }
+        );
+
+        const rows: IForeignKeyColumnRow[] = foreignKeyRows.map(mapForeignKeyQueryRow);
+
+        return groupForeignKeyRows(rows);
     }
 }

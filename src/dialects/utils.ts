@@ -1,5 +1,5 @@
-import { ITableMetadata } from './Dialect';
-import { TransformCase, TransformFn, TransformMap, TransformTarget } from '../config/IConfig';
+import { ITableMetadata, IColumnMetadata } from './Dialect.js';
+import { TransformCase, TransformFn, TransformMap, TransformTarget } from '../config/IConfig.js';
 import { camelCase, constantCase, pascalCase, snakeCase } from "change-case";
 
 type CaseTransformer = (s: string) => string;
@@ -112,40 +112,54 @@ export const caseTransformer = (
         name: transformer(tableMetadata.originName, TransformTarget.MODEL),
         timestamps: tableMetadata.timestamps,
         columns: {},
+        ...tableMetadata.schema !== undefined && { schema: tableMetadata.schema },
+        ...tableMetadata.paranoid !== undefined && { paranoid: tableMetadata.paranoid },
+        ...tableMetadata.hasTrigger !== undefined && { hasTrigger: tableMetadata.hasTrigger },
+        ...tableMetadata.deletedAt !== undefined && {
+            deletedAt: transformer(tableMetadata.deletedAt, TransformTarget.COLUMN),
+        },
+        ...tableMetadata.foreignKeys !== undefined && { foreignKeys: tableMetadata.foreignKeys },
         ...tableMetadata.associations && {
-            associations: tableMetadata.associations.map(a => {
-                a.targetModel = transformer(a.targetModel, TransformTarget.MODEL);
-
-                if (a.joinModel) {
-                    a.joinModel = transformer(a.joinModel, TransformTarget.MODEL);
-                }
-
-                if (a.sourceKey) {
-                    a.sourceKey = transformer(a.sourceKey, TransformTarget.COLUMN);
-                }
-
-                return a;
-            })
+            associations: tableMetadata.associations.map(association => ({
+                ...association,
+                targetModel: transformer(association.targetModel, TransformTarget.MODEL),
+                ...association.joinModel !== undefined && {
+                    joinModel: transformer(association.joinModel, TransformTarget.MODEL),
+                },
+                ...association.sourceKey !== undefined && {
+                    sourceKey: transformer(association.sourceKey, TransformTarget.COLUMN),
+                },
+                ...association.alias !== undefined && {
+                    alias: transformer(association.alias, TransformTarget.COLUMN),
+                },
+                ...association.foreignKey !== undefined && {
+                    foreignKey: transformer(association.foreignKey, TransformTarget.COLUMN),
+                },
+                ...association.targetKey !== undefined && {
+                    targetKey: transformer(association.targetKey, TransformTarget.COLUMN),
+                },
+            }))
         },
         comment: tableMetadata.comment,
     };
 
     for (const [columnName, columnMetadata] of Object.entries(tableMetadata.columns)) {
+        const transformedColumn: IColumnMetadata = {
+            ...columnMetadata,
+            name: transformer(columnMetadata.originName, TransformTarget.COLUMN),
+            ...columnMetadata.foreignKey && {
+                foreignKey: {
+                    ...columnMetadata.foreignKey,
+                    name: transformer(columnMetadata.foreignKey.name, TransformTarget.COLUMN),
+                    targetModel: transformer(columnMetadata.foreignKey.targetModel, TransformTarget.MODEL),
+                    ...columnMetadata.foreignKey.targetKey !== undefined && {
+                        targetKey: transformer(columnMetadata.foreignKey.targetKey, TransformTarget.COLUMN),
+                    },
+                },
+            },
+        };
 
-        if (columnMetadata.foreignKey) {
-            const { name, targetModel } = columnMetadata.foreignKey;
-
-            columnMetadata.foreignKey = {
-                name: transformer(name, TransformTarget.COLUMN),
-                targetModel: transformer(targetModel, TransformTarget.MODEL),
-            }
-        }
-
-        transformed.columns[columnName] =  Object.assign(
-            {},
-            columnMetadata,
-            { name: transformer(columnMetadata.originName, TransformTarget.COLUMN) }
-        );
+        transformed.columns[columnName] = transformedColumn;
     }
 
     return transformed;
@@ -161,15 +175,4 @@ export const warnUnknownMappingForDataType = (dataType: string) => {
         `Unknown data type mapping for type '${dataType}'. 
         You should define the data type manually.     
     `);
-};
-
-/**
- * Generates precision signature
- * @param {Array<string|number>} args
- * @returns {string} (80) or (10,4) or ...
- */
-export const generatePrecisionSignature = (...args: Array<string|number|undefined|null>): string => {
-    const tokens = args.filter(arg => !!arg);
-
-    return tokens.length ? `(${tokens.join(',')})` : '';
 };

@@ -1,15 +1,8 @@
 import path from 'path';
 import fs from 'fs';
 import { Dialect as DialectType } from 'sequelize';
-import { Dialect } from '../dialects/Dialect';
-
-import {
-    DialectMySQL,
-    DialectPostgres,
-    DialectMSSQL,
-    DialectMariaDB,
-    DialectSQLite,
-} from '../dialects';
+import { Dialect } from '../dialects/Dialect.js';
+import { createDialect } from '../dialects/createDialect.js';
 
 import {
     IConfig,
@@ -17,7 +10,8 @@ import {
     TransformCase,
     TransformMap,
     TransformTarget
-} from '../config/IConfig';
+} from '../config/IConfig.js';
+import { isFormat } from '../config/format.js';
 
 export type ArgvType = { [key: string]: any };
 
@@ -37,17 +31,20 @@ export const aliasesMap = {
     OUTPUT_DIR_CLEAN: 'clean',
     INDICES: 'indices',
     TIMESTAMPS: 'timestamps',
+    PARANOID: 'paranoid',
     CASE: 'case',
     STORAGE: 'storage',
     LINT_FILE: 'lint-file',
     SSL: 'ssl',
     PROTOCOL: 'protocol',
     ASSOCIATIONS_FILE: 'associations-file',
+    ASSOCIATIONS: 'associations',
     ENABLE_SEQUELIZE_LOGS: 'logs',
     DIALECT_OPTIONS: 'dialect-options',
     DIALECT_OPTIONS_FILE: 'dialect-options-file',
     DISABLE_STRICT: 'no-strict',
     DISABLE_VIEWS: 'no-views',
+    FORMAT: 'format',
 };
 
 /**
@@ -177,8 +174,10 @@ export const buildConfig = (argv: ArgvType): IConfig => {
             },
             indices: !!argv[aliasesMap.INDICES],
             timestamps: !!argv[aliasesMap.TIMESTAMPS],
+            paranoid: !!argv[aliasesMap.PARANOID],
             ...argv[aliasesMap.CASE] && { case: parseCase(argv[aliasesMap.CASE]) },
             ...argv[aliasesMap.ASSOCIATIONS_FILE] && { associationsFile: argv[aliasesMap.ASSOCIATIONS_FILE] as string },
+            ...(argv[aliasesMap.ASSOCIATIONS] === false && { associations: false }),
             noViews: !!argv[aliasesMap.DISABLE_VIEWS],
         },
         output: {
@@ -189,7 +188,10 @@ export const buildConfig = (argv: ArgvType): IConfig => {
                 : path.join(process.cwd(), defaultOutputDir),
             clean: !!argv[aliasesMap.OUTPUT_DIR_CLEAN],
         },
-        strict: !(!!argv[aliasesMap.DISABLE_STRICT]),
+        // yargs exposes -R through the no-strict alias, while --no-strict is parsed
+        // as strict: false; honour both spellings.
+        strict: !(!!argv[aliasesMap.DISABLE_STRICT] || argv['strict'] === false),
+        ...isFormat(argv[aliasesMap.FORMAT]) && { format: argv[aliasesMap.FORMAT] },
         ...argv[aliasesMap.LINT_FILE] && {
             lintOptions: {
                 configFile: argv[aliasesMap.LINT_FILE],
@@ -207,29 +209,13 @@ export const buildConfig = (argv: ArgvType): IConfig => {
  * Returns {Dialect}
  */
 export const buildDialect = (argv: ArgvType): Dialect => {
-    let dialect: Dialect;
-
-    switch (argv[aliasesMap.DIALECT]) {
-        case 'postgres':
-            dialect = new DialectPostgres();
-            break;
-        case 'mysql':
-            dialect = new DialectMySQL();
-            break;
-        case 'mariadb':
-            dialect = new DialectMariaDB();
-            break;
-        case 'sqlite':
-            dialect = new DialectSQLite();
-            break;
-        case 'mssql':
-            dialect = new DialectMSSQL();
-            break;
-        default:
-            error(`Unknown dialect ${argv[aliasesMap.DIALECT]}`);
+    try {
+        return createDialect(argv[aliasesMap.DIALECT]);
     }
-
-    return dialect!;
+    catch (err) {
+        error(err instanceof Error ? err.message : String(err));
+        throw err;
+    }
 };
 
 /**

@@ -1,1 +1,1 @@
-export { ModelBuilder } from './ModelBuilder';
+export { ModelBuilder } from './ModelBuilder.js';

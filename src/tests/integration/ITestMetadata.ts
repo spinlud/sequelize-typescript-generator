@@ -1,5 +1,6 @@
 import { Dialect } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
+import { IForeignKeyConstraintMetadata } from '../../dialects/Dialect.js';
 
 interface ITestTable {
     name: string;
@@ -25,10 +26,16 @@ export interface ITestMetadata {
     name: string;
     dialect: Dialect;
     schema?: ITestSchema;
+    setupQueries?: string[];
     testTables: ITestTable[];
     testViews?: ITestTable[];
     filterTables: string[];
     filterSkipTables: string[];
+    // Expected foreign key constraints per database table name.
+    expectedForeignKeys: Record<string, IForeignKeyConstraintMetadata[]>;
+    paranoidTable?: string;
+    triggerTable?: string;
+    secondarySchemaTable?: { schema: string; name: string };
     dataTypes: {
         dataTypesTable: string;
         // Should return the native data type for a given column in a table

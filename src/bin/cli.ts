@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 
 import yargs from 'yargs';
-import { ModelBuilder } from '../builders';
+import { hideBin } from 'yargs/helpers';
+import { ModelBuilder } from '../builders/index.js';
 import {
     defaultOutputDir,
     aliasesMap,
     validateArgs,
     buildConfig,
     buildDialect,
-} from './utils';
+} from './utils.js';
+import { FORMATS, DEFAULT_FORMAT } from '../config/format.js';
 
 process.on('unhandledRejection', (reason, promise) => {
     console.error(reason, promise);
@@ -18,10 +20,10 @@ process.on('unhandledRejection', (reason, promise) => {
 export const cli = async (): Promise<void> => {
     let usage = `Usage: stg -D <dialect> -d [database] -u [username] -x [password] `;
     usage += `-h [host] -p [port] -o [out-dir] -s [schema] -a [associations-file]`;
-    usage += `-t [tables] -T [skip-tables] -V [no-views] -i [indices] -C [case] -S [storage] -L [lint-file] `;
-    usage += `-l [ssl] -r [protocol] -n [dialect-options] -c [clean] -g [logs]`;
+    usage += `-t [tables] -T [skip-tables] -V [no-views] -i [indices] -P [paranoid] -C [case] -S [storage] -L [lint-file] `;
+    usage += `-l [ssl] -r [protocol] -n [dialect-options] -c [clean] -g [logs] -F [format] --no-associations`;
 
-    const {argv} = yargs
+    const {argv} = yargs(hideBin(process.argv))
         .usage(usage)
         .demand(['dialect'])
         .option('h', {
@@ -42,7 +44,7 @@ export const cli = async (): Promise<void> => {
         .option('s', {
             alias: aliasesMap.SCHEMA,
             string: true,
-            describe: `Schema name (Postgres only). Default: \n - public`,
+            describe: `Schema name (Postgres and SQL Server). Default: \n - public`,
         })
         .option('D', {
             alias: aliasesMap.DIALECT,
@@ -88,6 +90,11 @@ export const cli = async (): Promise<void> => {
             alias: aliasesMap.TIMESTAMPS,
             boolean: true,
             describe: `Add default timestamps to tables`,
+        })
+        .option('P', {
+            alias: aliasesMap.PARANOID,
+            boolean: true,
+            describe: `Emit paranoid table options for tables with a deleted_at or deletedAt column. Requires --timestamps.`,
         })
         .option('C', {
             alias: aliasesMap.CASE,
@@ -137,11 +144,23 @@ export const cli = async (): Promise<void> => {
         }).option('R', {
             alias: aliasesMap.DISABLE_STRICT,
             boolean: true,
-            describe: `Disable strict typescript class declaration.`,
+            describe: `Disable strict typescript class declaration (decorators format only).`,
+        }).option('F', {
+            alias: aliasesMap.FORMAT,
+            string: true,
+            choices: FORMATS,
+            default: DEFAULT_FORMAT,
+            describe: `Output format:
+             - native: plain Sequelize classes with declare fields, Model.init and an initModels wiring file (default)
+             - decorators: sequelize-typescript decorators (requires sequelize-typescript in the target project)`,
         }).option('V', {
             alias: aliasesMap.DISABLE_VIEWS,
             boolean: true,
             describe: `Disable views generation. Available for: MySQL and MariaDB.`,
+        }).option(aliasesMap.ASSOCIATIONS, {
+            boolean: true,
+            default: true,
+            describe: `Discover one-to-one and one-to-many associations from foreign keys. Use --no-associations to disable.`,
         });
 
     validateArgs(argv);
@@ -150,7 +169,15 @@ export const cli = async (): Promise<void> => {
     const dialect = buildDialect(argv);
 
     const builder = new ModelBuilder(config, dialect);
-    await builder.build();
+
+    try {
+        await builder.build();
+    }
+    catch (err) {
+        console.error(err);
+        process.exit(1);
+    }
+
     console.log(`All done!`);
 };
 

@@ -149,6 +149,7 @@ export const UNITS_TABLE_CREATES = [
             unit_id             INT      CONSTRAINT units_pk       PRIMARY KEY,
             unit_name           VARCHAR(80)     NOT NULL,
             race_id             INT             NOT NULL
+                CONSTRAINT units_race_id_fk REFERENCES races(race_id) ON DELETE CASCADE ON UPDATE RESTRICT
         );
     `,
 ];
@@ -191,4 +192,89 @@ export const PASSPORT_TABLE_CREATES = [
 ];
 export const PASSPORT_TABLE_INSERTS = [
     `INSERT INTO ${PASSPORT_TABLE_NAME} VALUES(1, 'Frostmourne');`,
+];
+
+export const EMPLOYEES_TABLE_NAME = 'employees';
+export const EMPLOYEES_TABLE_DROP = `DROP TABLE IF EXISTS ${EMPLOYEES_TABLE_NAME}`;
+export const EMPLOYEES_TABLE_CREATES = [
+    `
+        CREATE TABLE ${EMPLOYEES_TABLE_NAME}
+        (
+            employee_id     INT      CONSTRAINT employees_pk        PRIMARY KEY,
+            name            VARCHAR(80)     NOT NULL,
+            manager_id      INT
+                CONSTRAINT employees_manager_fk REFERENCES employees(employee_id) ON DELETE SET NULL
+        );
+    `,
+];
+export const EMPLOYEES_TABLE_INSERTS = [
+    `INSERT INTO ${EMPLOYEES_TABLE_NAME} VALUES(1, 'Grand Admiral', NULL);`,
+    `INSERT INTO ${EMPLOYEES_TABLE_NAME} VALUES(2, 'Captain', 1);`,
+];
+
+export const PROFILES_TABLE_NAME = 'profiles';
+export const PROFILES_TABLE_DROP = `DROP TABLE IF EXISTS ${PROFILES_TABLE_NAME}`;
+export const PROFILES_TABLE_CREATES = [
+    `
+        CREATE TABLE ${PROFILES_TABLE_NAME}
+        (
+            profile_id      INT      CONSTRAINT profiles_pk        PRIMARY KEY,
+            person_id       INT             NOT NULL     UNIQUE
+                CONSTRAINT profiles_person_fk REFERENCES person(person_id) ON DELETE CASCADE ON UPDATE CASCADE
+        );
+    `,
+];
+export const PROFILES_TABLE_INSERTS = [
+    `INSERT INTO ${PROFILES_TABLE_NAME} VALUES(1, 1);`,
+];
+
+export const ORDER_LINES_TABLE_NAME = 'order_lines';
+export const ORDER_LINES_TABLE_DROP = `DROP TABLE IF EXISTS ${ORDER_LINES_TABLE_NAME}`;
+export const ORDER_LINES_TABLE_CREATES = [
+    `
+        CREATE TABLE ${ORDER_LINES_TABLE_NAME}
+        (
+            order_line_id   INT      CONSTRAINT order_lines_pk      PRIMARY KEY,
+            order_id        INT             NOT NULL,
+            line_no         INT             NOT NULL,
+            CONSTRAINT order_lines_uk UNIQUE (order_id, line_no)
+        );
+    `,
+];
+export const ORDER_LINES_TABLE_INSERTS = [
+    `INSERT INTO ${ORDER_LINES_TABLE_NAME} VALUES(1, 1, 1);`,
+    `INSERT INTO ${ORDER_LINES_TABLE_NAME} VALUES(2, 1, 2);`,
+];
+
+export const SHIPMENTS_TABLE_NAME = 'shipments';
+export const SHIPMENTS_TABLE_DROP = `DROP TABLE IF EXISTS ${SHIPMENTS_TABLE_NAME}`;
+export const SHIPMENTS_TABLE_CREATES = [
+    `
+        CREATE TABLE ${SHIPMENTS_TABLE_NAME}
+        (
+            shipment_id     INT      CONSTRAINT shipments_pk       PRIMARY KEY,
+            order_id        INT             NOT NULL,
+            line_no         INT             NOT NULL,
+            CONSTRAINT shipments_order_line_fk FOREIGN KEY (order_id, line_no)
+                REFERENCES order_lines(order_id, line_no)
+        );
+    `,
+];
+export const SHIPMENTS_TABLE_INSERTS = [
+    `INSERT INTO ${SHIPMENTS_TABLE_NAME} VALUES(1, 1, 1);`,
+];
+
+export const SOFT_DELETES_TABLE_NAME = 'soft_deletes';
+export const SOFT_DELETES_TABLE_DROP = `DROP TABLE IF EXISTS ${SOFT_DELETES_TABLE_NAME}`;
+export const SOFT_DELETES_TABLE_CREATES = [
+    `
+        CREATE TABLE ${SOFT_DELETES_TABLE_NAME}
+        (
+            id              INT      CONSTRAINT soft_deletes_pk      PRIMARY KEY,
+            name            VARCHAR(80)     NOT NULL,
+            createdAt       TIMESTAMP,
+            updatedAt       TIMESTAMP,
+            deleted_at      TIMESTAMP
+        );
+    `,
 ];

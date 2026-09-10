@@ -1,12 +1,29 @@
 import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
-import { Sequelize, DataType } from 'sequelize-typescript';
-import { IConfig } from '../config';
-import { IColumnMetadata, IIndexMetadata, Dialect, ITable } from './Dialect';
-import { generatePrecisionSignature, warnUnknownMappingForDataType } from './utils';
+import { Sequelize, DataTypes } from 'sequelize';
+import { IConfig } from '../config/index.js';
+import { IColumnMetadata, IIndexMetadata, IForeignKeyConstraintMetadata, Dialect, ITable } from './Dialect.js';
+import { warnUnknownMappingForDataType } from './utils.js';
+import {
+    buildSequelizeDataType,
+    renderDataTypeExpression,
+    DATA_TYPE_NAMESPACES,
+    DataTypeArgument,
+} from './dataTypes.js';
+import {
+    groupForeignKeyRows,
+    mapForeignKeyQueryRow,
+    IForeignKeyColumnRow,
+    IForeignKeyQueryRow,
+} from './foreignKeys.js';
 
 interface ITableRow {
     table_name: string;
+    table_schema: string;
     table_comment?: string;
+}
+
+interface ITriggerCountRow {
+    trigger_count: number;
 }
 
 interface IColumnMetadataMSSQL {
@@ -88,35 +105,35 @@ const jsDataTypesMap: { [key: string]: string } = {
 };
 
 const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
-    int: DataType.INTEGER,
-    bigint: DataType.BIGINT,
-    tinyint: DataType.INTEGER,
-    smallint: DataType.INTEGER,
-    numeric: DataType.DECIMAL,
-    decimal: DataType.DECIMAL,
-    float: DataType.FLOAT,
-    real: DataType.REAL,
-    money: DataType.STRING,
-    smallmoney: DataType.STRING,
-    char: DataType.STRING,
-    nchar: DataType.STRING,
-    varchar: DataType.STRING,
-    nvarchar: DataType.STRING,
-    text: DataType.STRING,
-    ntext: DataType.STRING,
-    date: DataType.DATEONLY,
-    datetime: DataType.DATE,
-    datetime2: DataType.DATE,
-    timestamp: DataType.DATE,
-    datetimeoffset: DataType.STRING,
-    time: DataType.TIME,
-    smalldatetime: DataType.DATE,
-    bit: DataType.STRING,
-    binary: DataType.STRING,
-    varbinary: DataType.STRING,
-    uniqueidentifier: DataType.STRING,
-    xml: DataType.STRING,
-    geography: DataType.GEOGRAPHY,
+    int: DataTypes.INTEGER,
+    bigint: DataTypes.BIGINT,
+    tinyint: DataTypes.INTEGER,
+    smallint: DataTypes.INTEGER,
+    numeric: DataTypes.DECIMAL,
+    decimal: DataTypes.DECIMAL,
+    float: DataTypes.FLOAT,
+    real: DataTypes.REAL,
+    money: DataTypes.STRING,
+    smallmoney: DataTypes.STRING,
+    char: DataTypes.STRING,
+    nchar: DataTypes.STRING,
+    varchar: DataTypes.STRING,
+    nvarchar: DataTypes.STRING,
+    text: DataTypes.STRING,
+    ntext: DataTypes.STRING,
+    date: DataTypes.DATEONLY,
+    datetime: DataTypes.DATE,
+    datetime2: DataTypes.DATE,
+    timestamp: DataTypes.DATE,
+    datetimeoffset: DataTypes.STRING,
+    time: DataTypes.TIME,
+    smalldatetime: DataTypes.DATE,
+    bit: DataTypes.STRING,
+    binary: DataTypes.STRING,
+    varbinary: DataTypes.STRING,
+    uniqueidentifier: DataTypes.STRING,
+    xml: DataTypes.STRING,
+    geography: DataTypes.GEOGRAPHY,
 };
 
 /**
@@ -166,16 +183,19 @@ export class DialectMSSQL extends Dialect {
         connection: Sequelize,
         config: IConfig
     ): Promise<ITable[]> {
+        const schema = config.connection.schema;
+
         const query = `
             SELECT
                 t.name               AS [table_name],
+                s.name               AS [table_schema],
                 td.value             AS [table_comment]
-            FROM sysobjects t
-            INNER JOIN sysusers u
-                ON u.uid = t.uid
+            FROM sys.tables t
+            INNER JOIN sys.schemas s
+                ON s.schema_id = t.schema_id
             LEFT OUTER JOIN sys.extended_properties td
-                ON td.major_id = t.id AND td.minor_id = 0 AND td.name = 'MS_Description'
-            WHERE t.type = 'u';
+                ON td.major_id = t.object_id AND td.minor_id = 0 AND td.name = 'MS_Description'
+            WHERE t.is_ms_shipped = 0${schema ? ` AND s.name = N'${schema}'` : ''};
         `;
 
         const tables: ITable[] = (await connection.query(
@@ -184,9 +204,10 @@ export class DialectMSSQL extends Dialect {
                 type: QueryTypes.SELECT,
                 raw: true,
             }
-        ) as ITableRow[]).map(({ table_name, table_comment }) => {
+        ) as ITableRow[]).map(({ table_name, table_schema, table_comment }) => {
             const t: ITable = {
                 name: table_name,
+                schema: table_schema,
                 comment: table_comment ?? undefined,
             };
 
@@ -210,8 +231,10 @@ export class DialectMSSQL extends Dialect {
     ): Promise<IColumnMetadata[]> {
         const columnsMetadata: IColumnMetadata[] = [];
 
+        const schema = config.connection.schema;
+
         const query = `
-            SELECT 
+            SELECT
                 c.*,
                 CASE WHEN COLUMNPROPERTY(object_id(c.TABLE_SCHEMA +'.' + c.TABLE_NAME), c.COLUMN_NAME, 'IsIdentity') = 1 THEN 'YES' ELSE 'NO' END AS IS_IDENTITY, 
                 tc.CONSTRAINT_NAME, 
@@ -230,7 +253,7 @@ export class DialectMSSQL extends Dialect {
                 ON sc.id = t.id AND sc.name = c.COLUMN_NAME
             LEFT OUTER JOIN sys.extended_properties ep
                  ON ep.major_id = sc.id AND ep.minor_id = sc.colid AND ep.name = 'MS_Description'                                        
-            WHERE c.TABLE_CATALOG = N'${config.connection.database}' AND c.TABLE_NAME = N'${table}'
+            WHERE c.TABLE_CATALOG = N'${config.connection.database}' AND c.TABLE_NAME = N'${table}'${schema ? ` AND c.TABLE_SCHEMA = N'${schema}'` : ''}
             ORDER BY c.ORDINAL_POSITION;
         `;
 
@@ -248,15 +271,43 @@ export class DialectMSSQL extends Dialect {
                 warnUnknownMappingForDataType(column.DATA_TYPE);
             }
 
+            const sequelizeConstructor = this.mapDbTypeToSequelize(column.DATA_TYPE);
+
+            // Data type arguments (precision or length)
+            let dataTypeArgs: Array<DataTypeArgument | null | undefined> = [];
+
+            switch (column.DATA_TYPE) {
+                case 'decimal':
+                case 'numeric':
+                case 'float':
+                case 'double':
+                    dataTypeArgs = [column.NUMERIC_PRECISION, column.NUMERIC_SCALE];
+                    break;
+
+                case 'datetime2':
+                    dataTypeArgs = [column.DATETIME_PRECISION];
+                    break;
+
+                case 'char':
+                case 'nchar':
+                case 'varchar':
+                case 'nvarchar':
+                    dataTypeArgs = [column.CHARACTER_MAXIMUM_LENGTH];
+                    break;
+            }
+
+            const sequelizeType = sequelizeConstructor
+                ? buildSequelizeDataType(sequelizeConstructor, dataTypeArgs)
+                : undefined;
+
             const columnMetadata: IColumnMetadata = {
                 name: column.COLUMN_NAME,
                 originName: column.COLUMN_NAME,
                 type: column.DATA_TYPE,
                 typeExt: column.DATA_TYPE,
-                ...this.mapDbTypeToSequelize(column.DATA_TYPE) && {
-                    dataType: 'DataType.' +
-                        this.mapDbTypeToSequelize(column.DATA_TYPE).key
-                            .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
+                ...sequelizeType && {
+                    sequelizeType,
+                    dataType: renderDataTypeExpression(sequelizeType, DATA_TYPE_NAMESPACES.decorators),
                 },
                 allowNull: column.IS_NULLABLE.toUpperCase() === 'YES' &&
                     column.CONSTRAINT_TYPE?.toUpperCase() !== 'PRIMARY KEY',
@@ -265,28 +316,6 @@ export class DialectMSSQL extends Dialect {
                 indices: [],
                 comment: column.COLUMN_COMMENT ?? undefined,
             };
-
-            // Additional data type information
-            switch (column.DATA_TYPE) {
-                case 'decimal':
-                case 'numeric':
-                case 'float':
-                case 'double':
-                    columnMetadata.dataType +=
-                        generatePrecisionSignature(column.NUMERIC_PRECISION, column.NUMERIC_SCALE);
-                    break;
-
-                case 'datetime2':
-                    columnMetadata.dataType += generatePrecisionSignature(column.DATETIME_PRECISION);
-                    break;
-
-                case 'char':
-                case 'nchar':
-                case 'varchar':
-                case 'nvarchar':
-                    columnMetadata.dataType += generatePrecisionSignature(column.CHARACTER_MAXIMUM_LENGTH);
-                    break;
-            }
 
             columnsMetadata.push(columnMetadata);
         }
@@ -301,6 +330,9 @@ export class DialectMSSQL extends Dialect {
         column: string
     ): Promise<IIndexMetadata[]> {
         const indicesMetadata: IIndexMetadata[] = [];
+
+        const schema = config.connection.schema;
+        const qualifiedTable = schema ? `${schema}.${table}` : table;
 
         const query = `
             SELECT
@@ -324,7 +356,7 @@ export class DialectMSSQL extends Dialect {
                     ON ic.object_id = c.object_id AND ic.column_id = c.column_id
                 JOIN sys.tables t
                     ON t.object_id = c.object_id
-            WHERE t.object_id = object_id(N'${table}') AND c.name=N'${column}'
+            WHERE t.object_id = object_id(N'${qualifiedTable}') AND c.name=N'${column}'
             ORDER BY ic.column_id;
         `;
 
@@ -344,6 +376,115 @@ export class DialectMSSQL extends Dialect {
         }
 
         return indicesMetadata;
+    }
+
+    /**
+     * Fetch foreign key constraints for the provided table. Constraints are read from
+     * sys.foreign_keys and sys.foreign_key_columns, one row per column position, and a
+     * source column is flagged unique when it is covered by a single-column non-filtered
+     * unique index. Referential actions come from the *_referential_action_desc columns.
+     * @param {Sequelize} connection
+     * @param {IConfig} config
+     * @param {ITable} table
+     * @returns {Promise<IForeignKeyConstraintMetadata[]>}
+     */
+    protected async fetchForeignKeysMetadata(
+        connection: Sequelize,
+        config: IConfig,
+        table: ITable
+    ): Promise<IForeignKeyConstraintMetadata[]> {
+        const schema = table.schema ?? config.connection.schema;
+
+        const foreignKeyRows = await connection.query<IForeignKeyQueryRow>(
+            `
+                SELECT
+                    fk.name     AS constraint_name,
+                    st.name     AS source_table,
+                    sc.name     AS source_column,
+                    ts.name     AS target_schema,
+                    tt.name     AS target_table,
+                    tc.name     AS target_column,
+                    fkc.constraint_column_id            AS ordinal_position,
+                    fk.delete_referential_action_desc   AS on_delete,
+                    fk.update_referential_action_desc   AS on_update,
+                    CASE WHEN EXISTS (
+                        SELECT 1
+                        FROM sys.indexes i
+                        JOIN sys.index_columns ic
+                            ON ic.object_id = i.object_id AND ic.index_id = i.index_id
+                        WHERE i.object_id = fk.parent_object_id
+                            AND i.is_unique = 1
+                            AND i.has_filter = 0
+                            AND ic.column_id = fkc.parent_column_id
+                            AND ic.key_ordinal > 0
+                            AND (
+                                SELECT COUNT(*)
+                                FROM sys.index_columns ic2
+                                WHERE ic2.object_id = i.object_id
+                                    AND ic2.index_id = i.index_id
+                                    AND ic2.key_ordinal > 0
+                            ) = 1
+                    ) THEN 1 ELSE 0 END AS is_source_column_unique
+                FROM sys.foreign_keys fk
+                JOIN sys.foreign_key_columns fkc
+                    ON fkc.constraint_object_id = fk.object_id
+                JOIN sys.tables st
+                    ON st.object_id = fk.parent_object_id
+                JOIN sys.schemas ss
+                    ON ss.schema_id = st.schema_id
+                JOIN sys.columns sc
+                    ON sc.object_id = fkc.parent_object_id AND sc.column_id = fkc.parent_column_id
+                JOIN sys.tables tt
+                    ON tt.object_id = fk.referenced_object_id
+                JOIN sys.schemas ts
+                    ON ts.schema_id = tt.schema_id
+                JOIN sys.columns tc
+                    ON tc.object_id = fkc.referenced_object_id AND tc.column_id = fkc.referenced_column_id
+                WHERE ss.name = N'${schema}' AND st.name = N'${table.name}'
+                ORDER BY fk.name, fkc.constraint_column_id;
+            `,
+            {
+                type: QueryTypes.SELECT,
+                raw: true,
+            }
+        );
+
+        const rows: IForeignKeyColumnRow[] = foreignKeyRows.map(mapForeignKeyQueryRow);
+
+        return groupForeignKeyRows(rows);
+    }
+
+    /**
+     * Report whether the table has at least one enabled trigger, read from sys.triggers.
+     * @param {Sequelize} connection
+     * @param {IConfig} config
+     * @param {ITable} table
+     * @returns {Promise<boolean>}
+     */
+    protected async fetchTableHasTrigger(
+        connection: Sequelize,
+        config: IConfig,
+        table: ITable
+    ): Promise<boolean> {
+        const schema = table.schema ?? config.connection.schema;
+
+        const rows = await connection.query<ITriggerCountRow>(
+            `
+                SELECT COUNT(*) AS trigger_count
+                FROM sys.triggers tr
+                JOIN sys.tables t
+                    ON t.object_id = tr.parent_id
+                JOIN sys.schemas s
+                    ON s.schema_id = t.schema_id
+                WHERE s.name = N'${schema}' AND t.name = N'${table.name}' AND tr.is_disabled = 0;
+            `,
+            {
+                type: QueryTypes.SELECT,
+                raw: true,
+            }
+        );
+
+        return (rows[0]?.trigger_count ?? 0) > 0;
     }
 
 }

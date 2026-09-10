@@ -1,23 +1,103 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import * as ts from 'typescript';
-import pluralize from 'pluralize';
-import { Linter } from '../lint';
+import { Linter } from '../lint/index.js';
 import { ModelAttributeColumnOptions } from 'sequelize';
-import { IndexOptions, IndexFieldOptions } from 'sequelize-typescript';
-import { IConfig } from '../config';
-import {IColumnMetadata, ITableMetadata, IIndexMetadata, Dialect, ITablesMetadata} from '../dialects/Dialect';
-import { IAssociationMetadata } from '../dialects/AssociationsParser';
-import { Builder } from './Builder';
+import type { BelongsToOptions, HasManyOptions, HasOneOptions } from 'sequelize';
+import type { IndexOptions, IndexFieldOptions, TableOptions } from 'sequelize-typescript';
+import { IConfig } from '../config/index.js';
+import { resolveFormat, shouldNoticeIgnoredStrict, STRICT_IGNORED_NOTICE } from '../config/format.js';
+import {IColumnMetadata, ITableMetadata, IIndexMetadata, Dialect, ITablesMetadata} from '../dialects/Dialect.js';
+import { IAssociationMetadata } from '../dialects/AssociationsParser.js';
+import { isErrnoException } from '../utils/errors.js';
+import { Builder } from './Builder.js';
+import { resolveAssociationPropertyName } from './associationNaming.js';
+import { IGeneratedFile, renderNativeFiles, writeGeneratedFiles } from './generatedFile.js';
+import { warnWhenDecoratorsDependencyIsMissing } from './decoratorsDependency.js';
 import {
     nodeToString,
     generateArrowDecorator,
     generateNamedImports,
     generateObjectLiteralDecorator,
     generateIndexExport,
-} from './utils';
+} from './utils.js';
+
+export { resolveAssociationPropertyName } from './associationNaming.js';
 
 const foreignKeyDecorator = 'ForeignKey';
+
+/**
+ * Build the `@Table` decorator options for a table. The `hasTrigger` flag is
+ * emitted only when the source table carries at least one enabled trigger.
+ * @param {ITableMetadata} tableMetadata
+ * @returns {Partial<TableOptions>}
+ */
+export const buildTableDecoratorProps = (tableMetadata: ITableMetadata): Partial<TableOptions> => ({
+    tableName: tableMetadata.originName,
+    ...tableMetadata.schema && { schema: tableMetadata.schema },
+    timestamps: tableMetadata.timestamps,
+    ...tableMetadata.paranoid && { paranoid: true },
+    ...tableMetadata.deletedAt && { deletedAt: tableMetadata.deletedAt },
+    ...tableMetadata.hasTrigger && { hasTrigger: true },
+    ...tableMetadata.comment && { comment: tableMetadata.comment },
+});
+
+/**
+ * Decorator options accepted by `@BelongsTo`, `@HasOne` and `@HasMany`.
+ */
+export type AssociationDecoratorOptions = Partial<BelongsToOptions & HasManyOptions & HasOneOptions>;
+
+/**
+ * Build the decorator options for `@BelongsTo`, `@HasOne` and `@HasMany`. Keys
+ * are emitted in the fixed order as, foreignKey, targetKey, sourceKey, onDelete,
+ * onUpdate, and `as` is emitted only when the association carries an alias.
+ * Returns undefined when no option applies so the decorator is rendered without
+ * an options argument.
+ * @param {IAssociationMetadata} association
+ * @returns {AssociationDecoratorOptions | undefined}
+ */
+export const buildAssociationDecoratorProps = (
+    association: IAssociationMetadata
+): AssociationDecoratorOptions | undefined => {
+    const props: AssociationDecoratorOptions = {
+        ...association.alias && { as: association.alias },
+        ...association.foreignKey && { foreignKey: association.foreignKey },
+        ...association.targetKey && { targetKey: association.targetKey },
+        ...association.sourceKey && { sourceKey: association.sourceKey },
+        ...association.onDelete && { onDelete: association.onDelete },
+        ...association.onUpdate && { onUpdate: association.onUpdate },
+    };
+
+    return Object.keys(props).length ? props : undefined;
+};
+
+/**
+ * Build the association class member for a model.
+ * @param {IAssociationMetadata} association
+ * @returns {ts.PropertyDeclaration}
+ */
+export const buildAssociationPropertyDecl = (association: IAssociationMetadata): ts.PropertyDeclaration => {
+    const { associationName, targetModel, joinModel } = association;
+
+    const targetModels = [ targetModel ];
+    joinModel && targetModels.push(joinModel);
+
+    const decoratorProps = buildAssociationDecoratorProps(association);
+
+    return ts.factory.createPropertyDeclaration(
+        [
+            decoratorProps ?
+                generateArrowDecorator(associationName, targetModels, decoratorProps) :
+                generateArrowDecorator(associationName, targetModels),
+        ],
+        resolveAssociationPropertyName(association),
+        ts.factory.createToken(ts.SyntaxKind.QuestionToken),
+        associationName.includes('Many') ?
+            ts.factory.createArrayTypeNode(ts.factory.createTypeReferenceNode(targetModel, undefined)) :
+            ts.factory.createTypeReferenceNode(targetModel, undefined),
+        undefined,
+    );
+};
 
 /**
  * @class ModelGenerator
@@ -84,41 +164,6 @@ export class ModelBuilder extends Builder {
     }
 
     /**
-     * Build association class member
-     * @param {IAssociationMetadata} association
-     */
-    private static buildAssociationPropertyDecl(association: IAssociationMetadata): ts.PropertyDeclaration {
-        const { associationName, targetModel, joinModel } = association;
-
-        const targetModels = [ targetModel ];
-        joinModel && targetModels.push(joinModel);
-
-        return ts.factory.createPropertyDeclaration(
-            [
-                ...(association.sourceKey ?
-                        [
-                            generateArrowDecorator(
-                                associationName,
-                                targetModels,
-                                { sourceKey: association.sourceKey }
-                            )
-                        ]
-                        : [
-                            generateArrowDecorator(associationName, targetModels)
-                        ]
-                ),
-            ],
-            associationName.includes('Many') ?
-                pluralize.plural(targetModel) : pluralize.singular(targetModel),
-            ts.factory.createToken(ts.SyntaxKind.QuestionToken),
-            associationName.includes('Many') ?
-                ts.factory.createArrayTypeNode(ts.factory.createTypeReferenceNode(targetModel, undefined)) :
-                ts.factory.createTypeReferenceNode(targetModel, undefined),
-            undefined,
-        );
-    }
-
-    /**
      * Build table class declaration
      * @param {ITableMetadata} tableMetadata
      * @param {Dialect} dialect
@@ -129,7 +174,7 @@ export class ModelBuilder extends Builder {
         dialect: Dialect,
         strict: boolean = true
     ): string {
-        const { originName: tableName, name, columns } = tableMetadata;
+        const { name, columns } = tableMetadata;
 
         let generatedCode = '';
 
@@ -163,6 +208,9 @@ export class ModelBuilder extends Builder {
         Object.values(tableMetadata.columns).forEach(col => {
             col.foreignKey && importModels.add(col.foreignKey.targetModel);
         });
+
+        // A self-referencing model resolves its own name in the same file.
+        importModels.delete(name);
 
         [...importModels].forEach(modelName => {
             generatedCode += nodeToString(generateNamedImports(
@@ -203,12 +251,7 @@ export class ModelBuilder extends Builder {
         const classDecl = ts.factory.createClassDeclaration(
             [
                 // @Table decorator
-                generateObjectLiteralDecorator('Table', {
-                    tableName: tableName,
-                    ...tableMetadata.schema && { schema: tableMetadata.schema },
-                    timestamps: tableMetadata.timestamps,
-                    ...tableMetadata.comment && { comment: tableMetadata.comment },
-                }),
+                generateObjectLiteralDecorator('Table', buildTableDecoratorProps(tableMetadata)),
                 // Export modifier
                 ts.factory.createToken(ts.SyntaxKind.ExportKeyword),
             ],
@@ -257,7 +300,7 @@ export class ModelBuilder extends Builder {
             [
                 ...Object.values(columns).map(col => this.buildColumnPropertyDecl(col, dialect)),
                 ...tableMetadata.associations && tableMetadata.associations.length ?
-                    tableMetadata.associations.map(a => this.buildAssociationPropertyDecl(a)) : []
+                    tableMetadata.associations.map(a => buildAssociationPropertyDecl(a)) : []
             ]
         );
 
@@ -279,15 +322,41 @@ export class ModelBuilder extends Builder {
     }
 
     /**
+     * Render the decorators output as one file per table plus the index barrel.
+     * @param {ITablesMetadata} tablesMetadata
+     * @param {Dialect} dialect
+     * @param {boolean | undefined} strict
+     * @returns {IGeneratedFile[]}
+     */
+    private static renderDecoratorsFiles(
+        tablesMetadata: ITablesMetadata,
+        dialect: Dialect,
+        strict: boolean | undefined
+    ): IGeneratedFile[] {
+        const files: IGeneratedFile[] = Object.values(tablesMetadata).map(tableMetadata => ({
+            fileName: `${tableMetadata.name}.ts`,
+            content: ModelBuilder.buildTableClassDeclaration(tableMetadata, dialect, strict),
+        }));
+
+        files.push({ fileName: 'index.ts', content: ModelBuilder.buildIndexExports(tablesMetadata) });
+
+        return files;
+    }
+
+    /**
      * Build models files using the given configuration and dialect
      * @returns {Promise<void>}
      */
     async build(): Promise<void> {
         const { clean, outDir } = this.config.output;
-        const writePromises: Promise<void>[] = [];
+        const format = resolveFormat(this.config);
 
         if (this.config.connection.logging) {
             console.log('CONFIGURATION', this.config);
+        }
+
+        if (shouldNoticeIgnoredStrict(this.config)) {
+            console.warn(STRICT_IGNORED_NOTICE);
         }
 
         console.log(`Fetching metadata from source`);
@@ -302,13 +371,12 @@ export class ModelBuilder extends Builder {
         try {
             await fs.access(outDir);
         }
-        catch(err: any) {
-            if (err.code && err.code === 'ENOENT') {
+        catch(err: unknown) {
+            if (isErrnoException(err) && err.code === 'ENOENT') {
                 await fs.mkdir(outDir, { recursive: true });
             }
             else {
-                console.error(err);
-                process.exit(1);
+                throw new Error(`Failed to access output directory '${outDir}'`, { cause: err });
             }
         }
 
@@ -320,39 +388,15 @@ export class ModelBuilder extends Builder {
             }
         }
 
-        // Build model files
-        for (const tableMetadata of Object.values(tablesMetadata)) {
-            console.log(`Processing table ${tableMetadata.originName}`);
-            const tableClassDecl =
-                ModelBuilder.buildTableClassDeclaration(tableMetadata, this.dialect, this.config.strict);
+        const files = format === 'native' ?
+            renderNativeFiles(tablesMetadata, this.dialect) :
+            ModelBuilder.renderDecoratorsFiles(tablesMetadata, this.dialect, this.config.strict);
 
-            writePromises.push((async () => {
-                const outPath = path.join(outDir, `${tableMetadata.name}.ts`);
+        await writeGeneratedFiles(outDir, files);
 
-                await fs.writeFile(
-                    outPath,
-                    tableClassDecl,
-                    { flag: 'w' }
-                );
-
-                console.log(`Generated model file at ${outPath}`);
-            })());
+        for (const file of files) {
+            console.log(`Generated file at ${path.join(outDir, file.fileName)}`);
         }
-
-        // Build index file
-        writePromises.push((async () => {
-            const indexPath = path.join(outDir, 'index.ts');
-            const indexContent = ModelBuilder.buildIndexExports(tablesMetadata);
-
-            await fs.writeFile(
-                indexPath,
-                indexContent
-            );
-
-            console.log(`Generated index file at ${indexPath}`);
-        })());
-
-        await Promise.all(writePromises);
 
         // Lint files
         try {
@@ -368,9 +412,9 @@ export class ModelBuilder extends Builder {
             console.log(`Linting files`);
             await linter.lintFiles([path.join(outDir, '*.ts')]);
         }
-        catch(err: any) {
+        catch(err: unknown) {
             // Handle unsupported global eslint usage
-            if (err.code && err.code === 'MODULE_NOT_FOUND') {
+            if (isErrnoException(err) && err.code === 'MODULE_NOT_FOUND') {
                 let msg = `\n[WARNING] Linting models skipped: dependency not found.\n`;
                 msg += `Linting models globally is not supported (eslint library does not support global plugins).\n`;
                 msg += `If you have installed the library globally (--global flag) and you want to automatically lint your generated models,\n`;
@@ -383,5 +427,8 @@ export class ModelBuilder extends Builder {
             }
         }
 
+        if (format === 'decorators') {
+            warnWhenDecoratorsDependencyIsMissing(outDir);
+        }
     }
 }

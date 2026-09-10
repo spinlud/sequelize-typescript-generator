@@ -128,3 +128,10 @@ Ruled out of version 13 but worth keeping in view:
 - Moving the lint stack to optional peer dependencies.
 - Sequelize v7 support, as a fresh effort if a v7 beta ships.
 - `ModelBuilder.build()` returning the list of written file paths.
+
+## Phase plans
+
+Detailed, step-by-step implementation plans for the phases that have one:
+
+- Phase 5, association discovery (#79): [`docs/plans/v13-phase5-association-discovery.md`](v13-phase5-association-discovery.md).
+- Phase 6, native emitter (#80): [`docs/plans/v13-phase6-native-emitter.md`](v13-phase6-native-emitter.md).

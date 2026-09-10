@@ -1,1 +1,1 @@
-export { Linter } from './Linter';
+export { Linter } from './Linter.js';

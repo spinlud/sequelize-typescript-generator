@@ -1,12 +1,27 @@
 import { QueryTypes, AbstractDataTypeConstructor, IndexMethod } from 'sequelize';
-import { Sequelize, DataType } from 'sequelize-typescript';
-import { IConfig } from '../config';
-import { IColumnMetadata, Dialect, IIndexMetadata, ITable } from './Dialect';
-import { generatePrecisionSignature, warnUnknownMappingForDataType } from './utils';
+import { Sequelize, DataTypes } from 'sequelize';
+import { IConfig } from '../config/index.js';
+import { IColumnMetadata, Dialect, IIndexMetadata, IForeignKeyConstraintMetadata, ITable } from './Dialect.js';
+import { warnUnknownMappingForDataType } from './utils.js';
+import {
+    buildSequelizeDataType,
+    renderDataTypeExpression,
+    parseEnumValues,
+    DATA_TYPE_NAMESPACES,
+    DataTypeArgument,
+} from './dataTypes.js';
+import {
+    groupForeignKeyRows,
+    buildInformationSchemaForeignKeysQuery,
+    mapForeignKeyQueryRow,
+    IForeignKeyColumnRow,
+    IForeignKeyQueryRow,
+} from './foreignKeys.js';
 
 interface ITableRow {
     table_name: string;
     table_comment?: string;
+    table_type?: string;
 }
 
 interface IColumnMetadataMariaDB {
@@ -50,42 +65,42 @@ interface IIndexMetadataMariaDB {
 }
 
 const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
-    bigint: DataType.BIGINT,
-    int: DataType.INTEGER,
-    smallint: DataType.SMALLINT,
-    mediumint: DataType.MEDIUMINT,
-    tinyint: DataType.TINYINT,
-    decimal: DataType.DECIMAL,
-    float: DataType.FLOAT,
-    double: DataType.DOUBLE,
-    bit: DataType.INTEGER,
-    varchar: DataType.STRING,
-    char: DataType.CHAR,
-    text: DataType.STRING,
-    tinytext: DataType.STRING,
-    mediumtext: DataType.STRING,
-    longtext: DataType.STRING,
-    date: DataType.DATEONLY,
-    datetime: DataType.DATE,
-    time: DataType.TIME,
-    timestamp: DataType.DATE,
-    year: DataType.INTEGER,
-    enum: DataType.ENUM,
-    set: DataType.STRING,
-    binary: DataType.BLOB,
-    blob: DataType.BLOB,
-    tinyblob: DataType.BLOB,
-    mediumblob: DataType.BLOB,
-    longblob: DataType.BLOB,
-    point: DataType.GEOMETRY,
-    multipoint: DataType.GEOMETRY,
-    linestring: DataType.GEOMETRY,
-    multilinestring: DataType.GEOMETRY,
-    polygon: DataType.GEOMETRY,
-    multipolygon: DataType.GEOMETRY,
-    geometry: DataType.GEOMETRY,
-    geometrycollection: DataType.GEOMETRY,
-    json: DataType.JSON,
+    bigint: DataTypes.BIGINT,
+    int: DataTypes.INTEGER,
+    smallint: DataTypes.SMALLINT,
+    mediumint: DataTypes.MEDIUMINT,
+    tinyint: DataTypes.TINYINT,
+    decimal: DataTypes.DECIMAL,
+    float: DataTypes.FLOAT,
+    double: DataTypes.DOUBLE,
+    bit: DataTypes.INTEGER,
+    varchar: DataTypes.STRING,
+    char: DataTypes.CHAR,
+    text: DataTypes.STRING,
+    tinytext: DataTypes.STRING,
+    mediumtext: DataTypes.STRING,
+    longtext: DataTypes.STRING,
+    date: DataTypes.DATEONLY,
+    datetime: DataTypes.DATE,
+    time: DataTypes.TIME,
+    timestamp: DataTypes.DATE,
+    year: DataTypes.INTEGER,
+    enum: DataTypes.ENUM,
+    set: DataTypes.STRING,
+    binary: DataTypes.BLOB,
+    blob: DataTypes.BLOB,
+    tinyblob: DataTypes.BLOB,
+    mediumblob: DataTypes.BLOB,
+    longblob: DataTypes.BLOB,
+    point: DataTypes.GEOMETRY,
+    multipoint: DataTypes.GEOMETRY,
+    linestring: DataTypes.GEOMETRY,
+    multilinestring: DataTypes.GEOMETRY,
+    polygon: DataTypes.GEOMETRY,
+    multipolygon: DataTypes.GEOMETRY,
+    geometry: DataTypes.GEOMETRY,
+    geometrycollection: DataTypes.GEOMETRY,
+    json: DataTypes.JSON,
 };
 
 const jsDataTypesMap: { [key: string]: string } = {
@@ -181,8 +196,9 @@ export class DialectMariaDB extends Dialect {
     ): Promise<ITable[]> {
         const query = `
             SELECT
-                table_name      AS table_name, 
-                table_comment   AS table_comment  
+                table_name      AS table_name,
+                table_comment   AS table_comment,
+                table_type      AS table_type
             FROM information_schema.tables
             WHERE table_schema = '${config.connection.database}'
                 ${config.metadata?.noViews ? 'AND table_type <> \'VIEW\'' : ''};
@@ -194,10 +210,11 @@ export class DialectMariaDB extends Dialect {
                 type: QueryTypes.SELECT,
                 raw: true,
             }
-        ) as ITableRow[]).map(({ table_name, table_comment }) => {
+        ) as ITableRow[]).map(({ table_name, table_comment, table_type }) => {
             const t: ITable = {
                 name: table_name,
                 comment: table_comment ?? undefined,
+                isView: table_type === 'VIEW',
             };
 
             return t;
@@ -258,14 +275,46 @@ export class DialectMariaDB extends Dialect {
                 warnUnknownMappingForDataType(column.DATA_TYPE);
             }
 
+            const sequelizeConstructor = this.mapDbTypeToSequelize(column.DATA_TYPE);
+
+            // Data type arguments (precision, length or ENUM values)
+            let dataTypeArgs: Array<DataTypeArgument | null | undefined> = [];
+
+            switch (column.DATA_TYPE) {
+                case 'decimal':
+                case 'numeric':
+                case 'float':
+                case 'double':
+                    dataTypeArgs = [column.NUMERIC_PRECISION, column.NUMERIC_SCALE];
+                    break;
+
+                case 'datetime':
+                case 'timestamp':
+                    dataTypeArgs = [column.DATETIME_PRECISION];
+                    break;
+
+                case 'char':
+                case 'varchar':
+                    dataTypeArgs = [column.CHARACTER_MAXIMUM_LENGTH];
+                    break;
+
+                case 'enum':
+                    dataTypeArgs = parseEnumValues(column.COLUMN_TYPE);
+                    break;
+            }
+
+            const sequelizeType = sequelizeConstructor
+                ? buildSequelizeDataType(sequelizeConstructor, dataTypeArgs)
+                : undefined;
+
             const columnMetadata: IColumnMetadata = {
                 name: column.COLUMN_NAME,
                 originName: column.COLUMN_NAME,
                 type: column.DATA_TYPE,
                 typeExt: column.COLUMN_TYPE,
-                ...this.mapDbTypeToSequelize(column.DATA_TYPE) && { dataType: 'DataType.' +
-                        this.mapDbTypeToSequelize(column.DATA_TYPE).key
-                            .split(' ')[0], // avoids 'DOUBLE PRECISION' key to include PRECISION in the mapping
+                ...sequelizeType && {
+                    sequelizeType,
+                    dataType: renderDataTypeExpression(sequelizeType, DATA_TYPE_NAMESPACES.decorators),
                 },
                 allowNull: column.IS_NULLABLE === 'YES',
                 primaryKey: column.COLUMN_KEY === 'PRI',
@@ -273,32 +322,6 @@ export class DialectMariaDB extends Dialect {
                 indices: [],
                 comment: column.COLUMN_COMMENT,
             };
-
-            // Additional data type informations
-            switch (column.DATA_TYPE) {
-                case 'decimal':
-                case 'numeric':
-                case 'float':
-                case 'double':
-                    columnMetadata.dataType +=
-                        generatePrecisionSignature(column.NUMERIC_PRECISION, column.NUMERIC_SCALE);
-                    break;
-
-                case 'datetime':
-                case 'timestamp':
-                    columnMetadata.dataType += generatePrecisionSignature(column.DATETIME_PRECISION);
-                    break;
-
-                case 'char':
-                case 'varchar':
-                    columnMetadata.dataType += generatePrecisionSignature(column.CHARACTER_MAXIMUM_LENGTH);
-                    break;
-            }
-
-            // ENUM: add values to data type -> DataType.ENUM('v1', 'v2')
-            if (column.DATA_TYPE === 'enum') {
-                columnMetadata.dataType += columnMetadata.typeExt.match(/\(.*\)/)![0];
-            }
 
             columnsMetadata.push(columnMetadata);
         }
@@ -348,5 +371,32 @@ export class DialectMariaDB extends Dialect {
         }
 
         return indicesMetadata;
+    }
+
+    /**
+     * Fetch foreign key constraints for the provided table. Constraints are read from
+     * information_schema.referential_constraints joined to key_column_usage, and a
+     * source column is flagged unique when it is covered by a single-column unique index.
+     * @param {Sequelize} connection
+     * @param {IConfig} config
+     * @param {ITable} table
+     * @returns {Promise<IForeignKeyConstraintMetadata[]>}
+     */
+    protected async fetchForeignKeysMetadata(
+        connection: Sequelize,
+        config: IConfig,
+        table: ITable
+    ): Promise<IForeignKeyConstraintMetadata[]> {
+        const foreignKeyRows = await connection.query<IForeignKeyQueryRow>(
+            buildInformationSchemaForeignKeysQuery(config.connection.database, table.name),
+            {
+                type: QueryTypes.SELECT,
+                raw: true,
+            }
+        );
+
+        const rows: IForeignKeyColumnRow[] = foreignKeyRows.map(mapForeignKeyQueryRow);
+
+        return groupForeignKeyRows(rows);
     }
 }

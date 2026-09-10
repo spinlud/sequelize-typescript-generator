@@ -1,5 +1,6 @@
 import fs from 'fs';
 import readline from 'readline';
+import type { ReferentialAction } from './foreignKeys.js';
 
 const cardinalities = new Set([
     '1:1',
@@ -21,11 +22,17 @@ export interface IAssociationMetadata {
     targetModel: string;
     joinModel?: string;
     sourceKey?: string; // Left table key for HasOne and HasMany associations
+    alias?: string; // Property name the association is exposed under
+    foreignKey?: string; // Concrete foreign key column (model field name)
+    targetKey?: string; // Referenced column on the target model (BelongsTo)
+    onDelete?: ReferentialAction;
+    onUpdate?: ReferentialAction;
 }
 
 export interface IForeignKey {
     name: string;
     targetModel: string;
+    isJunctionForeignKey: boolean; // True for the foreign keys of a many-to-many junction table
 }
 
 export interface IAssociationsParsed {
@@ -75,17 +82,19 @@ const validateRow = (row: AssociationRow): void => {
  */
 export class AssociationsParser {
 
-    private static associationsMetadata: IAssociationsParsed | undefined;
+    private static readonly parsedByPath = new Map<string, IAssociationsParsed>();
 
     /**
-     * Parse associations file
+     * Parse associations file. Results are cached per path and every call returns a
+     * structural copy, so callers cannot mutate the cached value.
      * @param {string} path
      * @returns {IAssociationsParsed}
      */
     static parse(path: string): IAssociationsParsed {
-        // Return cached value if already set
-        if (this.associationsMetadata) {
-            return this.associationsMetadata;
+        const cached = this.parsedByPath.get(path);
+
+        if (cached) {
+            return structuredClone(cached);
         }
 
         const associationsMetadata: IAssociationsParsed = {};
@@ -149,6 +158,7 @@ export class AssociationsParser {
                 associationsMetadata[rightModel].foreignKeys.push({
                     name: rightKey,
                     targetModel: leftModel,
+                    isJunctionForeignKey: false,
                 });
             }
             // N:N association
@@ -175,21 +185,22 @@ export class AssociationsParser {
 
                 associationsMetadata[joinModel!].foreignKeys.push({
                     name: leftKey,
-                    targetModel: leftModel
+                    targetModel: leftModel,
+                    isJunctionForeignKey: true,
                 });
 
                 associationsMetadata[joinModel!].foreignKeys.push({
                     name: rightKey,
-                    targetModel: rightModel
+                    targetModel: rightModel,
+                    isJunctionForeignKey: true,
                 });
             }
 
         }
 
-        // Cache result
-        this.associationsMetadata = associationsMetadata;
+        this.parsedByPath.set(path, associationsMetadata);
 
-        return this.associationsMetadata;
+        return structuredClone(associationsMetadata);
     }
 
 }
