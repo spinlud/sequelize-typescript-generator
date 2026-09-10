@@ -201,6 +201,9 @@ jobs:
           cache: npm
           registry-url: "https://registry.npmjs.org"
 
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@latest
+
       - name: Install
         run: npm ci
 
@@ -218,5 +221,3 @@ jobs:
 
       - name: Publish
         run: npm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
