@@ -1,15 +1,19 @@
 # sequelize-typescript-generator
-> Automatically generates typescript models compatible with [sequelize-typescript](https://www.npmjs.com/package/sequelize-typescript) library directly from your source database.  
+> Generates TypeScript [Sequelize](https://www.npmjs.com/package/sequelize) models directly from an existing database. Emits framework-free native models by default, with [`sequelize-typescript`](https://www.npmjs.com/package/sequelize-typescript) decorated classes available as an opt-in format.
+
+> Upgrading from 12.x? See the [migration guide](docs/migration/12-to-13.md).
 
 ## Table of Contents
 
 <!-- toc -->
 
-* [Supported databases](#supported-databases)
+* [Tested databases](#tested-databases)
 * [Prerequisites](#prerequisites)
 * [Installation](#installation)
 * [CLI usage](#cli-usage)
 * [Output formats](#output-formats)
+    * [Native format](#native-format)
+    * [Decorators format](#decorators-format)
 * [Programmatic usage](#programmatic-usage)
 * [Strict mode](#strict-mode)
 * [Transform case](#transform-case)
@@ -17,7 +21,7 @@
     * [Cardinality](#cardinality)
     * [Skipped foreign keys](#skipped-foreign-keys)
     * [Alias rule](#alias-rule)
-    * [Generated decorators](#generated-decorators)
+    * [Generated associations](#generated-associations)
     * [Disabling discovery](#disabling-discovery)
     * [Associations file](#associations-file)
         * [One to One](#one-to-one)
@@ -186,8 +190,8 @@ option in [programmatic usage](#programmatic-usage)):
 - `native` (default): framework-free [`sequelize`](https://www.npmjs.com/package/sequelize) models.
 - `decorators`: [`sequelize-typescript`](https://www.npmjs.com/package/sequelize-typescript) decorated classes.
 
-**Breaking change:** `native` is the default from version 13. Earlier versions always emitted decorators, so
-to keep the previous output you must now pass `--format decorators` explicitly.
+`native` is the default. Pass `--format decorators` (or `format: 'decorators'` programmatically) to emit
+decorated classes instead.
 
 ### Native format
 Each model is a plain `sequelize` class. Attributes are typed with `InferAttributes` and
@@ -197,17 +201,29 @@ method instead of decorator metadata:
 
 ```ts
 import {
-	CreationOptional, DataTypes, ForeignKey, InferAttributes, InferCreationAttributes, Model, Sequelize
+	Association, BelongsToCreateAssociationMixin, BelongsToGetAssociationMixin, BelongsToSetAssociationMixin, CreationOptional, DataTypes, ForeignKey, InferAttributes, InferCreationAttributes, Model, NonAttribute, Sequelize 
 } from "sequelize";
 import type { races } from "./races";
 
 export class units extends Model<InferAttributes<units>, InferCreationAttributes<units>> {
 
-	declare unit_id: CreationOptional<number>;
+	declare unit_id: CreationOptional<number | null>;
 
 	declare unit_name: string;
 
 	declare race_id: ForeignKey<races["race_id"]>;
+
+	declare getRace: BelongsToGetAssociationMixin<races>;
+
+	declare setRace: BelongsToSetAssociationMixin<races, races["race_id"]>;
+
+	declare createRace: BelongsToCreateAssociationMixin<races>;
+
+	declare race?: NonAttribute<races>;
+
+	declare static associations: {
+		race: Association<units, races>;
+	};
 
 	static initModel(sequelize: Sequelize): typeof units {
 		units.init({
@@ -244,15 +260,27 @@ type derived from its return value:
 import { Sequelize } from "sequelize";
 import { races } from "./races";
 import { units } from "./units";
+// ... other model imports
 
 export function initModels(sequelize: Sequelize) {
 	races.initModel(sequelize);
 	units.initModel(sequelize);
-	races.hasMany(units, { as: "units", foreignKey: "race_id", sourceKey: "race_id" });
-	units.belongsTo(races, { as: "race", foreignKey: "race_id", targetKey: "race_id" });
+	// ... other initModel calls
+	races.hasMany(units, {
+		as: "units",
+		foreignKey: "race_id",
+		sourceKey: "race_id"
+	});
+	units.belongsTo(races, {
+		as: "race",
+		foreignKey: "race_id",
+		targetKey: "race_id"
+	});
+	// ... other associations
 	return {
 		races,
 		units
+		// ... other models
 	};
 }
 
@@ -272,8 +300,8 @@ const models = initModels(sequelize);
 const units = await models.units.findAll({ include: models.races });
 ```
 
-`initModels`, the `Models` type and the `static initModel` methods are native-only. Native models
-depend on `sequelize` alone; `sequelize-typescript` is not required.
+`initModels`, the `Models` type and the `static initModel` methods belong to the native format. Native
+models depend on `sequelize` alone; `sequelize-typescript` is not required.
 
 ### Decorators format
 Pass `--format decorators` to emit `sequelize-typescript` decorated classes (the output shown in the
@@ -335,10 +363,8 @@ The `format` option accepts `'native'` (default) or `'decorators'` and mirrors t
 omit it to get the native format. See [Output formats](#output-formats) for the difference between them.
 
 ## Strict mode
-Strict mode applies to the [decorators format](#decorators-format) only. In the native format it is
-ignored, because native models always type their attributes with `InferAttributes` /
-`InferCreationAttributes`; passing `--no-strict` together with the native format prints a notice and
-has no other effect.
+Strict mode applies to the [decorators format](#decorators-format). It controls whether the generated
+decorated classes declare an explicit attributes interface and implement it on the model class.
 
 By default strict mode will be used for models class declaration:
 
@@ -561,36 +587,104 @@ field or another alias on the same model receive a numeric suffix.
 Aliases follow `--case`: with a case set they are transformed like column names. Without `--case`, singular and
 plural aliases keep the database spelling and only composed aliases are camelCased.
 
-### Generated decorators
-The foreign key column keeps its `@ForeignKey(() => Target)` decorator, and the association is emitted with
-`@BelongsTo`, `@HasOne` or `@HasMany`. Each carries the resolved `as` alias, the `foreignKey`, the referenced
-column as `targetKey` (`BelongsTo`) or `sourceKey` (`HasOne`/`HasMany`), and `onDelete`/`onUpdate` whenever the
-referential action is not `NO ACTION`:
+The alias surfaces as the `as` option on the association and as the model property that exposes the related
+record. For the one-to-one `profiles.person_id → person` relation (giving `profiles.person` and `person.profile`):
+
+**Native** — the alias is the `as` option in `initModels.ts` and the name of the `NonAttribute` property on each
+model:
 
 ```ts
+person.hasOne(profiles, {
+	as: "profile",
+	foreignKey: "person_id",
+	sourceKey: "person_id",
+	onDelete: "CASCADE",
+	onUpdate: "CASCADE"
+});
+profiles.belongsTo(person, {
+	as: "person",
+	foreignKey: "person_id",
+	targetKey: "person_id",
+	onDelete: "CASCADE",
+	onUpdate: "CASCADE"
+});
+```
+
+**Decorators** — the alias is the `as` option on the decorator and the name of the decorated property:
+
+```ts
+// person.ts
+@HasOne(() => profiles, {
+	as: "profile",
+	foreignKey: "person_id",
+	sourceKey: "person_id",
+	onDelete: "CASCADE",
+	onUpdate: "CASCADE" 
+})
+profile?: profiles;
+```
+
+```ts
+// profiles.ts
+@BelongsTo(() => person, {
+	as: "person",
+	foreignKey: "person_id",
+	targetKey: "person_id",
+	onDelete: "CASCADE",
+	onUpdate: "CASCADE" 
+})
+person?: person;
+```
+
+### Generated associations
+For each discovered foreign key the generator wires both sides of the relation. Each side carries the resolved
+`as` alias, the `foreignKey`, and the referenced column as `targetKey` (owning side) or `sourceKey` (inverse
+side); `onDelete`/`onUpdate` are added whenever the referential action is not `NO ACTION`.
+
+**Native** — the foreign key column is typed with `ForeignKey<...>`, each side exposes a typed `NonAttribute`
+property, and the relation is wired in `initModels.ts`:
+
+```ts
+// units.ts
+declare race_id: ForeignKey<races["race_id"]>;
+declare race?: NonAttribute<races>;
+// races.ts
+declare units?: NonAttribute<units[]>;
+```
+
+```ts
+// initModels.ts
+races.hasMany(units, {
+	as: "units",
+	foreignKey: "race_id",
+	sourceKey: "race_id"
+});
+units.belongsTo(races, {
+	as: "race",
+	foreignKey: "race_id",
+	targetKey: "race_id"
+});
+```
+
+**Decorators** — the foreign key column keeps its `@ForeignKey(() => Target)` decorator, and the association is
+emitted with `@BelongsTo`, `@HasOne` or `@HasMany`:
+
+```ts
+// units.ts
 @ForeignKey(() => races)
 @Column({
-  type: DataType.INTEGER
+	type: DataType.INTEGER 
 })
 race_id!: number;
 
-@BelongsTo(() => races, {
-  as: "race",
-  foreignKey: "race_id",
-  targetKey: "race_id",
-  onDelete: "CASCADE",
-  onUpdate: "RESTRICT"
-})
+@BelongsTo(() => races)
 race?: races;
 ```
 
 ```ts
+// races.ts
 @HasMany(() => units, {
-  as: "units",
-  foreignKey: "race_id",
-  sourceKey: "race_id",
-  onDelete: "CASCADE",
-  onUpdate: "RESTRICT"
+	sourceKey: "race_id" 
 })
 units?: units[];
 ```
@@ -732,81 +826,149 @@ import { IConfig, ModelBuilder, createDialect } from 'sequelize-typescript-gener
 })();
 ```
 
-This will generate the following models:
+This will generate the following models.
+
+**Native** — `person` gets a `HasOne` and `passport` gets the `BelongsTo`, wired in `initModels.ts`
+(association mixins and the `static initModel` body are trimmed for brevity):
+
+```ts
+// person.ts
+export class person extends Model<InferAttributes<person>, InferCreationAttributes<person>> {
+
+	declare person_id: CreationOptional<number | null>;
+
+	declare name: string;
+
+	declare passport_id: number;
+
+	declare passport?: NonAttribute<passport>;
+
+	declare static associations: {
+		passport: Association<person, passport>;
+	};
+
+	// static initModel(sequelize) ...
+}
+```
+
+```ts
+// passport.ts
+export class passport extends Model<InferAttributes<passport>, InferCreationAttributes<passport>> {
+
+	declare passport_id: ForeignKey<person["person_id"] | null>;
+
+	declare code: string;
+
+	declare person?: NonAttribute<person>;
+
+	declare static associations: {
+		person: Association<passport, person>;
+	};
+
+	// static initModel(sequelize) ...
+}
+```
+
+```ts
+// initModels.ts
+person.hasOne(passport, {
+	as: "passport",
+	foreignKey: "passport_id",
+	sourceKey: "passport_id"
+});
+passport.belongsTo(person, {
+	as: "person",
+	foreignKey: "passport_id"
+});
+```
+
+**Decorators**:
 
 ```ts
 import {
-  Model, Table, Column, DataType, Index, Sequelize, ForeignKey, HasOne
+	Model, Table, Column, DataType, Index, Sequelize, ForeignKey, HasOne 
 } from "sequelize-typescript";
 import { passport } from "./passport";
 
 export interface personAttributes {
-  person_id: number;
-  name: string;
-  passport_id: number;
+	person_id?: number;
+	name: string;
+	passport_id: number;
 }
 
 @Table({
-  tableName: "person",
-  timestamps: false
+	tableName: "person",
+	timestamps: false 
 })
 export class person extends Model<personAttributes, personAttributes> implements personAttributes {
 
-  @Column({
-    primaryKey: true,
-    type: DataType.INTEGER
-  })
-  person_id!: number;
+	@Column({
+		primaryKey: true,
+		autoIncrement: true,
+		allowNull: true,
+		type: DataType.INTEGER 
+	})
+	@Index({
+		name: "sqlite_autoindex_person_1",
+		unique: true 
+	})
+	person_id?: number;
 
-  @Column({
-    type: DataType.STRING(80)
-  })
-  name!: string;
+	@Column({
+		type: DataType.STRING 
+	})
+	name!: string;
 
-  @Column({
-    type: DataType.INTEGER
-  })
-  passport_id!: number;
+	@Column({
+		type: DataType.INTEGER 
+	})
+	passport_id!: number;
 
-  @HasOne(() => passport, {
-    sourceKey: "passport_id"
-  })
-  passport?: passport;
+	@HasOne(() => passport, {
+		sourceKey: "passport_id" 
+	})
+	passport?: passport;
 
 }
 ```
 
 ```ts
 import {
-  Model, Table, Column, DataType, Index, Sequelize, ForeignKey, BelongsTo
+	Model, Table, Column, DataType, Index, Sequelize, ForeignKey, BelongsTo 
 } from "sequelize-typescript";
 import { person } from "./person";
 
 export interface passportAttributes {
-  passport_id: number;
-  code: string;
+	passport_id?: number;
+	code: string;
 }
 
 @Table({
-  tableName: "passport",
-  timestamps: false
+	tableName: "passport",
+	timestamps: false 
 })
 export class passport extends Model<passportAttributes, passportAttributes> implements passportAttributes {
 
-  @ForeignKey(() => person)
-  @Column({
-    primaryKey: true,
-    type: DataType.INTEGER
-  })
-  passport_id!: number;
+	@ForeignKey(() => person)
+	@Column({
+		primaryKey: true,
+		autoIncrement: true,
+		allowNull: true,
+		type: DataType.INTEGER 
+	})
+	@Index({
+		name: "sqlite_autoindex_passport_1",
+		unique: true 
+	})
+	passport_id?: number;
 
-  @Column({
-    type: DataType.STRING(80)
-  })
-  code!: string;
+	@Column({
+		type: DataType.STRING 
+	})
+	code!: string;
 
-  @BelongsTo(() => person)
-  person?: person;
+	@BelongsTo(() => person)
+	person?: person;
 
 }
 ```
@@ -854,81 +1016,150 @@ Build models:
 npx stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
 ```
 
-This will generate the following models:
+This will generate the following models.
+
+**Native** — `races` gets a `HasMany` and `units` gets the `BelongsTo`, wired in `initModels.ts`
+(association mixins and the `static initModel` body are trimmed for brevity):
+
+```ts
+// races.ts
+export class races extends Model<InferAttributes<races>, InferCreationAttributes<races>> {
+
+	declare race_id: CreationOptional<number | null>;
+
+	declare race_name: string;
+
+	declare units?: NonAttribute<units[]>;
+
+	declare static associations: {
+		units: Association<races, units>;
+	};
+
+	// static initModel(sequelize) ...
+}
+```
+
+```ts
+// units.ts
+export class units extends Model<InferAttributes<units>, InferCreationAttributes<units>> {
+
+	declare unit_id: CreationOptional<number | null>;
+
+	declare unit_name: string;
+
+	declare race_id: ForeignKey<races["race_id"]>;
+
+	declare race?: NonAttribute<races>;
+
+	declare static associations: {
+		race: Association<units, races>;
+	};
+
+	// static initModel(sequelize) ...
+}
+```
+
+```ts
+// initModels.ts
+races.hasMany(units, {
+	as: "units",
+	foreignKey: "race_id",
+	sourceKey: "race_id"
+});
+units.belongsTo(races, {
+	as: "race",
+	foreignKey: "race_id",
+	targetKey: "race_id"
+});
+```
+
+**Decorators**:
 
 ```ts
 import {
-  Model, Table, Column, DataType, Index, Sequelize, ForeignKey, HasMany
+	Model, Table, Column, DataType, Index, Sequelize, ForeignKey, HasMany 
 } from "sequelize-typescript";
 import { units } from "./units";
 
 export interface racesAttributes {
-  race_id: number;
-  race_name: string;
+	race_id?: number;
+	race_name: string;
 }
 
 @Table({
-  tableName: "races",
-  timestamps: false
+	tableName: "races",
+	timestamps: false 
 })
 export class races extends Model<racesAttributes, racesAttributes> implements racesAttributes {
 
-  @Column({
-    primaryKey: true,
-    type: DataType.INTEGER
-  })
-  race_id!: number;
+	@Column({
+		primaryKey: true,
+		autoIncrement: true,
+		allowNull: true,
+		type: DataType.INTEGER 
+	})
+	@Index({
+		name: "sqlite_autoindex_races_1",
+		unique: true 
+	})
+	race_id?: number;
 
-  @Column({
-    type: DataType.STRING(80)
-  })
-  race_name!: string;
+	@Column({
+		type: DataType.STRING 
+	})
+	race_name!: string;
 
-  @HasMany(() => units, {
-    sourceKey: "race_id"
-  })
-  units?: units[];
+	@HasMany(() => units, {
+		sourceKey: "race_id" 
+	})
+	units?: units[];
 
 }
 ```
 
 ```ts
 import {
-  Model, Table, Column, DataType, Index, Sequelize, ForeignKey, BelongsTo
+	Model, Table, Column, DataType, Index, Sequelize, ForeignKey, BelongsTo 
 } from "sequelize-typescript";
 import { races } from "./races";
 
 export interface unitsAttributes {
-  unit_id: number;
-  unit_name: string;
-  race_id: number;
+	unit_id?: number;
+	unit_name: string;
+	race_id: number;
 }
 
 @Table({
-  tableName: "units",
-  timestamps: false
+	tableName: "units",
+	timestamps: false 
 })
 export class units extends Model<unitsAttributes, unitsAttributes> implements unitsAttributes {
 
-  @Column({
-    primaryKey: true,
-    type: DataType.INTEGER
-  })
-  unit_id!: number;
+	@Column({
+		primaryKey: true,
+		autoIncrement: true,
+		allowNull: true,
+		type: DataType.INTEGER 
+	})
+	@Index({
+		name: "sqlite_autoindex_units_1",
+		unique: true 
+	})
+	unit_id?: number;
 
-  @Column({
-    type: DataType.STRING(80)
-  })
-  unit_name!: string;
+	@Column({
+		type: DataType.STRING 
+	})
+	unit_name!: string;
 
-  @ForeignKey(() => races)
-  @Column({
-    type: DataType.INTEGER
-  })
-  race_id!: number;
+	@ForeignKey(() => races)
+	@Column({
+		type: DataType.INTEGER 
+	})
+	race_id!: number;
 
-  @BelongsTo(() => races)
-  race?: races;
+	@BelongsTo(() => races)
+	race?: races;
 
 }
 ```
@@ -983,109 +1214,213 @@ Build models:
 npx stg -D mysql -h localhost -p 3306 -d myDatabase -u myUsername -x myPassword --indices --associations-file path/to/associations.csv --out-dir models --clean 
 ```
 
-This will generate the following models:
+This will generate the following models.
+
+**Native** — `authors` and `books` each get a `BelongsToMany` through the `authors_books` junction model,
+wired in `initModels.ts` (association mixins and the `static initModel` bodies of `authors`/`books` are
+trimmed for brevity; the junction model is shown in full):
+
+```ts
+// authors.ts
+export class authors extends Model<InferAttributes<authors>, InferCreationAttributes<authors>> {
+
+	declare author_id: CreationOptional<number | null>;
+
+	declare full_name: string;
+
+	declare books?: NonAttribute<books[]>;
+
+	declare static associations: {
+		books: Association<authors, books>;
+	};
+
+	// static initModel(sequelize) ...
+}
+```
+
+```ts
+// books.ts
+export class books extends Model<InferAttributes<books>, InferCreationAttributes<books>> {
+
+	declare book_id: CreationOptional<number | null>;
+
+	declare title: string;
+
+	declare authors?: NonAttribute<authors[]>;
+
+	declare static associations: {
+		authors: Association<books, authors>;
+	};
+
+	// static initModel(sequelize) ...
+}
+```
+
+```ts
+// authors_books.ts
+import {
+	DataTypes, ForeignKey, InferAttributes, InferCreationAttributes, Model, Sequelize 
+} from "sequelize";
+import type { authors } from "./authors";
+import type { books } from "./books";
+
+export class authors_books extends Model<InferAttributes<authors_books>, InferCreationAttributes<authors_books>> {
+
+	declare author_id: ForeignKey<authors["author_id"]>;
+
+	declare book_id: ForeignKey<books["book_id"]>;
+
+	static initModel(sequelize: Sequelize): typeof authors_books {
+		authors_books.init({
+			author_id: {
+				type: DataTypes.INTEGER,
+				allowNull: false
+			},
+			book_id: {
+				type: DataTypes.INTEGER,
+				allowNull: false
+			}
+		}, {
+			sequelize,
+			tableName: "authors_books",
+			freezeTableName: true,
+			timestamps: false
+		});
+		return authors_books;
+	}
+
+}
+```
+
+```ts
+// initModels.ts
+authors.belongsToMany(books, {
+	as: "books",
+	through: authors_books,
+	foreignKey: "author_id",
+	otherKey: "book_id"
+});
+books.belongsToMany(authors, {
+	as: "authors",
+	through: authors_books,
+	foreignKey: "book_id",
+	otherKey: "author_id"
+});
+```
+
+**Decorators**:
 
 ```ts
 import {
-  Model, Table, Column, DataType, Index, Sequelize, ForeignKey, BelongsToMany
+	Model, Table, Column, DataType, Index, Sequelize, ForeignKey, BelongsToMany 
 } from "sequelize-typescript";
 import { books } from "./books";
 import { authors_books } from "./authors_books";
 
 export interface authorsAttributes {
-  author_id: number;
-  full_name: string;
+	author_id?: number;
+	full_name: string;
 }
 
 @Table({
-  tableName: "authors",
-  timestamps: false
+	tableName: "authors",
+	timestamps: false 
 })
 export class authors extends Model<authorsAttributes, authorsAttributes> implements authorsAttributes {
 
-  @Column({
-    primaryKey: true,
-    type: DataType.INTEGER
-  })
-  author_id!: number;
+	@Column({
+		primaryKey: true,
+		autoIncrement: true,
+		allowNull: true,
+		type: DataType.INTEGER 
+	})
+	@Index({
+		name: "sqlite_autoindex_authors_1",
+		unique: true 
+	})
+	author_id?: number;
 
-  @Column({
-    type: DataType.STRING(80)
-  })
-  full_name!: string;
+	@Column({
+		type: DataType.STRING 
+	})
+	full_name!: string;
 
-  @BelongsToMany(() => books, () => authors_books)
-  books?: books[];
+	@BelongsToMany(() => books, () => authors_books)
+	books?: books[];
 
 }
 ```
 
 ```ts
 import {
-  Model, Table, Column, DataType, Index, Sequelize, ForeignKey, BelongsToMany
+	Model, Table, Column, DataType, Index, Sequelize, ForeignKey, BelongsToMany 
 } from "sequelize-typescript";
 import { authors } from "./authors";
 import { authors_books } from "./authors_books";
 
 export interface booksAttributes {
-  book_id: number;
-  title: string;
+	book_id?: number;
+	title: string;
 }
 
 @Table({
-  tableName: "books",
-  timestamps: false
+	tableName: "books",
+	timestamps: false 
 })
 export class books extends Model<booksAttributes, booksAttributes> implements booksAttributes {
 
-  @Column({
-    primaryKey: true,
-    type: DataType.INTEGER
-  })
-  book_id!: number;
+	@Column({
+		primaryKey: true,
+		autoIncrement: true,
+		allowNull: true,
+		type: DataType.INTEGER 
+	})
+	@Index({
+		name: "sqlite_autoindex_books_1",
+		unique: true 
+	})
+	book_id?: number;
 
-  @Column({
-    type: DataType.STRING(80)
-  })
-  title!: string;
+	@Column({
+		type: DataType.STRING 
+	})
+	title!: string;
 
-  @BelongsToMany(() => authors, () => authors_books)
-  authors?: authors[];
+	@BelongsToMany(() => authors, () => authors_books)
+	authors?: authors[];
 
 }
 ```
 
 ```ts
 import {
-  Model, Table, Column, DataType, Index, Sequelize, ForeignKey
+	Model, Table, Column, DataType, Index, Sequelize, ForeignKey 
 } from "sequelize-typescript";
 import { authors } from "./authors";
 import { books } from "./books";
 
 export interface authors_booksAttributes {
-  author_id: number;
-  book_id: number;
+	author_id: number;
+	book_id: number;
 }
 
 @Table({
-  tableName: "authors_books",
-  timestamps: false
+	tableName: "authors_books",
+	timestamps: false 
 })
 export class authors_books extends Model<authors_booksAttributes, authors_booksAttributes> implements authors_booksAttributes {
 
-  @ForeignKey(() => authors)
-  @Column({
-    primaryKey: true,
-    type: DataType.INTEGER
-  })
-  author_id!: number;
+	@ForeignKey(() => authors)
+	@Column({
+		type: DataType.INTEGER 
+	})
+	author_id!: number;
 
-  @ForeignKey(() => books)
-  @Column({
-    primaryKey: true,
-    type: DataType.INTEGER
-  })
-  book_id!: number;
+	@ForeignKey(() => books)
+	@Column({
+		type: DataType.INTEGER 
+	})
+	book_id!: number;
 
 }
 ```
