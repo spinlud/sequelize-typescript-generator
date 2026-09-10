@@ -94,6 +94,13 @@ const initTestDatabase = async (testMetadata: ITestMetadata, connection: Sequeli
         await connection.query(createQuery);
     }
 
+    // Provision prerequisites (e.g. secondary schemas) before dropping or creating tables.
+    if (testMetadata.setupQueries) {
+        for (const setupQuery of testMetadata.setupQueries) {
+            await connection.query(setupQuery);
+        }
+    }
+
     // Drop views first, then tables in reverse dependency order, so a table is
     // dropped before the tables it references (real foreign keys forbid the reverse).
     if (testMetadata.testViews) {
@@ -738,13 +745,15 @@ export class TestRunner {
 
                     if (Object.keys(testMetadata.expectedForeignKeys).length) {
                         it('copies a single-column foreign key onto its source column', () => {
+                            const [unitsConstraint] = testMetadata.expectedForeignKeys['units'];
+
                             expect(tablesMetadata['units'].columns['race_id'].foreignKey).toMatchObject({
                                 name: 'race_id',
                                 targetModel: 'races',
                                 targetKey: 'race_id',
                                 constraintName: expect.any(String),
-                                onDelete: 'CASCADE',
-                                onUpdate: 'RESTRICT',
+                                onDelete: unitsConstraint.onDelete,
+                                onUpdate: unitsConstraint.onUpdate,
                                 isUnique: false,
                             });
                         });
@@ -774,6 +783,70 @@ export class TestRunner {
                         });
                     }
                 });
+
+                if (testMetadata.triggerTable && testMetadata.secondarySchemaTable) {
+                    const triggerTableName = testMetadata.triggerTable;
+                    const secondarySchemaTable = testMetadata.secondarySchemaTable;
+
+                    describe('Schema and triggers', () => {
+                        let connection: Sequelize | undefined;
+
+                        beforeAll(async () => {
+                            connection = new Sequelize({ ...sequelizeOptions });
+                            await connection.authenticate();
+                            await initTestDatabase(testMetadata, connection);
+
+                            // No schema filter so both schemas are generated.
+                            const config: IConfig = {
+                                connection: sequelizeOptions,
+                                metadata: {},
+                                output: {
+                                    outDir: outDir,
+                                    clean: true,
+                                }
+                            };
+
+                            await buildModels(config);
+
+                            const models = await import(indexDir);
+
+                            // @ts-ignore
+                            connection!.addModels([ ...Object.values(models) ]);
+                        });
+
+                        afterAll(async () => {
+                            connection && await connection.close();
+                        });
+
+                        it('emits hasTrigger and can insert into a triggered table', async () => {
+                            const model = connection!.model(triggerTableName);
+
+                            expect(model.options.hasTrigger).toBe(true);
+
+                            const created = await model.create({ name: 'audited row' });
+                            expect(created).toBeDefined();
+                        });
+
+                        it('emits the secondary schema and can query its table', async () => {
+                            const model = connection!.model(secondarySchemaTable.name);
+
+                            expect(model.getTableName()).toMatchObject({
+                                schema: secondarySchemaTable.schema,
+                                tableName: secondarySchemaTable.name,
+                                delimiter: '.',
+                            });
+
+                            const rows = await model.findAll();
+                            expect(Array.isArray(rows)).toBe(true);
+                        });
+
+                        it('emits the default schema on tables in it', () => {
+                            const model = connection!.model('races');
+
+                            expect(model.options.schema).toBe('dbo');
+                        });
+                    });
+                }
 
                 if (testMetadata.dialect === 'sqlite') {
                     describe('Golden fixture', () => {

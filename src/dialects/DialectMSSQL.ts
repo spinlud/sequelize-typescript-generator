@@ -9,10 +9,29 @@ import {
     DATA_TYPE_NAMESPACES,
     DataTypeArgument,
 } from './dataTypes.js';
+import { groupForeignKeyRows, IForeignKeyColumnRow } from './foreignKeys.js';
 
 interface ITableRow {
     table_name: string;
+    table_schema: string;
     table_comment?: string;
+}
+
+interface IForeignKeyRowMSSQL {
+    constraint_name: string;
+    source_table: string;
+    source_column: string;
+    target_schema: string;
+    target_table: string;
+    target_column: string;
+    ordinal_position: number;
+    on_delete: string; // *_referential_action_desc: NO_ACTION | CASCADE | SET_NULL | SET_DEFAULT
+    on_update: string; // *_referential_action_desc: NO_ACTION | CASCADE | SET_NULL | SET_DEFAULT
+    is_source_column_unique: number; // 0/1 result of the single-column unique index check
+}
+
+interface ITriggerCountRow {
+    trigger_count: number;
 }
 
 interface IColumnMetadataMSSQL {
@@ -172,16 +191,19 @@ export class DialectMSSQL extends Dialect {
         connection: Sequelize,
         config: IConfig
     ): Promise<ITable[]> {
+        const schema = config.connection.schema;
+
         const query = `
             SELECT
                 t.name               AS [table_name],
+                s.name               AS [table_schema],
                 td.value             AS [table_comment]
-            FROM sysobjects t
-            INNER JOIN sysusers u
-                ON u.uid = t.uid
+            FROM sys.tables t
+            INNER JOIN sys.schemas s
+                ON s.schema_id = t.schema_id
             LEFT OUTER JOIN sys.extended_properties td
-                ON td.major_id = t.id AND td.minor_id = 0 AND td.name = 'MS_Description'
-            WHERE t.type = 'u';
+                ON td.major_id = t.object_id AND td.minor_id = 0 AND td.name = 'MS_Description'
+            WHERE t.is_ms_shipped = 0${schema ? ` AND s.name = N'${schema}'` : ''};
         `;
 
         const tables: ITable[] = (await connection.query(
@@ -190,9 +212,10 @@ export class DialectMSSQL extends Dialect {
                 type: QueryTypes.SELECT,
                 raw: true,
             }
-        ) as ITableRow[]).map(({ table_name, table_comment }) => {
+        ) as ITableRow[]).map(({ table_name, table_schema, table_comment }) => {
             const t: ITable = {
                 name: table_name,
+                schema: table_schema,
                 comment: table_comment ?? undefined,
             };
 
@@ -216,8 +239,10 @@ export class DialectMSSQL extends Dialect {
     ): Promise<IColumnMetadata[]> {
         const columnsMetadata: IColumnMetadata[] = [];
 
+        const schema = config.connection.schema;
+
         const query = `
-            SELECT 
+            SELECT
                 c.*,
                 CASE WHEN COLUMNPROPERTY(object_id(c.TABLE_SCHEMA +'.' + c.TABLE_NAME), c.COLUMN_NAME, 'IsIdentity') = 1 THEN 'YES' ELSE 'NO' END AS IS_IDENTITY, 
                 tc.CONSTRAINT_NAME, 
@@ -236,7 +261,7 @@ export class DialectMSSQL extends Dialect {
                 ON sc.id = t.id AND sc.name = c.COLUMN_NAME
             LEFT OUTER JOIN sys.extended_properties ep
                  ON ep.major_id = sc.id AND ep.minor_id = sc.colid AND ep.name = 'MS_Description'                                        
-            WHERE c.TABLE_CATALOG = N'${config.connection.database}' AND c.TABLE_NAME = N'${table}'
+            WHERE c.TABLE_CATALOG = N'${config.connection.database}' AND c.TABLE_NAME = N'${table}'${schema ? ` AND c.TABLE_SCHEMA = N'${schema}'` : ''}
             ORDER BY c.ORDINAL_POSITION;
         `;
 
@@ -314,6 +339,9 @@ export class DialectMSSQL extends Dialect {
     ): Promise<IIndexMetadata[]> {
         const indicesMetadata: IIndexMetadata[] = [];
 
+        const schema = config.connection.schema;
+        const qualifiedTable = schema ? `${schema}.${table}` : table;
+
         const query = `
             SELECT
                    c.column_id,
@@ -336,7 +364,7 @@ export class DialectMSSQL extends Dialect {
                     ON ic.object_id = c.object_id AND ic.column_id = c.column_id
                 JOIN sys.tables t
                     ON t.object_id = c.object_id
-            WHERE t.object_id = object_id(N'${table}') AND c.name=N'${column}'
+            WHERE t.object_id = object_id(N'${qualifiedTable}') AND c.name=N'${column}'
             ORDER BY ic.column_id;
         `;
 
@@ -359,7 +387,10 @@ export class DialectMSSQL extends Dialect {
     }
 
     /**
-     * Foreign key constraints are not inspected on this dialect yet.
+     * Fetch foreign key constraints for the provided table. Constraints are read from
+     * sys.foreign_keys and sys.foreign_key_columns, one row per column position, and a
+     * source column is flagged unique when it is covered by a single-column non-filtered
+     * unique index. Referential actions come from the *_referential_action_desc columns.
      * @param {Sequelize} connection
      * @param {IConfig} config
      * @param {ITable} table
@@ -370,7 +401,109 @@ export class DialectMSSQL extends Dialect {
         config: IConfig,
         table: ITable
     ): Promise<IForeignKeyConstraintMetadata[]> {
-        return [];
+        const schema = table.schema ?? config.connection.schema;
+
+        const foreignKeyRows = await connection.query<IForeignKeyRowMSSQL>(
+            `
+                SELECT
+                    fk.name     AS constraint_name,
+                    st.name     AS source_table,
+                    sc.name     AS source_column,
+                    ts.name     AS target_schema,
+                    tt.name     AS target_table,
+                    tc.name     AS target_column,
+                    fkc.constraint_column_id            AS ordinal_position,
+                    fk.delete_referential_action_desc   AS on_delete,
+                    fk.update_referential_action_desc   AS on_update,
+                    CASE WHEN EXISTS (
+                        SELECT 1
+                        FROM sys.indexes i
+                        JOIN sys.index_columns ic
+                            ON ic.object_id = i.object_id AND ic.index_id = i.index_id
+                        WHERE i.object_id = fk.parent_object_id
+                            AND i.is_unique = 1
+                            AND i.has_filter = 0
+                            AND ic.column_id = fkc.parent_column_id
+                            AND ic.key_ordinal > 0
+                            AND (
+                                SELECT COUNT(*)
+                                FROM sys.index_columns ic2
+                                WHERE ic2.object_id = i.object_id
+                                    AND ic2.index_id = i.index_id
+                                    AND ic2.key_ordinal > 0
+                            ) = 1
+                    ) THEN 1 ELSE 0 END AS is_source_column_unique
+                FROM sys.foreign_keys fk
+                JOIN sys.foreign_key_columns fkc
+                    ON fkc.constraint_object_id = fk.object_id
+                JOIN sys.tables st
+                    ON st.object_id = fk.parent_object_id
+                JOIN sys.schemas ss
+                    ON ss.schema_id = st.schema_id
+                JOIN sys.columns sc
+                    ON sc.object_id = fkc.parent_object_id AND sc.column_id = fkc.parent_column_id
+                JOIN sys.tables tt
+                    ON tt.object_id = fk.referenced_object_id
+                JOIN sys.schemas ts
+                    ON ts.schema_id = tt.schema_id
+                JOIN sys.columns tc
+                    ON tc.object_id = fkc.referenced_object_id AND tc.column_id = fkc.referenced_column_id
+                WHERE ss.name = N'${schema}' AND st.name = N'${table.name}'
+                ORDER BY fk.name, fkc.constraint_column_id;
+            `,
+            {
+                type: QueryTypes.SELECT,
+                raw: true,
+            }
+        );
+
+        const rows: IForeignKeyColumnRow[] = foreignKeyRows.map(row => ({
+            constraintName: row.constraint_name,
+            sourceTable: row.source_table,
+            sourceColumn: row.source_column,
+            targetSchema: row.target_schema,
+            targetTable: row.target_table,
+            targetColumn: row.target_column,
+            ordinalPosition: row.ordinal_position,
+            onDelete: row.on_delete,
+            onUpdate: row.on_update,
+            isSourceColumnUnique: Number(row.is_source_column_unique) === 1,
+        }));
+
+        return groupForeignKeyRows(rows);
+    }
+
+    /**
+     * Report whether the table has at least one enabled trigger, read from sys.triggers.
+     * @param {Sequelize} connection
+     * @param {IConfig} config
+     * @param {ITable} table
+     * @returns {Promise<boolean>}
+     */
+    protected async fetchTableHasTrigger(
+        connection: Sequelize,
+        config: IConfig,
+        table: ITable
+    ): Promise<boolean> {
+        const schema = table.schema ?? config.connection.schema;
+
+        const rows = await connection.query<ITriggerCountRow>(
+            `
+                SELECT COUNT(*) AS trigger_count
+                FROM sys.triggers tr
+                JOIN sys.tables t
+                    ON t.object_id = tr.parent_id
+                JOIN sys.schemas s
+                    ON s.schema_id = t.schema_id
+                WHERE s.name = N'${schema}' AND t.name = N'${table.name}' AND tr.is_disabled = 0;
+            `,
+            {
+                type: QueryTypes.SELECT,
+                raw: true,
+            }
+        );
+
+        return (rows[0]?.trigger_count ?? 0) > 0;
     }
 
 }

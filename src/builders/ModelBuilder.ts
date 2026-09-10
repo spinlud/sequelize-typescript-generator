@@ -4,7 +4,7 @@ import * as ts from 'typescript';
 import pluralize from 'pluralize';
 import { Linter } from '../lint/index.js';
 import { ModelAttributeColumnOptions } from 'sequelize';
-import type { IndexOptions, IndexFieldOptions } from 'sequelize-typescript';
+import type { IndexOptions, IndexFieldOptions, TableOptions } from 'sequelize-typescript';
 import { IConfig } from '../config/index.js';
 import {IColumnMetadata, ITableMetadata, IIndexMetadata, Dialect, ITablesMetadata} from '../dialects/Dialect.js';
 import { IAssociationMetadata } from '../dialects/AssociationsParser.js';
@@ -26,6 +26,20 @@ const foreignKeyDecorator = 'ForeignKey';
  */
 const isErrnoException = (err: unknown): err is NodeJS.ErrnoException =>
     typeof err === 'object' && err !== null && 'code' in err;
+
+/**
+ * Build the `@Table` decorator options for a table. The `hasTrigger` flag is
+ * emitted only when the source table carries at least one enabled trigger.
+ * @param {ITableMetadata} tableMetadata
+ * @returns {Partial<TableOptions>}
+ */
+export const buildTableDecoratorProps = (tableMetadata: ITableMetadata): Partial<TableOptions> => ({
+    tableName: tableMetadata.originName,
+    ...tableMetadata.schema && { schema: tableMetadata.schema },
+    timestamps: tableMetadata.timestamps,
+    ...tableMetadata.hasTrigger && { hasTrigger: true },
+    ...tableMetadata.comment && { comment: tableMetadata.comment },
+});
 
 /**
  * @class ModelGenerator
@@ -137,7 +151,7 @@ export class ModelBuilder extends Builder {
         dialect: Dialect,
         strict: boolean = true
     ): string {
-        const { originName: tableName, name, columns } = tableMetadata;
+        const { name, columns } = tableMetadata;
 
         let generatedCode = '';
 
@@ -214,12 +228,7 @@ export class ModelBuilder extends Builder {
         const classDecl = ts.factory.createClassDeclaration(
             [
                 // @Table decorator
-                generateObjectLiteralDecorator('Table', {
-                    tableName: tableName,
-                    ...tableMetadata.schema && { schema: tableMetadata.schema },
-                    timestamps: tableMetadata.timestamps,
-                    ...tableMetadata.comment && { comment: tableMetadata.comment },
-                }),
+                generateObjectLiteralDecorator('Table', buildTableDecoratorProps(tableMetadata)),
                 // Export modifier
                 ts.factory.createToken(ts.SyntaxKind.ExportKeyword),
             ],

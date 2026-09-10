@@ -97,7 +97,7 @@ Options:
                               - Postgres: 5432
                               - MSSQL: 1433                             [number]
   -d, --database              Database name                             [string]
-  -s, --schema                Schema name (Postgres only). Default:
+  -s, --schema                Schema name (Postgres and SQL Server). Default:
                               - public                                  [string]
   -D, --dialect               Dialect:
                               - postgres

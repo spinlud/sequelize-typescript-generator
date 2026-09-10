@@ -1,4 +1,49 @@
 import { nodeToString, generateNamedImports } from '../../builders/utils.js';
+import { buildTableDecoratorProps } from '../../builders/ModelBuilder.js';
+import { ITableMetadata } from '../../dialects/Dialect.js';
+
+describe('buildTableDecoratorProps', () => {
+    const baseTableMetadata: ITableMetadata = {
+        name: 'Users',
+        originName: 'users',
+        timestamps: false,
+        columns: {},
+    };
+
+    it('emits tableName and timestamps for a plain table', () => {
+        expect(buildTableDecoratorProps(baseTableMetadata)).toEqual({
+            tableName: 'users',
+            timestamps: false,
+        });
+    });
+
+    it('emits the schema when present', () => {
+        const props = buildTableDecoratorProps({ ...baseTableMetadata, schema: 'dbo' });
+
+        expect(props).toEqual({
+            tableName: 'users',
+            schema: 'dbo',
+            timestamps: false,
+        });
+        expect(Object.keys(props)).toEqual(['tableName', 'schema', 'timestamps']);
+    });
+
+    it('emits hasTrigger right after timestamps when the table has a trigger', () => {
+        const props = buildTableDecoratorProps({ ...baseTableMetadata, hasTrigger: true });
+
+        expect(props).toEqual({
+            tableName: 'users',
+            timestamps: false,
+            hasTrigger: true,
+        });
+        expect(Object.keys(props)).toEqual(['tableName', 'timestamps', 'hasTrigger']);
+    });
+
+    it('omits hasTrigger when the table has no trigger', () => {
+        expect(buildTableDecoratorProps({ ...baseTableMetadata, hasTrigger: false }))
+            .not.toHaveProperty('hasTrigger');
+    });
+});
 
 describe('Builder utils', () => {
 
