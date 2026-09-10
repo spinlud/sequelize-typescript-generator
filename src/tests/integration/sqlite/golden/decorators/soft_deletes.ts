@@ -4,10 +4,10 @@ import {
 
 export interface soft_deletesAttributes {
 	id?: number;
-	name?: string;
-	createdAt: number;
-	updatedAt: number;
-	deleted_at: number;
+	name: string;
+	createdAt?: number;
+	updatedAt?: number;
+	deleted_at?: number;
 }
 
 @Table({
@@ -19,6 +19,7 @@ export class soft_deletes extends Model<soft_deletesAttributes, soft_deletesAttr
 	@Column({
 		primaryKey: true,
 		autoIncrement: true,
+		allowNull: true,
 		type: DataType.INTEGER 
 	})
 	@Index({
@@ -28,24 +29,26 @@ export class soft_deletes extends Model<soft_deletesAttributes, soft_deletesAttr
 	id?: number;
 
 	@Column({
-		allowNull: true,
 		type: DataType.STRING 
 	})
-	name?: string;
+	name!: string;
 
 	@Column({
+		allowNull: true,
 		type: DataType.DECIMAL 
 	})
-	createdAt!: number;
+	createdAt?: number;
 
 	@Column({
+		allowNull: true,
 		type: DataType.DECIMAL 
 	})
-	updatedAt!: number;
+	updatedAt?: number;
 
 	@Column({
+		allowNull: true,
 		type: DataType.DECIMAL 
 	})
-	deleted_at!: number;
+	deleted_at?: number;
 
 }

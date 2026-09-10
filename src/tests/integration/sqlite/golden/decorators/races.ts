@@ -5,7 +5,7 @@ import { units } from "./units";
 
 export interface racesAttributes {
 	race_id?: number;
-	race_name?: string;
+	race_name: string;
 }
 
 @Table({
@@ -17,6 +17,7 @@ export class races extends Model<racesAttributes, racesAttributes> implements ra
 	@Column({
 		primaryKey: true,
 		autoIncrement: true,
+		allowNull: true,
 		type: DataType.INTEGER 
 	})
 	@Index({
@@ -26,10 +27,9 @@ export class races extends Model<racesAttributes, racesAttributes> implements ra
 	race_id?: number;
 
 	@Column({
-		allowNull: true,
 		type: DataType.STRING 
 	})
-	race_name?: string;
+	race_name!: string;
 
 	@HasMany(() => units, {
 		sourceKey: "race_id" 

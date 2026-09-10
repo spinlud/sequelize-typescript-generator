@@ -5,7 +5,7 @@ import { person } from "./person";
 
 export interface profilesAttributes {
 	profile_id?: number;
-	person_id?: number;
+	person_id: number;
 }
 
 @Table({
@@ -17,6 +17,7 @@ export class profiles extends Model<profilesAttributes, profilesAttributes> impl
 	@Column({
 		primaryKey: true,
 		autoIncrement: true,
+		allowNull: true,
 		type: DataType.INTEGER 
 	})
 	@Index({
@@ -27,14 +28,13 @@ export class profiles extends Model<profilesAttributes, profilesAttributes> impl
 
 	@ForeignKey(() => person)
 	@Column({
-		allowNull: true,
 		type: DataType.INTEGER 
 	})
 	@Index({
 		name: "sqlite_autoindex_profiles_2",
 		unique: true 
 	})
-	person_id?: number;
+	person_id!: number;
 
 	@BelongsTo(() => person, {
 		as: "person",

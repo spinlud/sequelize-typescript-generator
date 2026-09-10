@@ -4,8 +4,8 @@ import {
 
 export interface order_linesAttributes {
 	order_line_id?: number;
-	order_id?: number;
-	line_no?: number;
+	order_id: number;
+	line_no: number;
 }
 
 @Table({
@@ -17,6 +17,7 @@ export class order_lines extends Model<order_linesAttributes, order_linesAttribu
 	@Column({
 		primaryKey: true,
 		autoIncrement: true,
+		allowNull: true,
 		type: DataType.INTEGER 
 	})
 	@Index({
@@ -26,23 +27,21 @@ export class order_lines extends Model<order_linesAttributes, order_linesAttribu
 	order_line_id?: number;
 
 	@Column({
-		allowNull: true,
 		type: DataType.INTEGER 
 	})
 	@Index({
 		name: "sqlite_autoindex_order_lines_2",
 		unique: true 
 	})
-	order_id?: number;
+	order_id!: number;
 
 	@Column({
-		allowNull: true,
 		type: DataType.INTEGER 
 	})
 	@Index({
 		name: "sqlite_autoindex_order_lines_2",
 		unique: true 
 	})
-	line_no?: number;
+	line_no!: number;
 
 }

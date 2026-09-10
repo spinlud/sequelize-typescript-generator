@@ -217,7 +217,7 @@ export class DialectSQLite extends Dialect {
                     sequelizeType,
                     dataType: renderDataTypeExpression(sequelizeType, DATA_TYPE_NAMESPACES.decorators),
                 },
-                allowNull: !!column.notnull,
+                allowNull: !column.notnull,
                 primaryKey: !!column.pk,
                 autoIncrement: !!column.pk,
                 indices: [],

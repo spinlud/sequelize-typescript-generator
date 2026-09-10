@@ -5,8 +5,8 @@ import { authors } from "./authors";
 import { books } from "./books";
 
 export interface authors_booksAttributes {
-	author_id?: number;
-	book_id?: number;
+	author_id: number;
+	book_id: number;
 }
 
 @Table({
@@ -17,16 +17,14 @@ export class authors_books extends Model<authors_booksAttributes, authors_booksA
 
 	@ForeignKey(() => authors)
 	@Column({
-		allowNull: true,
 		type: DataType.INTEGER 
 	})
-	author_id?: number;
+	author_id!: number;
 
 	@ForeignKey(() => books)
 	@Column({
-		allowNull: true,
 		type: DataType.INTEGER 
 	})
-	book_id?: number;
+	book_id!: number;
 
 }

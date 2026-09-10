@@ -6,8 +6,8 @@ import { passport } from "./passport";
 
 export interface personAttributes {
 	person_id?: number;
-	name?: string;
-	passport_id?: number;
+	name: string;
+	passport_id: number;
 }
 
 @Table({
@@ -19,6 +19,7 @@ export class person extends Model<personAttributes, personAttributes> implements
 	@Column({
 		primaryKey: true,
 		autoIncrement: true,
+		allowNull: true,
 		type: DataType.INTEGER 
 	})
 	@Index({
@@ -28,16 +29,14 @@ export class person extends Model<personAttributes, personAttributes> implements
 	person_id?: number;
 
 	@Column({
-		allowNull: true,
 		type: DataType.STRING 
 	})
-	name?: string;
+	name!: string;
 
 	@Column({
-		allowNull: true,
 		type: DataType.INTEGER 
 	})
-	passport_id?: number;
+	passport_id!: number;
 
 	@HasOne(() => profiles, {
 		as: "profile",

@@ -6,7 +6,7 @@ import { authors_books } from "./authors_books";
 
 export interface authorsAttributes {
 	author_id?: number;
-	full_name?: string;
+	full_name: string;
 }
 
 @Table({
@@ -18,6 +18,7 @@ export class authors extends Model<authorsAttributes, authorsAttributes> impleme
 	@Column({
 		primaryKey: true,
 		autoIncrement: true,
+		allowNull: true,
 		type: DataType.INTEGER 
 	})
 	@Index({
@@ -27,10 +28,9 @@ export class authors extends Model<authorsAttributes, authorsAttributes> impleme
 	author_id?: number;
 
 	@Column({
-		allowNull: true,
 		type: DataType.STRING 
 	})
-	full_name?: string;
+	full_name!: string;
 
 	@BelongsToMany(() => books, () => authors_books)
 	books?: books[];

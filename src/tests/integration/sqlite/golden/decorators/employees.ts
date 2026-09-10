@@ -4,8 +4,8 @@ import {
 
 export interface employeesAttributes {
 	employee_id?: number;
-	name?: string;
-	manager_id: number;
+	name: string;
+	manager_id?: number;
 }
 
 @Table({
@@ -17,6 +17,7 @@ export class employees extends Model<employeesAttributes, employeesAttributes> i
 	@Column({
 		primaryKey: true,
 		autoIncrement: true,
+		allowNull: true,
 		type: DataType.INTEGER 
 	})
 	@Index({
@@ -26,16 +27,16 @@ export class employees extends Model<employeesAttributes, employeesAttributes> i
 	employee_id?: number;
 
 	@Column({
-		allowNull: true,
 		type: DataType.STRING 
 	})
-	name?: string;
+	name!: string;
 
 	@ForeignKey(() => employees)
 	@Column({
+		allowNull: true,
 		type: DataType.INTEGER 
 	})
-	manager_id!: number;
+	manager_id?: number;
 
 	@BelongsTo(() => employees, {
 		as: "manager",

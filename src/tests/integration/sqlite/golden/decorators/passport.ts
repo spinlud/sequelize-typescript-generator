@@ -5,7 +5,7 @@ import { person } from "./person";
 
 export interface passportAttributes {
 	passport_id?: number;
-	code?: string;
+	code: string;
 }
 
 @Table({
@@ -18,6 +18,7 @@ export class passport extends Model<passportAttributes, passportAttributes> impl
 	@Column({
 		primaryKey: true,
 		autoIncrement: true,
+		allowNull: true,
 		type: DataType.INTEGER 
 	})
 	@Index({
@@ -27,10 +28,9 @@ export class passport extends Model<passportAttributes, passportAttributes> impl
 	passport_id?: number;
 
 	@Column({
-		allowNull: true,
 		type: DataType.STRING 
 	})
-	code?: string;
+	code!: string;
 
 	@BelongsTo(() => person)
 	person?: person;

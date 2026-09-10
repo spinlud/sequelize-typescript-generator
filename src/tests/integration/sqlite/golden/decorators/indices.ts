@@ -4,10 +4,10 @@ import {
 
 export interface indicesAttributes {
 	id?: number;
-	f_unique?: number;
-	f_multi_1: number;
-	f_multi_2: string;
-	f_not_unique: number;
+	f_unique: number;
+	f_multi_1?: number;
+	f_multi_2?: string;
+	f_not_unique?: number;
 }
 
 @Table({
@@ -19,21 +19,22 @@ export class indices extends Model<indicesAttributes, indicesAttributes> impleme
 	@Column({
 		primaryKey: true,
 		autoIncrement: true,
+		allowNull: true,
 		type: DataType.INTEGER 
 	})
 	id?: number;
 
 	@Column({
-		allowNull: true,
 		type: DataType.INTEGER 
 	})
 	@Index({
 		name: "indices_f_unique_uindex",
 		unique: true 
 	})
-	f_unique?: number;
+	f_unique!: number;
 
 	@Column({
+		allowNull: true,
 		type: DataType.INTEGER 
 	})
 	@Index({
@@ -44,24 +45,26 @@ export class indices extends Model<indicesAttributes, indicesAttributes> impleme
 		name: "indices_f_multi_1_f_multi_2_uindex",
 		unique: true 
 	})
-	f_multi_1!: number;
+	f_multi_1?: number;
 
 	@Column({
+		allowNull: true,
 		type: DataType.STRING 
 	})
 	@Index({
 		name: "indices_f_multi_1_f_multi_2_uindex",
 		unique: true 
 	})
-	f_multi_2!: string;
+	f_multi_2?: string;
 
 	@Column({
+		allowNull: true,
 		type: DataType.INTEGER 
 	})
 	@Index({
 		name: "indices_f_not_unique_index",
 		unique: false 
 	})
-	f_not_unique!: number;
+	f_not_unique?: number;
 
 }

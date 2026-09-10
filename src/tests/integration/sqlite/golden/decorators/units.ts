@@ -5,8 +5,8 @@ import { races } from "./races";
 
 export interface unitsAttributes {
 	unit_id?: number;
-	unit_name?: string;
-	race_id?: number;
+	unit_name: string;
+	race_id: number;
 }
 
 @Table({
@@ -18,6 +18,7 @@ export class units extends Model<unitsAttributes, unitsAttributes> implements un
 	@Column({
 		primaryKey: true,
 		autoIncrement: true,
+		allowNull: true,
 		type: DataType.INTEGER 
 	})
 	@Index({
@@ -27,17 +28,15 @@ export class units extends Model<unitsAttributes, unitsAttributes> implements un
 	unit_id?: number;
 
 	@Column({
-		allowNull: true,
 		type: DataType.STRING 
 	})
-	unit_name?: string;
+	unit_name!: string;
 
 	@ForeignKey(() => races)
 	@Column({
-		allowNull: true,
 		type: DataType.INTEGER 
 	})
-	race_id?: number;
+	race_id!: number;
 
 	@BelongsTo(() => races)
 	race?: races;

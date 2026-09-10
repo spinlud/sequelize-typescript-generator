@@ -4,8 +4,8 @@ import {
 
 export interface shipmentsAttributes {
 	shipment_id?: number;
-	order_id?: number;
-	line_no?: number;
+	order_id: number;
+	line_no: number;
 }
 
 @Table({
@@ -17,6 +17,7 @@ export class shipments extends Model<shipmentsAttributes, shipmentsAttributes> i
 	@Column({
 		primaryKey: true,
 		autoIncrement: true,
+		allowNull: true,
 		type: DataType.INTEGER 
 	})
 	@Index({
@@ -26,15 +27,13 @@ export class shipments extends Model<shipmentsAttributes, shipmentsAttributes> i
 	shipment_id?: number;
 
 	@Column({
-		allowNull: true,
 		type: DataType.INTEGER 
 	})
-	order_id?: number;
+	order_id!: number;
 
 	@Column({
-		allowNull: true,
 		type: DataType.INTEGER 
 	})
-	line_no?: number;
+	line_no!: number;
 
 }

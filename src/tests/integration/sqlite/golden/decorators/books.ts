@@ -6,7 +6,7 @@ import { authors_books } from "./authors_books";
 
 export interface booksAttributes {
 	book_id?: number;
-	title?: string;
+	title: string;
 }
 
 @Table({
@@ -18,6 +18,7 @@ export class books extends Model<booksAttributes, booksAttributes> implements bo
 	@Column({
 		primaryKey: true,
 		autoIncrement: true,
+		allowNull: true,
 		type: DataType.INTEGER 
 	})
 	@Index({
@@ -27,10 +28,9 @@ export class books extends Model<booksAttributes, booksAttributes> implements bo
 	book_id?: number;
 
 	@Column({
-		allowNull: true,
 		type: DataType.STRING 
 	})
-	title?: string;
+	title!: string;
 
 	@BelongsToMany(() => authors, () => authors_books)
 	authors?: authors[];
