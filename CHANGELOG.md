@@ -8,6 +8,14 @@
 
 ---
 
+### 13.1.0
+#### Minor changes and bug fixes:
+* Postgres array column support: array types are now detected and generated with the correct element type (#31).
+* Correct JSON typing across dialects via a shared `Json` type; MariaDB JSON columns are detected through `json_valid` checks (#90).
+* Database column comments are now emitted as JSDoc on the generated model fields (#91).
+
+---
+
 ### 13.0.0
 #### Breaking changes:
 * Native is now the default output format; pass `--format decorators` for the old `sequelize-typescript` decorators output.
