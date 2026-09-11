@@ -381,6 +381,7 @@ export class DialectPostgres extends Dialect {
                     sequelizeType,
                     dataType: renderDataTypeExpression(sequelizeType, DATA_TYPE_NAMESPACES.decorators),
                 },
+                ...!isArray && (elementTypeName === 'json' || elementTypeName === 'jsonb') && { isJson: true },
                 allowNull: column.is_nullable === 'YES' && !column.is_primary,
                 primaryKey: column.is_primary,
                 autoIncrement: column.is_sequence,

@@ -337,6 +337,7 @@ export class DialectMySQL extends Dialect {
                     sequelizeType,
                     dataType: renderDataTypeExpression(sequelizeType, DATA_TYPE_NAMESPACES.decorators),
                 },
+                ...column.DATA_TYPE === 'json' && { isJson: true },
                 allowNull: column.IS_NULLABLE === 'YES',
                 primaryKey: column.COLUMN_KEY === 'PRI',
                 autoIncrement: column.EXTRA === 'auto_increment',

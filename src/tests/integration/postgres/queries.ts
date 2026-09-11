@@ -298,6 +298,19 @@ export const SOFT_DELETES_TABLE_CREATES = [
     `,
 ];
 
+export const JSON_TYPES_TABLE_NAME = 'json_types';
+export const JSON_TYPES_TABLE_DROP = `DROP TABLE IF EXISTS ${SCHEMA_NAME}.${JSON_TYPES_TABLE_NAME} CASCADE`;
+export const JSON_TYPES_TABLE_CREATES = [
+    `
+        CREATE TABLE ${SCHEMA_NAME}.${JSON_TYPES_TABLE_NAME}
+        (
+            id      serial      not null    constraint json_types_pk   primary key,
+            f_json  json,
+            f_jsonb jsonb
+        )
+    `,
+];
+
 export const ARRAY_TYPES_TABLE_NAME = 'array_types';
 export const ARRAY_TYPES_TABLE_DROP = `DROP TABLE IF EXISTS ${SCHEMA_NAME}.${ARRAY_TYPES_TABLE_NAME} CASCADE`;
 export const ARRAY_TYPES_TABLE_CREATES = [

@@ -16,16 +16,38 @@ import { IGeneratedFile, renderNativeFiles, writeGeneratedFiles } from './genera
 import { warnWhenDecoratorsDependencyIsMissing } from './decoratorsDependency.js';
 import {
     nodeToString,
+    createGenericTypeReference,
     createTypeNodeFromName,
     generateArrowDecorator,
     generateNamedImports,
     generateObjectLiteralDecorator,
     generateIndexExport,
 } from './utils.js';
+import {
+    buildJsonTypeImport,
+    JSON_SUPPORT_FILE_NAME,
+    JSON_TYPE_NAME,
+    renderJsonSupportFile,
+    tableHasJsonColumn,
+    tablesHaveJsonColumn,
+    warnJsonSupportFileNameCollision,
+} from './jsonSupport.js';
 
 export { resolveAssociationPropertyName } from './associationNaming.js';
 
 const foreignKeyDecorator = 'ForeignKey';
+
+/**
+ * Build the TypeScript type node of a column: the shared `Json` type for a JSON
+ * column, otherwise the dialect JS mapping.
+ * @param {IColumnMetadata} col
+ * @param {Dialect} dialect
+ * @returns {ts.TypeNode}
+ */
+const buildColumnTypeNode = (col: IColumnMetadata, dialect: Dialect): ts.TypeNode =>
+    col.isJson
+        ? createGenericTypeReference(JSON_TYPE_NAME, [])
+        : createTypeNodeFromName(dialect.mapDbTypeToJs(col.type) ?? 'any');
 
 /**
  * Build the `@Table` decorator options for a table. The `hasTrigger` flag is
@@ -159,7 +181,7 @@ export class ModelBuilder extends Builder {
             col.name,
             (col.autoIncrement || col.allowNull || col.defaultValue !== undefined) ?
                 ts.factory.createToken(ts.SyntaxKind.QuestionToken) : ts.factory.createToken(ts.SyntaxKind.ExclamationToken),
-            createTypeNodeFromName(dialect.mapDbTypeToJs(col.type) ?? 'any'),
+            buildColumnTypeNode(col, dialect),
             undefined,
         );
     }
@@ -222,6 +244,12 @@ export class ModelBuilder extends Builder {
             generatedCode += '\n';
         });
 
+        // Type-only import of the shared Json type for JSON/JSONB columns.
+        if (tableHasJsonColumn(tableMetadata)) {
+            generatedCode += nodeToString(buildJsonTypeImport());
+            generatedCode += '\n';
+        }
+
         const attributesInterfaceName = `${name}Attributes`;
 
         if (strict) {
@@ -240,7 +268,7 @@ export class ModelBuilder extends Builder {
                         ts.factory.createIdentifier(c.name),
                         c.autoIncrement || c.allowNull || c.defaultValue !== undefined ?
                             ts.factory.createToken(ts.SyntaxKind.QuestionToken) : undefined,
-                        createTypeNodeFromName(dialect.mapDbTypeToJs(c.type) ?? 'any')
+                        buildColumnTypeNode(c, dialect)
                     )))
                 ]
             );
@@ -338,6 +366,11 @@ export class ModelBuilder extends Builder {
             fileName: `${tableMetadata.name}.ts`,
             content: ModelBuilder.buildTableClassDeclaration(tableMetadata, dialect, strict),
         }));
+
+        if (tablesHaveJsonColumn(tablesMetadata)) {
+            warnJsonSupportFileNameCollision(tablesMetadata);
+            files.push({ fileName: JSON_SUPPORT_FILE_NAME, content: renderJsonSupportFile() });
+        }
 
         files.push({ fileName: 'index.ts', content: ModelBuilder.buildIndexExports(tablesMetadata) });
 

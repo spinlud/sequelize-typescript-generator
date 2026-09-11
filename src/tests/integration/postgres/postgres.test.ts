@@ -62,6 +62,9 @@ import {
     ARRAY_TYPES_TABLE_NAME,
     ARRAY_TYPES_TABLE_DROP,
     ARRAY_TYPES_TABLE_CREATES,
+    JSON_TYPES_TABLE_NAME,
+    JSON_TYPES_TABLE_DROP,
+    JSON_TYPES_TABLE_CREATES,
 } from "./queries.js";
 
 interface INativeType {
@@ -163,6 +166,11 @@ const testMetadata: ITestMetadata = {
             name: ARRAY_TYPES_TABLE_NAME,
             createQueries: ARRAY_TYPES_TABLE_CREATES,
             dropQuery: ARRAY_TYPES_TABLE_DROP,
+        },
+        {
+            name: JSON_TYPES_TABLE_NAME,
+            createQueries: JSON_TYPES_TABLE_CREATES,
+            dropQuery: JSON_TYPES_TABLE_DROP,
         },
     ],
     filterTables: [ DATA_TYPES_TABLE_NAME ],
@@ -343,6 +351,28 @@ const testMetadata: ITestMetadata = {
                 value: ['a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'],
             },
         ],
+    },
+    jsonTypes: {
+        jsonTypesTable: JSON_TYPES_TABLE_NAME,
+        expected: [
+            {
+                column: 'f_json',
+                nativeType: 'DataTypes.JSON',
+                decoratorType: 'DataType.JSON',
+                tsType: 'Json',
+            },
+            {
+                column: 'f_jsonb',
+                nativeType: 'DataTypes.JSONB',
+                decoratorType: 'DataType.JSONB',
+                tsType: 'Json',
+            },
+        ],
+        roundTripValues: {
+            object: { key1: 'value1', nested: { flag: true, count: 2 } },
+            array: [1, 'two', { three: 3 }],
+            scalar: 42,
+        },
     },
     associations: {
         leftTableOneToOne: PERSON_TABLE_NAME,

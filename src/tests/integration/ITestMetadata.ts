@@ -55,6 +55,26 @@ export interface ITestMetadata {
             value: unknown[]; // Sample value to round-trip
         }[];
     },
+    // JSON/JSONB columns. Drives a dedicated test block that asserts the emitted
+    // data type expression and TypeScript type per column, the presence of the
+    // shared Json support file and its import, and round-trips an object, an
+    // array and a top-level scalar through the JSON column.
+    jsonTypes?: {
+        jsonTypesTable: string;
+        expected: {
+            column: string; // Database column name, e.g. 'f_json'
+            nativeType: string; // Native init-options expression, e.g. 'DataTypes.JSON'
+            decoratorType: string; // Decorators expression, e.g. 'DataType.JSON'
+            tsType: string; // Generated TypeScript type: 'Json' or 'string'
+        }[];
+        // Values round-tripped through the JSON column (the first expected entry
+        // whose tsType is 'Json').
+        roundTripValues: {
+            object: Record<string, unknown>;
+            array: unknown[];
+            scalar: string | number | boolean;
+        };
+    },
     associations: {
         leftTableOneToOne: string; // Left table 1:1 relation
         rightTableOneToOne: string; // Right table 1:1 relation

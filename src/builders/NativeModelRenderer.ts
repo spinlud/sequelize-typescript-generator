@@ -35,6 +35,7 @@ import {
     resolveAssociationForeignKey,
 } from './nativeAssociations.js';
 import { resolveAssociationPropertyName } from './associationNaming.js';
+import { buildJsonTypeImport, JSON_TYPE_NAME, tableHasJsonColumn } from './jsonSupport.js';
 
 const NATIVE_NAMESPACE = DATA_TYPE_NAMESPACES.native;
 
@@ -90,6 +91,10 @@ const buildDeclareField = (
 const buildBaseTypeNode = (column: IColumnMetadata, table: ITableMetadata, dialect: Dialect): ts.TypeNode => {
     if (isParanoidColumn(column, table)) {
         return createTypeNodeFromName('Date');
+    }
+
+    if (column.isJson) {
+        return createGenericTypeReference(JSON_TYPE_NAME, []);
     }
 
     const { sequelizeType } = column;
@@ -544,6 +549,11 @@ export const renderNativeModelFile = (
 
     for (const modelName of collectModelTypeImports(table, tablesByModel)) {
         code += nodeToString(generateTypeOnlyImport([modelName], `./${modelName}`));
+        code += '\n';
+    }
+
+    if (tableHasJsonColumn(table)) {
+        code += nodeToString(buildJsonTypeImport());
         code += '\n';
     }
 

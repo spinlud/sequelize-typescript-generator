@@ -367,6 +367,8 @@ export class TestRunner {
                         // barrel, so it is removed first; native is wired through initModels.
                         if (format === 'decorators') {
                             await fs.unlink(tablesIndexDir);
+                            // The shared JSON support file is not a model; addModels([dir]) would reject it.
+                            await fs.rm(path.join(tablesOutDir, 'jsonType.ts'), { force: true });
                         }
                     });
 
@@ -428,6 +430,8 @@ export class TestRunner {
                         // barrel, so it is removed first; native is wired through initModels.
                         if (format === 'decorators') {
                             await fs.unlink(skipTablesIndexDir);
+                            // The shared JSON support file is not a model; addModels([dir]) would reject it.
+                            await fs.rm(path.join(skipTablesOutDir, 'jsonType.ts'), { force: true });
                         }
                     });
 
@@ -491,6 +495,8 @@ export class TestRunner {
                             // barrel, so it is removed first; native is wired through initModels.
                             if (format === 'decorators') {
                                 await fs.unlink(skipViewsIndexDir);
+                                // The shared JSON support file is not a model; addModels([dir]) would reject it.
+                                await fs.rm(path.join(skipViewsOutDir, 'jsonType.ts'), { force: true });
                             }
                         });
 
@@ -691,12 +697,6 @@ export class TestRunner {
                             typeName === 'bit' && receivedValueType === 'uint8array') {
                             expect(parseInt(receivedValue[0], 10)).toStrictEqual(typeValue);
                         }
-                        else if (receivedValueType === 'object' &&
-                            sequelizeOptions.dialect === 'mariadb' &&
-                            typeName === 'json'
-                        ) {
-                            expect(JSON.stringify(receivedValue)).toStrictEqual(typeValue);
-                        }
                         else {
                             expect(receivedValueType).toStrictEqual(expectedValueType);
                         }
@@ -789,6 +789,101 @@ export class TestRunner {
                             for (const expected of arrayTypes.expected) {
                                 expect(Array.isArray(storedJson[expected.column])).toBe(true);
                                 expect(storedJson[expected.column]).toHaveLength(expected.value.length);
+                            }
+                        });
+                    });
+                }
+
+                if (testMetadata.jsonTypes) {
+                    const jsonTypes = testMetadata.jsonTypes;
+
+                    describe('JSON types', () => {
+                        // A dedicated output dir keeps this generation out of the module cache
+                        // the other blocks populate, so native's initModels reflects it.
+                        const jsonOutDir = path.join(
+                            process.cwd(), 'src/tests/integration/output-models', `${format}-json-types`
+                        );
+                        let connection: Sequelize | undefined;
+                        let generatedModel = '';
+                        let supportFile = '';
+
+                        beforeAll(async () => {
+                            connection = new Sequelize({ ...sequelizeOptions });
+                            await connection.authenticate();
+                            await initTestDatabase(testMetadata, connection);
+
+                            const config: IConfig = {
+                                connection: sequelizeOptions,
+                                metadata: {
+                                    ...testMetadata.schema && { schema: testMetadata.schema.name },
+                                },
+                                output: {
+                                    outDir: jsonOutDir,
+                                    clean: true,
+                                }
+                            };
+
+                            await buildModels(config);
+
+                            generatedModel = await fs.readFile(
+                                path.join(jsonOutDir, `${jsonTypes.jsonTypesTable}.ts`), 'utf8'
+                            );
+                            supportFile = await fs.readFile(path.join(jsonOutDir, 'jsonType.ts'), 'utf8');
+
+                            await registerGeneratedModels(connection!, jsonOutDir, format);
+                        });
+
+                        afterAll(async () => {
+                            connection && await connection.close();
+                        });
+
+                        it('emits the shared Json support file with the recursive union', () => {
+                            expect(supportFile).toContain('export type Json =');
+                            expect(supportFile).toContain('Json[]');
+                            expect(supportFile).toContain('[key: string]: Json');
+                        });
+
+                        it('type-only imports Json into the model file', () => {
+                            expect(generatedModel).toContain('import type { Json } from "./jsonType"');
+                        });
+
+                        it('emits the data type expression and TypeScript type per column', () => {
+                            for (const expected of jsonTypes.expected) {
+                                const typeExpression = format === 'decorators'
+                                    ? expected.decoratorType
+                                    : expected.nativeType;
+
+                                expect(generatedModel).toContain(typeExpression);
+
+                                const typePattern = new RegExp(`${expected.column}[?!:][^\\n]*\\b${expected.tsType}\\b`);
+                                expect(generatedModel).toMatch(typePattern);
+
+                                // A plain (non-JSON) column must not be typed as Json.
+                                if (expected.tsType !== 'Json') {
+                                    expect(generatedModel).not.toMatch(new RegExp(`${expected.column}[?!:][^\\n]*Json`));
+                                }
+                            }
+                        });
+
+                        it('round-trips an object, an array and a top-level scalar', async () => {
+                            const jsonColumn = jsonTypes.expected.find(expected => expected.tsType === 'Json');
+                            expect(jsonColumn).toBeDefined();
+
+                            const model = requireConnection(connection).model(jsonTypes.jsonTypesTable);
+                            const column = jsonColumn!.column;
+                            const values: unknown[] = [
+                                jsonTypes.roundTripValues.object,
+                                jsonTypes.roundTripValues.array,
+                                jsonTypes.roundTripValues.scalar,
+                            ];
+
+                            for (const value of values) {
+                                const created = await model.create({ [column]: value });
+                                const id = created.get('id');
+
+                                const reloaded = await model.findByPk(id);
+                                expect(reloaded).not.toBeNull();
+                                expect(reloaded!.toJSON()[column]).toEqual(value);
                             }
                         });
                     });

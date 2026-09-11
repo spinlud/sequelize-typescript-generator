@@ -60,6 +60,9 @@ import {
     SOFT_DELETES_TABLE_NAME,
     SOFT_DELETES_TABLE_DROP,
     SOFT_DELETES_TABLE_CREATES,
+    JSON_TYPES_TABLE_NAME,
+    JSON_TYPES_TABLE_DROP,
+    JSON_TYPES_TABLE_CREATES,
 } from './queries.js';
 
 interface INativeType {
@@ -153,6 +156,11 @@ const testMetadata: ITestMetadata = {
             name: SOFT_DELETES_TABLE_NAME,
             createQueries: SOFT_DELETES_TABLE_CREATES,
             dropQuery: SOFT_DELETES_TABLE_DROP,
+        },
+        {
+            name: JSON_TYPES_TABLE_NAME,
+            createQueries: JSON_TYPES_TABLE_CREATES,
+            dropQuery: JSON_TYPES_TABLE_DROP,
         },
     ],
     testViews: [
@@ -279,6 +287,22 @@ const testMetadata: ITestMetadata = {
             // ['geometrycollection', geometries.GeometryCollection],
             ['json', JSON.parse('{"key1": "value1", "key2": "value2"}')],
         ]
+    },
+    jsonTypes: {
+        jsonTypesTable: JSON_TYPES_TABLE_NAME,
+        expected: [
+            {
+                column: 'f_json',
+                nativeType: 'DataTypes.JSON',
+                decoratorType: 'DataType.JSON',
+                tsType: 'Json',
+            },
+        ],
+        roundTripValues: {
+            object: { key1: 'value1', nested: { flag: true, count: 2 } },
+            array: [1, 'two', { three: 3 }],
+            scalar: 42,
+        },
     },
     associations: {
         leftTableOneToOne: PERSON_TABLE_NAME,

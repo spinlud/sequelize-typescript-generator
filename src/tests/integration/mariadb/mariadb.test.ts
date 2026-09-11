@@ -60,6 +60,9 @@ import {
     SOFT_DELETES_TABLE_NAME,
     SOFT_DELETES_TABLE_DROP,
     SOFT_DELETES_TABLE_CREATES,
+    JSON_TYPES_TABLE_NAME,
+    JSON_TYPES_TABLE_DROP,
+    JSON_TYPES_TABLE_CREATES,
 } from './queries.js';
 
 interface INativeType {
@@ -153,6 +156,11 @@ export const testMetadata: ITestMetadata = {
             name: SOFT_DELETES_TABLE_NAME,
             createQueries: SOFT_DELETES_TABLE_CREATES,
             dropQuery: SOFT_DELETES_TABLE_DROP,
+        },
+        {
+            name: JSON_TYPES_TABLE_NAME,
+            createQueries: JSON_TYPES_TABLE_CREATES,
+            dropQuery: JSON_TYPES_TABLE_DROP,
         },
     ],
     testViews: [
@@ -277,8 +285,31 @@ export const testMetadata: ITestMetadata = {
             ['multipolygon', geometries.MultiPolygon],
             ['geometry', geometries.Geometry],
             // ['geometrycollection', geometries.GeometryCollection],
-            ['json', JSON.stringify({key1: 'value1', key2: 'value2'})],
+            // JSON is covered by the dedicated JSON types block: MariaDB stores it as
+            // longtext with a json_valid CHECK, which the generator maps to DataTypes.JSON.
         ]
+    },
+    jsonTypes: {
+        jsonTypesTable: JSON_TYPES_TABLE_NAME,
+        expected: [
+            {
+                column: 'f_json',
+                nativeType: 'DataTypes.JSON',
+                decoratorType: 'DataType.JSON',
+                tsType: 'Json',
+            },
+            {
+                column: 'f_plain_longtext',
+                nativeType: 'DataTypes.STRING',
+                decoratorType: 'DataType.STRING',
+                tsType: 'string',
+            },
+        ],
+        roundTripValues: {
+            object: { key1: 'value1', nested: { flag: true, count: 2 } },
+            array: [1, 'two', { three: 3 }],
+            scalar: 42,
+        },
     },
     associations: {
         leftTableOneToOne: PERSON_TABLE_NAME,

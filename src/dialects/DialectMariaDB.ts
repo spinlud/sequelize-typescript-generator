@@ -17,6 +17,13 @@ import {
     IForeignKeyColumnRow,
     IForeignKeyQueryRow,
 } from './foreignKeys.js';
+import {
+    extractJsonColumnsFromCheckConstraints,
+    extractJsonColumnsFromCreateTable,
+    getCreateTableStatement,
+    ICheckConstraintRow,
+    IShowCreateTableRow,
+} from './mariadbJson.js';
 
 interface ITableRow {
     table_name: string;
@@ -326,7 +333,71 @@ export class DialectMariaDB extends Dialect {
             columnsMetadata.push(columnMetadata);
         }
 
+        // MariaDB reports a JSON column as longtext with a json_valid CHECK constraint.
+        // Reclassify those columns as JSON so they emit DataTypes.JSON and the Json type.
+        const jsonColumnNames = await this.fetchJsonColumnNames(connection, config, table);
+
+        for (const columnMetadata of columnsMetadata) {
+            if (columnMetadata.type !== 'longtext' || !jsonColumnNames.has(columnMetadata.originName)) {
+                continue;
+            }
+
+            const jsonSequelizeType = buildSequelizeDataType(DataTypes.JSON, []);
+
+            if (jsonSequelizeType) {
+                columnMetadata.sequelizeType = jsonSequelizeType;
+                columnMetadata.dataType = renderDataTypeExpression(
+                    jsonSequelizeType,
+                    DATA_TYPE_NAMESPACES.decorators
+                );
+                columnMetadata.isJson = true;
+            }
+        }
+
         return columnsMetadata;
+    }
+
+    /**
+     * Fetch the database column names of a table backed by longtext with a
+     * `json_valid(...)` CHECK constraint. Detection reads information_schema.
+     * CHECK_CONSTRAINTS and falls back to parsing `SHOW CREATE TABLE` when that
+     * view is unavailable (MariaDB before 10.5).
+     * @param {Sequelize} connection
+     * @param {IConfig} config
+     * @param {string} table
+     * @returns {Promise<Set<string>>}
+     */
+    private async fetchJsonColumnNames(
+        connection: Sequelize,
+        config: IConfig,
+        table: string
+    ): Promise<Set<string>> {
+        try {
+            const rows = await connection.query<ICheckConstraintRow>(
+                `
+                    SELECT CHECK_CLAUSE
+                    FROM information_schema.CHECK_CONSTRAINTS
+                    WHERE CONSTRAINT_SCHEMA = '${config.connection.database}' AND TABLE_NAME = '${table}';
+                `,
+                {
+                    type: QueryTypes.SELECT,
+                    raw: true,
+                }
+            );
+
+            return extractJsonColumnsFromCheckConstraints(rows);
+        }
+        catch {
+            const rows = await connection.query<IShowCreateTableRow>(
+                `SHOW CREATE TABLE \`${table}\`;`,
+                {
+                    type: QueryTypes.SELECT,
+                    raw: true,
+                }
+            );
+
+            return extractJsonColumnsFromCreateTable(getCreateTableStatement(rows[0]));
+        }
     }
 
     /**
