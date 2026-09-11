@@ -121,6 +121,24 @@ const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
     jsonpath: DataTypes.JSON,
 }
 
+// Postgres reports array columns with an underscore-prefixed udt_name (e.g. _int4,
+// _text). The element type is the same name without the leading underscore.
+const POSTGRES_ARRAY_PREFIX = '_';
+
+/**
+ * Report whether a Postgres udt_name denotes an array type.
+ * @param {string} udtName
+ * @returns {boolean}
+ */
+const isPostgresArrayType = (udtName: string): boolean => udtName.startsWith(POSTGRES_ARRAY_PREFIX);
+
+/**
+ * Strip the leading underscore of an array udt_name to get its element type name.
+ * @param {string} udtName
+ * @returns {string}
+ */
+const stripPostgresArrayPrefix = (udtName: string): string => udtName.slice(POSTGRES_ARRAY_PREFIX.length);
+
 const jsDataTypesMap: { [key: string]: string } = {
     int2: 'number',
     int4: 'number',
@@ -181,11 +199,19 @@ export class DialectPostgres extends Dialect {
     }
 
     /**
-     * Map database data type to javascript data type
+     * Map database data type to javascript data type. An array type maps to the
+     * element JS type suffixed with `[]`; an array whose element has no scalar
+     * mapping degrades to `unknown[]`.
      * @param {string} dbType
      * @returns {string}
      */
     public mapDbTypeToJs(dbType: string): string {
+        if (isPostgresArrayType(dbType)) {
+            const elementJsType = jsDataTypesMap[stripPostgresArrayPrefix(dbType)];
+
+            return `${elementJsType ?? 'unknown'}[]`;
+        }
+
         return jsDataTypesMap[dbType];
     }
 
@@ -302,17 +328,24 @@ export class DialectPostgres extends Dialect {
         ) as IColumnMetadataPostgres[];
 
         for (const column of columns) {
-            // Unknown data type
-            if (!this.mapDbTypeToSequelize(column.udt_name)) {
+            // For an array column the element type drives the mapping; the ARRAY
+            // wrapper is added afterwards.
+            const isArray = isPostgresArrayType(column.udt_name);
+            const elementTypeName = isArray ? stripPostgresArrayPrefix(column.udt_name) : column.udt_name;
+
+            const elementConstructor = this.mapDbTypeToSequelize(elementTypeName);
+
+            // Unknown data type. An array whose element has no scalar mapping is
+            // reported once and degrades gracefully: no `type` is emitted and the
+            // TypeScript type falls back to `unknown[]`.
+            if (!elementConstructor) {
                 warnUnknownMappingForDataType(column.udt_name);
             }
-
-            const sequelizeConstructor = this.mapDbTypeToSequelize(column.udt_name);
 
             // Data type arguments (precision or length)
             let dataTypeArgs: Array<DataTypeArgument | null | undefined> = [];
 
-            switch (column.udt_name) {
+            switch (elementTypeName) {
                 case 'decimal':
                 case 'numeric':
                 case 'float':
@@ -331,9 +364,13 @@ export class DialectPostgres extends Dialect {
                     break;
             }
 
-            const sequelizeType = sequelizeConstructor
-                ? buildSequelizeDataType(sequelizeConstructor, dataTypeArgs)
+            const elementType = elementConstructor
+                ? buildSequelizeDataType(elementConstructor, dataTypeArgs)
                 : undefined;
+
+            const sequelizeType = elementType && isArray
+                ? buildSequelizeDataType(DataTypes.ARRAY, [elementType])
+                : elementType;
 
             const columnMetadata: IColumnMetadata = {
                 name: column.column_name,

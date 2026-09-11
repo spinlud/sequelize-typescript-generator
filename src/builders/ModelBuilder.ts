@@ -16,6 +16,7 @@ import { IGeneratedFile, renderNativeFiles, writeGeneratedFiles } from './genera
 import { warnWhenDecoratorsDependencyIsMissing } from './decoratorsDependency.js';
 import {
     nodeToString,
+    createTypeNodeFromName,
     generateArrowDecorator,
     generateNamedImports,
     generateObjectLiteralDecorator,
@@ -158,7 +159,7 @@ export class ModelBuilder extends Builder {
             col.name,
             (col.autoIncrement || col.allowNull || col.defaultValue !== undefined) ?
                 ts.factory.createToken(ts.SyntaxKind.QuestionToken) : ts.factory.createToken(ts.SyntaxKind.ExclamationToken),
-            ts.factory.createTypeReferenceNode(dialect.mapDbTypeToJs(col.type) ?? 'any', undefined),
+            createTypeNodeFromName(dialect.mapDbTypeToJs(col.type) ?? 'any'),
             undefined,
         );
     }
@@ -239,7 +240,7 @@ export class ModelBuilder extends Builder {
                         ts.factory.createIdentifier(c.name),
                         c.autoIncrement || c.allowNull || c.defaultValue !== undefined ?
                             ts.factory.createToken(ts.SyntaxKind.QuestionToken) : undefined,
-                        ts.factory.createTypeReferenceNode(dialect.mapDbTypeToJs(c.type) ?? 'any', undefined)
+                        createTypeNodeFromName(dialect.mapDbTypeToJs(c.type) ?? 'any')
                     )))
                 ]
             );

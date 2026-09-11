@@ -297,3 +297,22 @@ export const SOFT_DELETES_TABLE_CREATES = [
         );
     `,
 ];
+
+export const ARRAY_TYPES_TABLE_NAME = 'array_types';
+export const ARRAY_TYPES_TABLE_DROP = `DROP TABLE IF EXISTS ${SCHEMA_NAME}.${ARRAY_TYPES_TABLE_NAME} CASCADE`;
+export const ARRAY_TYPES_TABLE_CREATES = [
+    `
+        CREATE TABLE ${SCHEMA_NAME}.${ARRAY_TYPES_TABLE_NAME}
+        (
+            id                serial      not null    constraint array_types_pk   primary key,
+            f_int_array       integer[],
+            f_bigint_array    bigint[],
+            f_text_array      text[],
+            f_varchar_array   varchar[],
+            f_boolean_array   boolean[],
+            f_numeric_array   numeric[],
+            f_timestamp_array timestamp[],
+            f_uuid_array      uuid[]
+        );
+    `,
+];

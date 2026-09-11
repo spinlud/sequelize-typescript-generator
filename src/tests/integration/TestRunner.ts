@@ -704,6 +704,96 @@ export class TestRunner {
                     });
                 });
 
+                if (testMetadata.arrayTypes) {
+                    const arrayTypes = testMetadata.arrayTypes;
+
+                    describe('Array types', () => {
+                        // A dedicated output dir keeps this generation out of the module cache
+                        // the other blocks populate, so native's initModels reflects it.
+                        const arrayOutDir = path.join(
+                            process.cwd(), 'src/tests/integration/output-models', `${format}-array-types`
+                        );
+                        let connection: Sequelize | undefined;
+                        let generatedModel = '';
+                        const warnMessages: string[] = [];
+
+                        beforeAll(async () => {
+                            connection = new Sequelize({ ...sequelizeOptions });
+                            await connection.authenticate();
+                            await initTestDatabase(testMetadata, connection);
+
+                            const config: IConfig = {
+                                connection: sequelizeOptions,
+                                metadata: {
+                                    ...testMetadata.schema && { schema: testMetadata.schema.name },
+                                },
+                                output: {
+                                    outDir: arrayOutDir,
+                                    clean: true,
+                                }
+                            };
+
+                            const warnSpy = jest.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => {
+                                warnMessages.push(args.map(arg => String(arg)).join(' '));
+                            });
+
+                            try {
+                                await buildModels(config);
+                            }
+                            finally {
+                                warnSpy.mockRestore();
+                            }
+
+                            generatedModel = await fs.readFile(
+                                path.join(arrayOutDir, `${arrayTypes.arrayTypesTable}.ts`), 'utf8'
+                            );
+
+                            await registerGeneratedModels(connection!, arrayOutDir, format);
+                        });
+
+                        afterAll(async () => {
+                            connection && await connection.close();
+                        });
+
+                        it('emits the array data type expression and the array TypeScript type', () => {
+                            for (const expected of arrayTypes.expected) {
+                                const typeExpression = format === 'decorators'
+                                    ? expected.decoratorType
+                                    : expected.nativeType;
+
+                                expect(generatedModel).toContain(typeExpression);
+                                expect(generatedModel).toContain(expected.tsType);
+                            }
+                        });
+
+                        it('does not warn about unknown data type mappings', () => {
+                            expect(warnMessages.some(message => message.includes('Unknown data type mapping')))
+                                .toBe(false);
+                        });
+
+                        it('round-trips array values through the database', async () => {
+                            const model = requireConnection(connection).model(arrayTypes.arrayTypesTable);
+
+                            const row: Record<string, unknown> = {};
+
+                            for (const expected of arrayTypes.expected) {
+                                row[expected.column] = expected.value;
+                            }
+
+                            const created = await model.create(row);
+                            expect(created).toBeDefined();
+
+                            const [stored] = await model.findAll({ order: [['id', 'DESC']], limit: 1 });
+                            const storedJson = stored.toJSON();
+
+                            for (const expected of arrayTypes.expected) {
+                                expect(Array.isArray(storedJson[expected.column])).toBe(true);
+                                expect(storedJson[expected.column]).toHaveLength(expected.value.length);
+                            }
+                        });
+                    });
+                }
+
                 describe('Associations', () => {
                     let connection: Sequelize | undefined;
 

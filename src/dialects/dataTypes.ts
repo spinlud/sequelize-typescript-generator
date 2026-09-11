@@ -3,16 +3,31 @@ import type { AbstractDataTypeConstructor } from 'sequelize';
 
 export type SequelizeDataTypeKey = keyof typeof DataTypes;
 
-export type DataTypeArgument = string | number;
+/**
+ * A single argument of a Sequelize data type. A scalar argument is a number
+ * (precision, length) or a string (ENUM value); a nested argument is itself a
+ * data type, so an argument list can carry another data type such as the element
+ * type of `ARRAY(INTEGER)`.
+ */
+export type DataTypeArgument = string | number | ISequelizeDataType;
 
 /**
- * Format-neutral Sequelize data type: a DataTypes key plus its rendered arguments.
- * Numeric arguments render bare; string arguments render single-quoted (ENUM values).
+ * Format-neutral Sequelize data type: a DataTypes key plus its arguments. Scalar
+ * arguments render bare (numbers) or single-quoted (strings, for ENUM values); a
+ * nested data type argument renders as its own data type expression.
  */
 export interface ISequelizeDataType {
     key: SequelizeDataTypeKey;
     args: DataTypeArgument[];
 }
+
+/**
+ * Type guard for a nested data type argument.
+ * @param {DataTypeArgument} arg
+ * @returns {boolean}
+ */
+export const isNestedDataType = (arg: DataTypeArgument): arg is ISequelizeDataType =>
+    typeof arg === 'object' && arg !== null && 'key' in arg && 'args' in arg;
 
 /**
  * Namespaces under which a data type expression is rendered.
@@ -79,15 +94,27 @@ export const buildSequelizeDataType = (
 
 /**
  * Render a single data type argument. Numbers render bare; strings render
- * single-quoted with internal single quotes doubled.
+ * single-quoted with internal single quotes doubled; a nested data type renders
+ * as its own expression under the same namespace.
  * @param {DataTypeArgument} arg
+ * @param {DataTypeNamespace} namespace
  * @returns {string}
  */
-const renderDataTypeArgument = (arg: DataTypeArgument): string =>
-    typeof arg === 'number' ? String(arg) : `'${arg.replace(/'/g, "''")}'`;
+const renderDataTypeArgument = (arg: DataTypeArgument, namespace: DataTypeNamespace): string => {
+    if (typeof arg === 'number') {
+        return String(arg);
+    }
+
+    if (typeof arg === 'string') {
+        return `'${arg.replace(/'/g, "''")}'`;
+    }
+
+    return renderDataTypeExpression(arg, namespace);
+};
 
 /**
- * Render a data type expression, e.g. DataType.DECIMAL(7,3) or DataTypes.ENUM('AA','BB').
+ * Render a data type expression, e.g. DataType.DECIMAL(7,3), DataTypes.ENUM('AA','BB')
+ * or DataTypes.ARRAY(DataTypes.INTEGER).
  * @param {ISequelizeDataType} dataType
  * @param {DataTypeNamespace} namespace
  * @returns {string}
@@ -97,7 +124,7 @@ export const renderDataTypeExpression = (
     namespace: DataTypeNamespace
 ): string => {
     const signature = dataType.args.length
-        ? `(${dataType.args.map(renderDataTypeArgument).join(',')})`
+        ? `(${dataType.args.map(arg => renderDataTypeArgument(arg, namespace)).join(',')})`
         : '';
 
     return `${namespace}.${dataType.key}${signature}`;

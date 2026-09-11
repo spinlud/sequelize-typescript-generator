@@ -66,6 +66,33 @@ describe('data types mapper', () => {
             const dataType: ISequelizeDataType = { key: 'STRING', args: [255] };
             expect(renderDataTypeExpression(dataType, DATA_TYPE_NAMESPACES.decorators)).toBe('DataType.STRING(255)');
         });
+
+        it('renders a nested data type argument in the native namespace', () => {
+            const dataType: ISequelizeDataType = {
+                key: 'ARRAY',
+                args: [{ key: 'INTEGER', args: [] }],
+            };
+            expect(renderDataTypeExpression(dataType, DATA_TYPE_NAMESPACES.native))
+                .toBe('DataTypes.ARRAY(DataTypes.INTEGER)');
+        });
+
+        it('renders a nested data type argument in the decorators namespace', () => {
+            const dataType: ISequelizeDataType = {
+                key: 'ARRAY',
+                args: [{ key: 'TEXT', args: [] }],
+            };
+            expect(renderDataTypeExpression(dataType, DATA_TYPE_NAMESPACES.decorators))
+                .toBe('DataType.ARRAY(DataType.TEXT)');
+        });
+
+        it('renders arguments of a nested data type argument', () => {
+            const dataType: ISequelizeDataType = {
+                key: 'ARRAY',
+                args: [{ key: 'DECIMAL', args: [7, 3] }],
+            };
+            expect(renderDataTypeExpression(dataType, DATA_TYPE_NAMESPACES.native))
+                .toBe('DataTypes.ARRAY(DataTypes.DECIMAL(7,3))');
+        });
     });
 
     describe('parseEnumValues', () => {

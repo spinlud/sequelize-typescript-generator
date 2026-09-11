@@ -42,6 +42,19 @@ export interface ITestMetadata {
         getColumnNativeDataType: GetColumnNativeDataTypeFn;
         testValues: [string, any][];
     },
+    // Array columns (currently Postgres only). Drives a dedicated test block that
+    // asserts the emitted data type expression and TypeScript type per column and
+    // round-trips a sample value through the database.
+    arrayTypes?: {
+        arrayTypesTable: string;
+        expected: {
+            column: string; // Database column name, e.g. 'f_int_array'
+            nativeType: string; // Native init-options expression, e.g. 'DataTypes.ARRAY(DataTypes.INTEGER)'
+            decoratorType: string; // Decorators expression, e.g. 'DataType.ARRAY(DataType.INTEGER)'
+            tsType: string; // Generated TypeScript type, e.g. 'number[]'
+            value: unknown[]; // Sample value to round-trip
+        }[];
+    },
     associations: {
         leftTableOneToOne: string; // Left table 1:1 relation
         rightTableOneToOne: string; // Right table 1:1 relation
