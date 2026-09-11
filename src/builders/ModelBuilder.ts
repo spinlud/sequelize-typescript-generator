@@ -15,6 +15,7 @@ import { resolveAssociationPropertyName } from './associationNaming.js';
 import { IGeneratedFile, renderNativeFiles, writeGeneratedFiles } from './generatedFile.js';
 import { warnWhenDecoratorsDependencyIsMissing } from './decoratorsDependency.js';
 import {
+    attachColumnCommentJsDoc,
     nodeToString,
     createGenericTypeReference,
     createTypeNodeFromName,
@@ -165,7 +166,7 @@ export class ModelBuilder extends Builder {
         };
 
 
-        return ts.factory.createPropertyDeclaration(
+        const propertyDeclaration = ts.factory.createPropertyDeclaration(
             [
                 ...(col.foreignKey ?
                     [ generateArrowDecorator(foreignKeyDecorator, [col.foreignKey.targetModel]) ]
@@ -184,6 +185,8 @@ export class ModelBuilder extends Builder {
             buildColumnTypeNode(col, dialect),
             undefined,
         );
+
+        return attachColumnCommentJsDoc(propertyDeclaration, col.comment);
     }
 
     /**
@@ -263,12 +266,15 @@ export class ModelBuilder extends Builder {
                 undefined,
                 undefined,
                 [
-                    ...(Object.values(columns).map(c => ts.factory.createPropertySignature(
-                        undefined,
-                        ts.factory.createIdentifier(c.name),
-                        c.autoIncrement || c.allowNull || c.defaultValue !== undefined ?
-                            ts.factory.createToken(ts.SyntaxKind.QuestionToken) : undefined,
-                        buildColumnTypeNode(c, dialect)
+                    ...(Object.values(columns).map(c => attachColumnCommentJsDoc(
+                        ts.factory.createPropertySignature(
+                            undefined,
+                            ts.factory.createIdentifier(c.name),
+                            c.autoIncrement || c.allowNull || c.defaultValue !== undefined ?
+                                ts.factory.createToken(ts.SyntaxKind.QuestionToken) : undefined,
+                            buildColumnTypeNode(c, dialect)
+                        ),
+                        c.comment
                     )))
                 ]
             );

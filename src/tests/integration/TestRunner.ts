@@ -1503,6 +1503,57 @@ export class TestRunner {
                     });
                 }
 
+                if (testMetadata.columnComment) {
+                    const columnComment = testMetadata.columnComment;
+
+                    describe('Column comments', () => {
+                        // A dedicated output dir keeps this generation out of the module cache
+                        // the other blocks populate.
+                        const commentsOutDir = path.join(
+                            process.cwd(), 'src/tests/integration/output-models', `${format}-column-comments`
+                        );
+                        let connection: Sequelize | undefined;
+                        let generatedModel = '';
+
+                        beforeAll(async () => {
+                            connection = new Sequelize({ ...sequelizeOptions });
+                            await connection.authenticate();
+                            await initTestDatabase(testMetadata, connection);
+
+                            const config: IConfig = {
+                                connection: sequelizeOptions,
+                                metadata: {
+                                    ...testMetadata.schema && { schema: testMetadata.schema.name },
+                                },
+                                output: {
+                                    outDir: commentsOutDir,
+                                    clean: true,
+                                }
+                            };
+
+                            await buildModels(config);
+
+                            generatedModel = await fs.readFile(
+                                path.join(commentsOutDir, `${columnComment.table}.ts`), 'utf8'
+                            );
+                        });
+
+                        afterAll(async () => {
+                            connection && await connection.close();
+                        });
+
+                        it('emits the column comment as a JSDoc leading comment', () => {
+                            expect(generatedModel).toContain(`/** ${columnComment.comment} */`);
+
+                            // The JSDoc precedes the commented column's declaration.
+                            const jsDocPattern = new RegExp(
+                                `/\\*\\* ${columnComment.comment} \\*/[\\s\\S]*?\\b${columnComment.column}\\b`
+                            );
+                            expect(generatedModel).toMatch(jsDocPattern);
+                        });
+                    });
+                }
+
                 if (testMetadata.triggerTable && testMetadata.secondarySchemaTable) {
                     const triggerTableName = testMetadata.triggerTable;
                     const secondarySchemaTable = testMetadata.secondarySchemaTable;

@@ -34,6 +34,14 @@ export interface ITestMetadata {
     // Expected foreign key constraints per database table name.
     expectedForeignKeys: Record<string, IForeignKeyConstraintMetadata[]>;
     paranoidTable?: string;
+    // A column carrying a database comment. Drives a dedicated test block that
+    // asserts the comment is emitted as a `/** … */` JSDoc leading comment in the
+    // generated model file for the given table.
+    columnComment?: {
+        table: string; // Table whose generated model file is read
+        column: string; // Column carrying the comment
+        comment: string; // Expected comment text
+    };
     triggerTable?: string;
     secondarySchemaTable?: { schema: string; name: string };
     dataTypes: {

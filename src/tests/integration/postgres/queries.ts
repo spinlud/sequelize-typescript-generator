@@ -84,6 +84,7 @@ export const INDICES_TABLE_CREATES = [
 ];
 
 export const AUTHORS_TABLE_NAME = 'authors';
+export const AUTHORS_FULL_NAME_COMMENT = 'Full name of the author';
 export const AUTHORS_TABLE_DROP = `DROP TABLE IF EXISTS ${AUTHORS_TABLE_NAME} CASCADE`;
 export const AUTHORS_TABLE_CREATES = [
     `
@@ -93,6 +94,7 @@ export const AUTHORS_TABLE_CREATES = [
             full_name       VARCHAR(80)     not null
         );
     `,
+    `COMMENT ON COLUMN ${SCHEMA_NAME}.${AUTHORS_TABLE_NAME}.full_name IS '${AUTHORS_FULL_NAME_COMMENT}';`,
 ];
 export const AUTHORS_TABLE_INSERTS = [
     `INSERT INTO ${SCHEMA_NAME}.${AUTHORS_TABLE_NAME} VALUES (1, 'Isasc Asimov');`,

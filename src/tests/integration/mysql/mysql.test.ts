@@ -14,6 +14,7 @@ import {
     AUTHORS_TABLE_DROP,
     AUTHORS_TABLE_CREATES,
     AUTHORS_TABLE_INSERTS,
+    AUTHORS_FULL_NAME_COMMENT,
     BOOKS_TABLE_NAME,
     BOOKS_TABLE_DROP,
     BOOKS_TABLE_CREATES,
@@ -228,6 +229,11 @@ const testMetadata: ITestMetadata = {
         [ORDER_LINES_TABLE_NAME]: [],
     },
     paranoidTable: SOFT_DELETES_TABLE_NAME,
+    columnComment: {
+        table: AUTHORS_TABLE_NAME,
+        column: 'full_name',
+        comment: AUTHORS_FULL_NAME_COMMENT,
+    },
     dataTypes: {
         dataTypesTable: DATA_TYPES_TABLE_NAME,
         async getColumnNativeDataType(

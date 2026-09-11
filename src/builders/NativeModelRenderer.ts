@@ -4,6 +4,7 @@ import type { IColumnMetadata, ITableMetadata } from '../dialects/Dialect.js';
 import type { IAssociationMetadata } from '../dialects/AssociationsParser.js';
 import { DATA_TYPE_NAMESPACES } from '../dialects/dataTypes.js';
 import {
+    attachColumnCommentJsDoc,
     buildDataTypeExpression,
     buildObjectLiteralExpression,
     createGenericTypeReference,
@@ -171,7 +172,10 @@ export const buildAttributeDeclaration = (
     dialect: Dialect,
     tablesByModel: ReadonlyMap<string, ITableMetadata>
 ): ts.PropertyDeclaration =>
-    buildDeclareField(column.name, buildAttributeTypeNode(column, table, dialect, tablesByModel));
+    attachColumnCommentJsDoc(
+        buildDeclareField(column.name, buildAttributeTypeNode(column, table, dialect, tablesByModel)),
+        column.comment
+    );
 
 /**
  * Build the `declare createdAt`/`declare updatedAt` members of a model, emitted

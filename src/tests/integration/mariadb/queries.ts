@@ -78,13 +78,14 @@ export const INDICES_TABLE_CREATES = [
 ];
 
 export const AUTHORS_TABLE_NAME = 'authors';
+export const AUTHORS_FULL_NAME_COMMENT = 'Full name of the author';
 export const AUTHORS_TABLE_DROP = `DROP TABLE IF EXISTS ${AUTHORS_TABLE_NAME} CASCADE`;
 export const AUTHORS_TABLE_CREATES = [
     `
         CREATE TABLE ${AUTHORS_TABLE_NAME}
         (
             author_id       INT             primary key,
-            full_name       VARCHAR(80)     not null
+            full_name       VARCHAR(80)     not null     COMMENT '${AUTHORS_FULL_NAME_COMMENT}'
         );
     `,
 ];

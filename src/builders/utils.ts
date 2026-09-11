@@ -41,6 +41,36 @@ export const nodeToString = (node: ts.Node): string => {
 };
 
 /**
+ * Neutralise the block-comment terminator inside text so it cannot prematurely
+ * close a JSDoc block, by inserting a space between `*` and `/`.
+ * @param {string} comment
+ * @returns {string}
+ */
+export const sanitiseJsDocComment = (comment: string): string => comment.replace(/\*\//g, '* /');
+
+/**
+ * Attach a database column comment as a `/** … *\/` JSDoc leading comment on a
+ * declaration. Empty or whitespace-only comments are ignored; an embedded
+ * comment terminator is neutralised first. Returns the node unchanged when there
+ * is nothing to attach.
+ * @param {T} node
+ * @param {string | undefined} comment
+ * @returns {T}
+ */
+export const attachColumnCommentJsDoc = <T extends ts.Node>(node: T, comment: string | undefined): T => {
+    if (!comment || comment.trim().length === 0) {
+        return node;
+    }
+
+    return ts.addSyntheticLeadingComment(
+        node,
+        ts.SyntaxKind.MultiLineCommentTrivia,
+        `* ${sanitiseJsDocComment(comment.trim())} `,
+        true
+    );
+};
+
+/**
  * Generate named imports code (e.g. `import { Something, Else } from "module"`)
  * @param {string[]} importsSpecifier
  * @param {string} moduleSpecifier
