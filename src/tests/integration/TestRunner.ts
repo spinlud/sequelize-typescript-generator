@@ -341,7 +341,6 @@ export class TestRunner {
                     const tablesOutDir = path.join(
                         process.cwd(), 'src/tests/integration/output-models', `${format}-tables`
                     );
-                    const tablesIndexDir = path.join(tablesOutDir, 'index.ts');
                     let connection: Sequelize | undefined;
 
                     beforeAll(async () => {
@@ -362,27 +361,27 @@ export class TestRunner {
                         };
 
                         await buildModels(config);
-
-                        // The decorators directory-glob registration would also pick up the
-                        // barrel, so it is removed first; native is wired through initModels.
-                        if (format === 'decorators') {
-                            await fs.unlink(tablesIndexDir);
-                            // The shared JSON support file is not a model; addModels([dir]) would reject it.
-                            await fs.rm(path.join(tablesOutDir, 'jsonType.ts'), { force: true });
-                        }
                     });
 
                     afterAll(async () => {
                         connection && await connection.close();
                     });
 
+                    it('type-checks the generated output under strict mode', async () => {
+                        const diagnostics = await compileGeneratedModels(tablesOutDir, format);
+
+                        const formatted = ts.formatDiagnosticsWithColorAndContext(diagnostics, {
+                            getCurrentDirectory: () => tablesOutDir,
+                            getCanonicalFileName: (fileName) => fileName,
+                            getNewLine: () => '\n',
+                        });
+
+                        expect(formatted).toBe('');
+                        expect(diagnostics).toHaveLength(0);
+                    });
+
                     it('should add only the provided tables', async () => {
-                        if (format === 'decorators') {
-                            connection!.addModels([ tablesOutDir ]);
-                        }
-                        else {
-                            await registerGeneratedModels(connection!, tablesOutDir, format);
-                        }
+                        await registerGeneratedModels(connection!, tablesOutDir, format);
 
                         for (const table of filterTables) {
                             connection!.model(table);
@@ -404,7 +403,6 @@ export class TestRunner {
                     const skipTablesOutDir = path.join(
                         process.cwd(), 'src/tests/integration/output-models', `${format}-skip-tables`
                     );
-                    const skipTablesIndexDir = path.join(skipTablesOutDir, 'index.ts');
                     let connection: Sequelize | undefined;
 
                     beforeAll(async () => {
@@ -425,27 +423,27 @@ export class TestRunner {
                         };
 
                         await buildModels(config);
-
-                        // The decorators directory-glob registration would also pick up the
-                        // barrel, so it is removed first; native is wired through initModels.
-                        if (format === 'decorators') {
-                            await fs.unlink(skipTablesIndexDir);
-                            // The shared JSON support file is not a model; addModels([dir]) would reject it.
-                            await fs.rm(path.join(skipTablesOutDir, 'jsonType.ts'), { force: true });
-                        }
                     });
 
                     afterAll(async () => {
                         connection && await connection.close();
                     });
 
+                    it('type-checks the generated output under strict mode', async () => {
+                        const diagnostics = await compileGeneratedModels(skipTablesOutDir, format);
+
+                        const formatted = ts.formatDiagnosticsWithColorAndContext(diagnostics, {
+                            getCurrentDirectory: () => skipTablesOutDir,
+                            getCanonicalFileName: (fileName) => fileName,
+                            getNewLine: () => '\n',
+                        });
+
+                        expect(formatted).toBe('');
+                        expect(diagnostics).toHaveLength(0);
+                    });
+
                     it('should skip the provided tables', async () => {
-                        if (format === 'decorators') {
-                            connection!.addModels([ skipTablesOutDir ]);
-                        }
-                        else {
-                            await registerGeneratedModels(connection!, skipTablesOutDir, format);
-                        }
+                        await registerGeneratedModels(connection!, skipTablesOutDir, format);
 
                         for (const table of filterSkipTables) {
                             expect(() => connection!.model(table)).toThrow();
@@ -469,7 +467,6 @@ export class TestRunner {
                         const skipViewsOutDir = path.join(
                             process.cwd(), 'src/tests/integration/output-models', `${format}-skip-views`
                         );
-                        const skipViewsIndexDir = path.join(skipViewsOutDir, 'index.ts');
                         let connection: Sequelize | undefined;
 
                         beforeAll(async () => {
@@ -490,27 +487,27 @@ export class TestRunner {
                             };
 
                             await buildModels(config);
-
-                            // The decorators directory-glob registration would also pick up the
-                            // barrel, so it is removed first; native is wired through initModels.
-                            if (format === 'decorators') {
-                                await fs.unlink(skipViewsIndexDir);
-                                // The shared JSON support file is not a model; addModels([dir]) would reject it.
-                                await fs.rm(path.join(skipViewsOutDir, 'jsonType.ts'), { force: true });
-                            }
                         });
 
                         afterAll(async () => {
                             connection && await connection.close();
                         });
 
+                        it('type-checks the generated output under strict mode', async () => {
+                            const diagnostics = await compileGeneratedModels(skipViewsOutDir, format);
+
+                            const formatted = ts.formatDiagnosticsWithColorAndContext(diagnostics, {
+                                getCurrentDirectory: () => skipViewsOutDir,
+                                getCanonicalFileName: (fileName) => fileName,
+                                getNewLine: () => '\n',
+                            });
+
+                            expect(formatted).toBe('');
+                            expect(diagnostics).toHaveLength(0);
+                        });
+
                         it('should skip views', async () => {
-                            if (format === 'decorators') {
-                                connection!.addModels([ skipViewsOutDir ]);
-                            }
-                            else {
-                                await registerGeneratedModels(connection!, skipViewsOutDir, format);
-                            }
+                            await registerGeneratedModels(connection!, skipViewsOutDir, format);
 
                             for (const { name: tableName } of testTables) {
                                 connection!.model(tableName);
