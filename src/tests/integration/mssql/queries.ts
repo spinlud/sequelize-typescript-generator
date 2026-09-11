@@ -72,6 +72,7 @@ export const INDICES_TABLE_CREATES = [
 ];
 
 export const AUTHORS_TABLE_NAME = 'authors';
+export const AUTHORS_FULL_NAME_COMMENT = 'Full name of the author';
 export const AUTHORS_TABLE_DROP = `DROP TABLE IF EXISTS ${AUTHORS_TABLE_NAME}`;
 export const AUTHORS_TABLE_CREATES = [
     `
@@ -80,6 +81,13 @@ export const AUTHORS_TABLE_CREATES = [
             author_id       INT             primary key,
             full_name       VARCHAR(80)     not null
         );
+    `,
+    `
+        EXEC sp_addextendedproperty
+            @name = N'MS_Description', @value = N'${AUTHORS_FULL_NAME_COMMENT}',
+            @level0type = N'SCHEMA', @level0name = N'dbo',
+            @level1type = N'TABLE',  @level1name = N'${AUTHORS_TABLE_NAME}',
+            @level2type = N'COLUMN', @level2name = N'full_name';
     `,
 ];
 export const AUTHORS_TABLE_INSERTS = [

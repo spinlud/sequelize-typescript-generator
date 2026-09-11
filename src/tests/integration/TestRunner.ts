@@ -341,7 +341,6 @@ export class TestRunner {
                     const tablesOutDir = path.join(
                         process.cwd(), 'src/tests/integration/output-models', `${format}-tables`
                     );
-                    const tablesIndexDir = path.join(tablesOutDir, 'index.ts');
                     let connection: Sequelize | undefined;
 
                     beforeAll(async () => {
@@ -362,25 +361,27 @@ export class TestRunner {
                         };
 
                         await buildModels(config);
-
-                        // The decorators directory-glob registration would also pick up the
-                        // barrel, so it is removed first; native is wired through initModels.
-                        if (format === 'decorators') {
-                            await fs.unlink(tablesIndexDir);
-                        }
                     });
 
                     afterAll(async () => {
                         connection && await connection.close();
                     });
 
+                    it('type-checks the generated output under strict mode', async () => {
+                        const diagnostics = await compileGeneratedModels(tablesOutDir, format);
+
+                        const formatted = ts.formatDiagnosticsWithColorAndContext(diagnostics, {
+                            getCurrentDirectory: () => tablesOutDir,
+                            getCanonicalFileName: (fileName) => fileName,
+                            getNewLine: () => '\n',
+                        });
+
+                        expect(formatted).toBe('');
+                        expect(diagnostics).toHaveLength(0);
+                    });
+
                     it('should add only the provided tables', async () => {
-                        if (format === 'decorators') {
-                            connection!.addModels([ tablesOutDir ]);
-                        }
-                        else {
-                            await registerGeneratedModels(connection!, tablesOutDir, format);
-                        }
+                        await registerGeneratedModels(connection!, tablesOutDir, format);
 
                         for (const table of filterTables) {
                             connection!.model(table);
@@ -402,7 +403,6 @@ export class TestRunner {
                     const skipTablesOutDir = path.join(
                         process.cwd(), 'src/tests/integration/output-models', `${format}-skip-tables`
                     );
-                    const skipTablesIndexDir = path.join(skipTablesOutDir, 'index.ts');
                     let connection: Sequelize | undefined;
 
                     beforeAll(async () => {
@@ -423,25 +423,27 @@ export class TestRunner {
                         };
 
                         await buildModels(config);
-
-                        // The decorators directory-glob registration would also pick up the
-                        // barrel, so it is removed first; native is wired through initModels.
-                        if (format === 'decorators') {
-                            await fs.unlink(skipTablesIndexDir);
-                        }
                     });
 
                     afterAll(async () => {
                         connection && await connection.close();
                     });
 
+                    it('type-checks the generated output under strict mode', async () => {
+                        const diagnostics = await compileGeneratedModels(skipTablesOutDir, format);
+
+                        const formatted = ts.formatDiagnosticsWithColorAndContext(diagnostics, {
+                            getCurrentDirectory: () => skipTablesOutDir,
+                            getCanonicalFileName: (fileName) => fileName,
+                            getNewLine: () => '\n',
+                        });
+
+                        expect(formatted).toBe('');
+                        expect(diagnostics).toHaveLength(0);
+                    });
+
                     it('should skip the provided tables', async () => {
-                        if (format === 'decorators') {
-                            connection!.addModels([ skipTablesOutDir ]);
-                        }
-                        else {
-                            await registerGeneratedModels(connection!, skipTablesOutDir, format);
-                        }
+                        await registerGeneratedModels(connection!, skipTablesOutDir, format);
 
                         for (const table of filterSkipTables) {
                             expect(() => connection!.model(table)).toThrow();
@@ -465,7 +467,6 @@ export class TestRunner {
                         const skipViewsOutDir = path.join(
                             process.cwd(), 'src/tests/integration/output-models', `${format}-skip-views`
                         );
-                        const skipViewsIndexDir = path.join(skipViewsOutDir, 'index.ts');
                         let connection: Sequelize | undefined;
 
                         beforeAll(async () => {
@@ -486,25 +487,27 @@ export class TestRunner {
                             };
 
                             await buildModels(config);
-
-                            // The decorators directory-glob registration would also pick up the
-                            // barrel, so it is removed first; native is wired through initModels.
-                            if (format === 'decorators') {
-                                await fs.unlink(skipViewsIndexDir);
-                            }
                         });
 
                         afterAll(async () => {
                             connection && await connection.close();
                         });
 
+                        it('type-checks the generated output under strict mode', async () => {
+                            const diagnostics = await compileGeneratedModels(skipViewsOutDir, format);
+
+                            const formatted = ts.formatDiagnosticsWithColorAndContext(diagnostics, {
+                                getCurrentDirectory: () => skipViewsOutDir,
+                                getCanonicalFileName: (fileName) => fileName,
+                                getNewLine: () => '\n',
+                            });
+
+                            expect(formatted).toBe('');
+                            expect(diagnostics).toHaveLength(0);
+                        });
+
                         it('should skip views', async () => {
-                            if (format === 'decorators') {
-                                connection!.addModels([ skipViewsOutDir ]);
-                            }
-                            else {
-                                await registerGeneratedModels(connection!, skipViewsOutDir, format);
-                            }
+                            await registerGeneratedModels(connection!, skipViewsOutDir, format);
 
                             for (const { name: tableName } of testTables) {
                                 connection!.model(tableName);
@@ -691,18 +694,197 @@ export class TestRunner {
                             typeName === 'bit' && receivedValueType === 'uint8array') {
                             expect(parseInt(receivedValue[0], 10)).toStrictEqual(typeValue);
                         }
-                        else if (receivedValueType === 'object' &&
-                            sequelizeOptions.dialect === 'mariadb' &&
-                            typeName === 'json'
-                        ) {
-                            expect(JSON.stringify(receivedValue)).toStrictEqual(typeValue);
-                        }
                         else {
                             expect(receivedValueType).toStrictEqual(expectedValueType);
                         }
                         // @ts-ignore-end
                     });
                 });
+
+                if (testMetadata.arrayTypes) {
+                    const arrayTypes = testMetadata.arrayTypes;
+
+                    describe('Array types', () => {
+                        // A dedicated output dir keeps this generation out of the module cache
+                        // the other blocks populate, so native's initModels reflects it.
+                        const arrayOutDir = path.join(
+                            process.cwd(), 'src/tests/integration/output-models', `${format}-array-types`
+                        );
+                        let connection: Sequelize | undefined;
+                        let generatedModel = '';
+                        const warnMessages: string[] = [];
+
+                        beforeAll(async () => {
+                            connection = new Sequelize({ ...sequelizeOptions });
+                            await connection.authenticate();
+                            await initTestDatabase(testMetadata, connection);
+
+                            const config: IConfig = {
+                                connection: sequelizeOptions,
+                                metadata: {
+                                    ...testMetadata.schema && { schema: testMetadata.schema.name },
+                                },
+                                output: {
+                                    outDir: arrayOutDir,
+                                    clean: true,
+                                }
+                            };
+
+                            const warnSpy = jest.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => {
+                                warnMessages.push(args.map(arg => String(arg)).join(' '));
+                            });
+
+                            try {
+                                await buildModels(config);
+                            }
+                            finally {
+                                warnSpy.mockRestore();
+                            }
+
+                            generatedModel = await fs.readFile(
+                                path.join(arrayOutDir, `${arrayTypes.arrayTypesTable}.ts`), 'utf8'
+                            );
+
+                            await registerGeneratedModels(connection!, arrayOutDir, format);
+                        });
+
+                        afterAll(async () => {
+                            connection && await connection.close();
+                        });
+
+                        it('emits the array data type expression and the array TypeScript type', () => {
+                            for (const expected of arrayTypes.expected) {
+                                const typeExpression = format === 'decorators'
+                                    ? expected.decoratorType
+                                    : expected.nativeType;
+
+                                expect(generatedModel).toContain(typeExpression);
+                                expect(generatedModel).toContain(expected.tsType);
+                            }
+                        });
+
+                        it('does not warn about unknown data type mappings', () => {
+                            expect(warnMessages.some(message => message.includes('Unknown data type mapping')))
+                                .toBe(false);
+                        });
+
+                        it('round-trips array values through the database', async () => {
+                            const model = requireConnection(connection).model(arrayTypes.arrayTypesTable);
+
+                            const row: Record<string, unknown> = {};
+
+                            for (const expected of arrayTypes.expected) {
+                                row[expected.column] = expected.value;
+                            }
+
+                            const created = await model.create(row);
+                            expect(created).toBeDefined();
+
+                            const [stored] = await model.findAll({ order: [['id', 'DESC']], limit: 1 });
+                            const storedJson = stored.toJSON();
+
+                            for (const expected of arrayTypes.expected) {
+                                expect(Array.isArray(storedJson[expected.column])).toBe(true);
+                                expect(storedJson[expected.column]).toHaveLength(expected.value.length);
+                            }
+                        });
+                    });
+                }
+
+                if (testMetadata.jsonTypes) {
+                    const jsonTypes = testMetadata.jsonTypes;
+
+                    describe('JSON types', () => {
+                        // A dedicated output dir keeps this generation out of the module cache
+                        // the other blocks populate, so native's initModels reflects it.
+                        const jsonOutDir = path.join(
+                            process.cwd(), 'src/tests/integration/output-models', `${format}-json-types`
+                        );
+                        let connection: Sequelize | undefined;
+                        let generatedModel = '';
+                        let supportFile = '';
+
+                        beforeAll(async () => {
+                            connection = new Sequelize({ ...sequelizeOptions });
+                            await connection.authenticate();
+                            await initTestDatabase(testMetadata, connection);
+
+                            const config: IConfig = {
+                                connection: sequelizeOptions,
+                                metadata: {
+                                    ...testMetadata.schema && { schema: testMetadata.schema.name },
+                                },
+                                output: {
+                                    outDir: jsonOutDir,
+                                    clean: true,
+                                }
+                            };
+
+                            await buildModels(config);
+
+                            generatedModel = await fs.readFile(
+                                path.join(jsonOutDir, `${jsonTypes.jsonTypesTable}.ts`), 'utf8'
+                            );
+                            supportFile = await fs.readFile(path.join(jsonOutDir, 'jsonType.ts'), 'utf8');
+
+                            await registerGeneratedModels(connection!, jsonOutDir, format);
+                        });
+
+                        afterAll(async () => {
+                            connection && await connection.close();
+                        });
+
+                        it('emits the shared Json support file with the recursive union', () => {
+                            expect(supportFile).toContain('export type Json =');
+                            expect(supportFile).toContain('Json[]');
+                            expect(supportFile).toContain('[key: string]: Json');
+                        });
+
+                        it('type-only imports Json into the model file', () => {
+                            expect(generatedModel).toContain('import type { Json } from "./jsonType"');
+                        });
+
+                        it('emits the data type expression and TypeScript type per column', () => {
+                            for (const expected of jsonTypes.expected) {
+                                const typeExpression = format === 'decorators'
+                                    ? expected.decoratorType
+                                    : expected.nativeType;
+
+                                expect(generatedModel).toContain(typeExpression);
+
+                                const typePattern = new RegExp(`${expected.column}[?!:][^\\n]*\\b${expected.tsType}\\b`);
+                                expect(generatedModel).toMatch(typePattern);
+
+                                // A plain (non-JSON) column must not be typed as Json.
+                                if (expected.tsType !== 'Json') {
+                                    expect(generatedModel).not.toMatch(new RegExp(`${expected.column}[?!:][^\\n]*Json`));
+                                }
+                            }
+                        });
+
+                        it('round-trips an object, an array and a top-level scalar', async () => {
+                            const jsonColumn = jsonTypes.expected.find(expected => expected.tsType === 'Json');
+                            expect(jsonColumn).toBeDefined();
+
+                            const model = requireConnection(connection).model(jsonTypes.jsonTypesTable);
+                            const column = jsonColumn!.column;
+                            const values: unknown[] = [
+                                jsonTypes.roundTripValues.object,
+                                jsonTypes.roundTripValues.array,
+                                jsonTypes.roundTripValues.scalar,
+                            ];
+
+                            for (const value of values) {
+                                const created = await model.create({ [column]: value });
+                                const id = created.get('id');
+
+                                const reloaded = await model.findByPk(id);
+                                expect(reloaded).not.toBeNull();
+                                expect(reloaded!.toJSON()[column]).toEqual(value);
+                            }
+                        });
+                    });
+                }
 
                 describe('Associations', () => {
                     let connection: Sequelize | undefined;
@@ -1314,6 +1496,57 @@ export class TestRunner {
                             finally {
                                 warnSpy.mockRestore();
                             }
+                        });
+                    });
+                }
+
+                if (testMetadata.columnComment) {
+                    const columnComment = testMetadata.columnComment;
+
+                    describe('Column comments', () => {
+                        // A dedicated output dir keeps this generation out of the module cache
+                        // the other blocks populate.
+                        const commentsOutDir = path.join(
+                            process.cwd(), 'src/tests/integration/output-models', `${format}-column-comments`
+                        );
+                        let connection: Sequelize | undefined;
+                        let generatedModel = '';
+
+                        beforeAll(async () => {
+                            connection = new Sequelize({ ...sequelizeOptions });
+                            await connection.authenticate();
+                            await initTestDatabase(testMetadata, connection);
+
+                            const config: IConfig = {
+                                connection: sequelizeOptions,
+                                metadata: {
+                                    ...testMetadata.schema && { schema: testMetadata.schema.name },
+                                },
+                                output: {
+                                    outDir: commentsOutDir,
+                                    clean: true,
+                                }
+                            };
+
+                            await buildModels(config);
+
+                            generatedModel = await fs.readFile(
+                                path.join(commentsOutDir, `${columnComment.table}.ts`), 'utf8'
+                            );
+                        });
+
+                        afterAll(async () => {
+                            connection && await connection.close();
+                        });
+
+                        it('emits the column comment as a JSDoc leading comment', () => {
+                            expect(generatedModel).toContain(`/** ${columnComment.comment} */`);
+
+                            // The JSDoc precedes the commented column's declaration.
+                            const jsDocPattern = new RegExp(
+                                `/\\*\\* ${columnComment.comment} \\*/[\\s\\S]*?\\b${columnComment.column}\\b`
+                            );
+                            expect(generatedModel).toMatch(jsDocPattern);
                         });
                     });
                 }

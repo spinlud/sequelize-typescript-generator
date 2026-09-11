@@ -44,6 +44,18 @@ export const DATA_TYPES_TABLE_CREATES = [
     `,
 ];
 
+export const JSON_TYPES_TABLE_NAME = 'json_types';
+export const JSON_TYPES_TABLE_DROP = `DROP TABLE IF EXISTS ${JSON_TYPES_TABLE_NAME} CASCADE`;
+export const JSON_TYPES_TABLE_CREATES = [
+    `
+        CREATE TABLE ${JSON_TYPES_TABLE_NAME}
+        (
+            id      INT    AUTO_INCREMENT    PRIMARY KEY,
+            f_json  JSON   NULL
+        )
+    `,
+];
+
 export const INDICES_TABLE_NAME = 'indices';
 export const INDICES_TABLE_DROP = `DROP TABLE IF EXISTS ${INDICES_TABLE_NAME} CASCADE`;
 export const INDICES_TABLE_CREATES = [
@@ -65,13 +77,14 @@ export const INDICES_TABLE_CREATES = [
 ];
 
 export const AUTHORS_TABLE_NAME = 'authors';
+export const AUTHORS_FULL_NAME_COMMENT = 'Full name of the author';
 export const AUTHORS_TABLE_DROP = `DROP TABLE IF EXISTS ${AUTHORS_TABLE_NAME} CASCADE`;
 export const AUTHORS_TABLE_CREATES = [
     `
         CREATE TABLE ${AUTHORS_TABLE_NAME}
         (
             author_id       INT             primary key,
-            full_name       VARCHAR(80)     not null
+            full_name       VARCHAR(80)     not null     COMMENT '${AUTHORS_FULL_NAME_COMMENT}'
         );
     `,
 ];

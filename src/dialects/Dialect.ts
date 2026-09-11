@@ -60,6 +60,7 @@ export interface IColumnMetadata {
     typeExt: string;
     dataType?: string; // Rendered decorators expression, e.g. DataType.DECIMAL(7,3)
     sequelizeType?: ISequelizeDataType; // Format-neutral Sequelize type (key + arguments)
+    isJson?: boolean; // Column reads back as a parsed JSON value; drives the shared Json TypeScript type
     primaryKey: boolean;
     foreignKey?: IColumnForeignKeyMetadata;
     allowNull: boolean;

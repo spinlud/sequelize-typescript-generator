@@ -16,6 +16,7 @@ import {
     AUTHORS_TABLE_DROP,
     AUTHORS_TABLE_CREATES,
     AUTHORS_TABLE_INSERTS,
+    AUTHORS_FULL_NAME_COMMENT,
     BOOKS_TABLE_NAME,
     BOOKS_TABLE_DROP,
     BOOKS_TABLE_CREATES,
@@ -59,6 +60,12 @@ import {
     SOFT_DELETES_TABLE_NAME,
     SOFT_DELETES_TABLE_DROP,
     SOFT_DELETES_TABLE_CREATES,
+    ARRAY_TYPES_TABLE_NAME,
+    ARRAY_TYPES_TABLE_DROP,
+    ARRAY_TYPES_TABLE_CREATES,
+    JSON_TYPES_TABLE_NAME,
+    JSON_TYPES_TABLE_DROP,
+    JSON_TYPES_TABLE_CREATES,
 } from "./queries.js";
 
 interface INativeType {
@@ -156,6 +163,16 @@ const testMetadata: ITestMetadata = {
             createQueries: SOFT_DELETES_TABLE_CREATES,
             dropQuery: SOFT_DELETES_TABLE_DROP,
         },
+        {
+            name: ARRAY_TYPES_TABLE_NAME,
+            createQueries: ARRAY_TYPES_TABLE_CREATES,
+            dropQuery: ARRAY_TYPES_TABLE_DROP,
+        },
+        {
+            name: JSON_TYPES_TABLE_NAME,
+            createQueries: JSON_TYPES_TABLE_CREATES,
+            dropQuery: JSON_TYPES_TABLE_DROP,
+        },
     ],
     filterTables: [ DATA_TYPES_TABLE_NAME ],
     filterSkipTables: [ INDICES_TABLE_NAME ],
@@ -215,6 +232,11 @@ const testMetadata: ITestMetadata = {
         [ORDER_LINES_TABLE_NAME]: [],
     },
     paranoidTable: SOFT_DELETES_TABLE_NAME,
+    columnComment: {
+        table: AUTHORS_TABLE_NAME,
+        column: 'full_name',
+        comment: AUTHORS_FULL_NAME_COMMENT,
+    },
     dataTypes: {
         dataTypesTable: DATA_TYPES_TABLE_NAME,
         async getColumnNativeDataType(
@@ -274,6 +296,89 @@ const testMetadata: ITestMetadata = {
             ['json', JSON.parse('{"key1": "value1", "key2": "value2"}')],
             ['jsonb', JSON.parse('{"key1": "value1", "key2": "value2"}')],
         ],
+    },
+    arrayTypes: {
+        arrayTypesTable: ARRAY_TYPES_TABLE_NAME,
+        expected: [
+            {
+                column: 'f_int_array',
+                nativeType: 'DataTypes.ARRAY(DataTypes.INTEGER)',
+                decoratorType: 'DataType.ARRAY(DataType.INTEGER)',
+                tsType: 'number[]',
+                value: [1, 2, 3],
+            },
+            {
+                column: 'f_bigint_array',
+                nativeType: 'DataTypes.ARRAY(DataTypes.BIGINT)',
+                decoratorType: 'DataType.ARRAY(DataType.BIGINT)',
+                tsType: 'string[]',
+                value: ['100000000000000000', '2'],
+            },
+            {
+                column: 'f_text_array',
+                nativeType: 'DataTypes.ARRAY(DataTypes.STRING)',
+                decoratorType: 'DataType.ARRAY(DataType.STRING)',
+                tsType: 'string[]',
+                value: ['alpha', 'beta'],
+            },
+            {
+                column: 'f_varchar_array',
+                nativeType: 'DataTypes.ARRAY(DataTypes.STRING)',
+                decoratorType: 'DataType.ARRAY(DataType.STRING)',
+                tsType: 'string[]',
+                value: ['x', 'y'],
+            },
+            {
+                column: 'f_boolean_array',
+                nativeType: 'DataTypes.ARRAY(DataTypes.BOOLEAN)',
+                decoratorType: 'DataType.ARRAY(DataType.BOOLEAN)',
+                tsType: 'boolean[]',
+                value: [true, false],
+            },
+            {
+                column: 'f_numeric_array',
+                nativeType: 'DataTypes.ARRAY(DataTypes.DECIMAL)',
+                decoratorType: 'DataType.ARRAY(DataType.DECIMAL)',
+                tsType: 'string[]',
+                value: ['1.5', '2.25'],
+            },
+            {
+                column: 'f_timestamp_array',
+                nativeType: 'DataTypes.ARRAY(DataTypes.DATE',
+                decoratorType: 'DataType.ARRAY(DataType.DATE',
+                tsType: 'Date[]',
+                value: [new Date()],
+            },
+            {
+                column: 'f_uuid_array',
+                nativeType: 'DataTypes.ARRAY(DataTypes.UUID)',
+                decoratorType: 'DataType.ARRAY(DataType.UUID)',
+                tsType: 'string[]',
+                value: ['a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'],
+            },
+        ],
+    },
+    jsonTypes: {
+        jsonTypesTable: JSON_TYPES_TABLE_NAME,
+        expected: [
+            {
+                column: 'f_json',
+                nativeType: 'DataTypes.JSON',
+                decoratorType: 'DataType.JSON',
+                tsType: 'Json',
+            },
+            {
+                column: 'f_jsonb',
+                nativeType: 'DataTypes.JSONB',
+                decoratorType: 'DataType.JSONB',
+                tsType: 'Json',
+            },
+        ],
+        roundTripValues: {
+            object: { key1: 'value1', nested: { flag: true, count: 2 } },
+            array: [1, 'two', { three: 3 }],
+            scalar: 42,
+        },
     },
     associations: {
         leftTableOneToOne: PERSON_TABLE_NAME,

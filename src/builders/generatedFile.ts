@@ -4,6 +4,12 @@ import type { Dialect, ITablesMetadata } from '../dialects/Dialect.js';
 import { indexTablesByModelName } from './nativeAttributes.js';
 import { renderNativeModelFile } from './NativeModelRenderer.js';
 import { renderInitModelsFile, renderNativeIndexFile } from './nativeWiring.js';
+import {
+    JSON_SUPPORT_FILE_NAME,
+    renderJsonSupportFile,
+    tablesHaveJsonColumn,
+    warnJsonSupportFileNameCollision,
+} from './jsonSupport.js';
 
 /**
  * A rendered source file to write to the output directory.
@@ -27,6 +33,11 @@ export const renderNativeFiles = (tablesMetadata: ITablesMetadata, dialect: Dial
         fileName: `${table.name}.ts`,
         content: renderNativeModelFile(table, dialect, tablesByModel),
     }));
+
+    if (tablesHaveJsonColumn(tablesMetadata)) {
+        warnJsonSupportFileNameCollision(tablesMetadata);
+        files.push({ fileName: JSON_SUPPORT_FILE_NAME, content: renderJsonSupportFile() });
+    }
 
     files.push({ fileName: 'initModels.ts', content: renderInitModelsFile(tablesMetadata, tablesByModel) });
     files.push({ fileName: 'index.ts', content: renderNativeIndexFile(tablesMetadata) });

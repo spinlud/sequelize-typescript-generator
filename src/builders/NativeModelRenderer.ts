@@ -4,6 +4,7 @@ import type { IColumnMetadata, ITableMetadata } from '../dialects/Dialect.js';
 import type { IAssociationMetadata } from '../dialects/AssociationsParser.js';
 import { DATA_TYPE_NAMESPACES } from '../dialects/dataTypes.js';
 import {
+    attachColumnCommentJsDoc,
     buildDataTypeExpression,
     buildObjectLiteralExpression,
     createGenericTypeReference,
@@ -35,6 +36,7 @@ import {
     resolveAssociationForeignKey,
 } from './nativeAssociations.js';
 import { resolveAssociationPropertyName } from './associationNaming.js';
+import { buildJsonTypeImport, JSON_TYPE_NAME, tableHasJsonColumn } from './jsonSupport.js';
 
 const NATIVE_NAMESPACE = DATA_TYPE_NAMESPACES.native;
 
@@ -90,6 +92,10 @@ const buildDeclareField = (
 const buildBaseTypeNode = (column: IColumnMetadata, table: ITableMetadata, dialect: Dialect): ts.TypeNode => {
     if (isParanoidColumn(column, table)) {
         return createTypeNodeFromName('Date');
+    }
+
+    if (column.isJson) {
+        return createGenericTypeReference(JSON_TYPE_NAME, []);
     }
 
     const { sequelizeType } = column;
@@ -166,7 +172,10 @@ export const buildAttributeDeclaration = (
     dialect: Dialect,
     tablesByModel: ReadonlyMap<string, ITableMetadata>
 ): ts.PropertyDeclaration =>
-    buildDeclareField(column.name, buildAttributeTypeNode(column, table, dialect, tablesByModel));
+    attachColumnCommentJsDoc(
+        buildDeclareField(column.name, buildAttributeTypeNode(column, table, dialect, tablesByModel)),
+        column.comment
+    );
 
 /**
  * Build the `declare createdAt`/`declare updatedAt` members of a model, emitted
@@ -544,6 +553,11 @@ export const renderNativeModelFile = (
 
     for (const modelName of collectModelTypeImports(table, tablesByModel)) {
         code += nodeToString(generateTypeOnlyImport([modelName], `./${modelName}`));
+        code += '\n';
+    }
+
+    if (tableHasJsonColumn(table)) {
+        code += nodeToString(buildJsonTypeImport());
         code += '\n';
     }
 

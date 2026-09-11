@@ -41,6 +41,36 @@ export const nodeToString = (node: ts.Node): string => {
 };
 
 /**
+ * Neutralise the block-comment terminator inside text so it cannot prematurely
+ * close a JSDoc block, by inserting a space between `*` and `/`.
+ * @param {string} comment
+ * @returns {string}
+ */
+export const sanitiseJsDocComment = (comment: string): string => comment.replace(/\*\//g, '* /');
+
+/**
+ * Attach a database column comment as a `/** … *\/` JSDoc leading comment on a
+ * declaration. Empty or whitespace-only comments are ignored; an embedded
+ * comment terminator is neutralised first. Returns the node unchanged when there
+ * is nothing to attach.
+ * @param {T} node
+ * @param {string | undefined} comment
+ * @returns {T}
+ */
+export const attachColumnCommentJsDoc = <T extends ts.Node>(node: T, comment: string | undefined): T => {
+    if (!comment || comment.trim().length === 0) {
+        return node;
+    }
+
+    return ts.addSyntheticLeadingComment(
+        node,
+        ts.SyntaxKind.MultiLineCommentTrivia,
+        `* ${sanitiseJsDocComment(comment.trim())} `,
+        true
+    );
+};
+
+/**
  * Generate named imports code (e.g. `import { Something, Else } from "module"`)
  * @param {string[]} importsSpecifier
  * @param {string} moduleSpecifier
@@ -183,12 +213,17 @@ export const buildObjectLiteralExpression = (
     );
 
 /**
- * Build a type node from a JS type name: number/string/boolean/object keywords,
- * Date and Uint8Array references, and the unknown keyword for anything else.
+ * Build a type node from a JS type name: number/string/boolean/object/any keywords,
+ * Date and Uint8Array references, and the unknown keyword for anything else. A name
+ * with a trailing `[]` (e.g. `number[]`) yields an array type node of the element.
  * @param {string} jsType
  * @returns {ts.TypeNode}
  */
 export const createTypeNodeFromName = (jsType: string): ts.TypeNode => {
+    if (jsType.endsWith('[]')) {
+        return ts.factory.createArrayTypeNode(createTypeNodeFromName(jsType.slice(0, -2)));
+    }
+
     switch (jsType) {
         case 'number':
             return ts.factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword);
@@ -198,6 +233,8 @@ export const createTypeNodeFromName = (jsType: string): ts.TypeNode => {
             return ts.factory.createKeywordTypeNode(ts.SyntaxKind.BooleanKeyword);
         case 'object':
             return ts.factory.createKeywordTypeNode(ts.SyntaxKind.ObjectKeyword);
+        case 'any':
+            return ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword);
         case 'Date':
             return ts.factory.createTypeReferenceNode('Date', undefined);
         case 'Uint8Array':
@@ -263,11 +300,17 @@ export const buildDataTypeExpression = (
     return ts.factory.createCallExpression(
         memberAccess,
         undefined,
-        dataType.args.map(arg =>
-            typeof arg === 'number'
-                ? createNumericLiteralExpression(arg)
-                : ts.factory.createStringLiteral(arg)
-        )
+        dataType.args.map(arg => {
+            if (typeof arg === 'number') {
+                return createNumericLiteralExpression(arg);
+            }
+
+            if (typeof arg === 'string') {
+                return ts.factory.createStringLiteral(arg);
+            }
+
+            return buildDataTypeExpression(arg, namespace);
+        })
     );
 };
 

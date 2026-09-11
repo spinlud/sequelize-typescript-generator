@@ -84,6 +84,7 @@ export const INDICES_TABLE_CREATES = [
 ];
 
 export const AUTHORS_TABLE_NAME = 'authors';
+export const AUTHORS_FULL_NAME_COMMENT = 'Full name of the author';
 export const AUTHORS_TABLE_DROP = `DROP TABLE IF EXISTS ${AUTHORS_TABLE_NAME} CASCADE`;
 export const AUTHORS_TABLE_CREATES = [
     `
@@ -93,6 +94,7 @@ export const AUTHORS_TABLE_CREATES = [
             full_name       VARCHAR(80)     not null
         );
     `,
+    `COMMENT ON COLUMN ${SCHEMA_NAME}.${AUTHORS_TABLE_NAME}.full_name IS '${AUTHORS_FULL_NAME_COMMENT}';`,
 ];
 export const AUTHORS_TABLE_INSERTS = [
     `INSERT INTO ${SCHEMA_NAME}.${AUTHORS_TABLE_NAME} VALUES (1, 'Isasc Asimov');`,
@@ -294,6 +296,38 @@ export const SOFT_DELETES_TABLE_CREATES = [
             "createdAt"     TIMESTAMP,
             "updatedAt"     TIMESTAMP,
             deleted_at      TIMESTAMP
+        );
+    `,
+];
+
+export const JSON_TYPES_TABLE_NAME = 'json_types';
+export const JSON_TYPES_TABLE_DROP = `DROP TABLE IF EXISTS ${SCHEMA_NAME}.${JSON_TYPES_TABLE_NAME} CASCADE`;
+export const JSON_TYPES_TABLE_CREATES = [
+    `
+        CREATE TABLE ${SCHEMA_NAME}.${JSON_TYPES_TABLE_NAME}
+        (
+            id      serial      not null    constraint json_types_pk   primary key,
+            f_json  json,
+            f_jsonb jsonb
+        )
+    `,
+];
+
+export const ARRAY_TYPES_TABLE_NAME = 'array_types';
+export const ARRAY_TYPES_TABLE_DROP = `DROP TABLE IF EXISTS ${SCHEMA_NAME}.${ARRAY_TYPES_TABLE_NAME} CASCADE`;
+export const ARRAY_TYPES_TABLE_CREATES = [
+    `
+        CREATE TABLE ${SCHEMA_NAME}.${ARRAY_TYPES_TABLE_NAME}
+        (
+            id                serial      not null    constraint array_types_pk   primary key,
+            f_int_array       integer[],
+            f_bigint_array    bigint[],
+            f_text_array      text[],
+            f_varchar_array   varchar[],
+            f_boolean_array   boolean[],
+            f_numeric_array   numeric[],
+            f_timestamp_array timestamp[],
+            f_uuid_array      uuid[]
         );
     `,
 ];

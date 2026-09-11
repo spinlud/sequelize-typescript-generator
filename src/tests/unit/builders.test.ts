@@ -335,6 +335,16 @@ describe('Builder utils', () => {
         it('maps an unknown JS type to the unknown keyword', () => {
             expect(nodeToString(createTypeNodeFromName('whatever'))).toBe('unknown');
         });
+
+        it('maps the any keyword', () => {
+            expect(nodeToString(createTypeNodeFromName('any'))).toBe('any');
+        });
+
+        it('maps a trailing [] to an array type node', () => {
+            expect(nodeToString(createTypeNodeFromName('number[]'))).toBe('number[]');
+            expect(nodeToString(createTypeNodeFromName('string[]'))).toBe('string[]');
+            expect(nodeToString(createTypeNodeFromName('unknown[]'))).toBe('unknown[]');
+        });
     });
 
     describe('createNullableTypeNode', () => {
@@ -387,6 +397,24 @@ describe('Builder utils', () => {
             const rendered = renderDataTypeExpression(dataType, DATA_TYPE_NAMESPACES.native);
 
             expect(printed.replace(/, /g, ',')).toBe(rendered);
+        });
+
+        it('renders a nested data type argument in the native namespace', () => {
+            const dataType: ISequelizeDataType = {
+                key: 'ARRAY',
+                args: [{ key: 'INTEGER', args: [] }],
+            };
+            expect(nodeToString(buildDataTypeExpression(dataType, DATA_TYPE_NAMESPACES.native)))
+                .toBe('DataTypes.ARRAY(DataTypes.INTEGER)');
+        });
+
+        it('renders a nested data type argument in the decorators namespace', () => {
+            const dataType: ISequelizeDataType = {
+                key: 'ARRAY',
+                args: [{ key: 'TEXT', args: [] }],
+            };
+            expect(nodeToString(buildDataTypeExpression(dataType, DATA_TYPE_NAMESPACES.decorators)))
+                .toBe('DataType.ARRAY(DataType.TEXT)');
         });
     });
 
