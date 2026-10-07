@@ -76,7 +76,7 @@
     "pluralize": "^8.0.0",
     "sequelize": "^6.37.5",
     "typescript": ">=5.7 <6.1",
-    "yargs": "^17.7.2"
+    "yargs": "^18.2.0"
   },
   "peerDependencies": {
     "typescript": ">=5.7 <6.1",
