@@ -329,6 +329,21 @@ export const generateIndexExport = (modelFileName: string): ts.ExportDeclaration
 };
 
 /**
+ * Generate the type-only re-export of a shared type file for the index file,
+ * e.g. `export type * from "./enums";`
+ * @param {string} fileBaseName
+ * @returns {ts.ExportDeclaration}
+ */
+export const generateTypeOnlyIndexExport = (fileBaseName: string): ts.ExportDeclaration => {
+    return ts.factory.createExportDeclaration(
+        undefined,
+        true,
+        undefined,
+        ts.factory.createStringLiteral(`./${fileBaseName}`)
+    );
+};
+
+/**
  * Generate object literal decorator
  * @param {string} decoratorIdentifier
  * @param {[key: string]: any} props

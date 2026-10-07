@@ -846,6 +846,12 @@ export class TestRunner {
                             expect(generatedModel).toContain('import type { Json } from "./jsonType"');
                         });
 
+                        it('type-only re-exports the Json support file from the index barrel', async () => {
+                            const barrel = await fs.readFile(path.join(jsonOutDir, 'index.ts'), 'utf8');
+
+                            expect(barrel).toContain('export type * from "./jsonType";');
+                        });
+
                         it('emits the data type expression and TypeScript type per column', () => {
                             for (const expected of jsonTypes.expected) {
                                 const typeExpression = format === 'decorators'
@@ -1128,6 +1134,12 @@ export class TestRunner {
 
                         it('type-only imports the enum shared types each model uses', async () => {
                             await expectEnumImports(userDefinedTypesOutDir, userDefinedTypes.enumImports);
+                        });
+
+                        it('type-only re-exports enums.ts from the index barrel', async () => {
+                            const barrel = await fs.readFile(path.join(userDefinedTypesOutDir, 'index.ts'), 'utf8');
+
+                            expect(barrel).toContain('export type * from "./enums";');
                         });
 
                         it('emits the TypeScript type and data type expression per column', () => {

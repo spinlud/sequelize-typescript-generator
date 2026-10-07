@@ -155,6 +155,25 @@ export * from "./authors_books";
 export * from "./initModels";`);
     });
 
+    it('type-only re-exports the shared type files the models use, before initModels', () => {
+        const plans = buildTable('plans', [
+            buildColumn({ name: 'id', type: 'integer', sequelizeType: dataType('INTEGER'), primaryKey: true, autoIncrement: true }),
+            buildColumn({
+                name: 'tier',
+                type: 'plan_tier',
+                sequelizeType: dataType('ENUM', 'free', 'pro'),
+                enumType: { schema: 'public', name: 'plan_tier', labels: ['free', 'pro'], isArray: false, sharedTypeName: 'PlanTier' },
+            }),
+            buildColumn({ name: 'settings', type: 'json', sequelizeType: dataType('JSON'), isJson: true }),
+        ]);
+
+        expect(renderNativeIndexFile({ plans })).toBe(
+`export * from "./plans";
+export type * from "./jsonType";
+export type * from "./enums";
+export * from "./initModels";`);
+    });
+
 });
 
 describe('renderNativeFiles', () => {
