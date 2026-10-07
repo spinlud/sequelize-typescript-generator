@@ -66,6 +66,9 @@ import {
     JSON_TYPES_TABLE_NAME,
     JSON_TYPES_TABLE_DROP,
     JSON_TYPES_TABLE_CREATES,
+    UDT_ACCOUNTS_TABLE_NAME,
+    UDT_INVOICES_TABLE_NAME,
+    USER_DEFINED_TYPES_SETUP_QUERIES,
 } from "./queries.js";
 
 interface INativeType {
@@ -408,6 +411,96 @@ const testMetadata: ITestMetadata = {
         ],
         row: { f_varchar: 'override', f_text: 'UPPER', f_integer: 42 },
         unmatchedEntry: 'types["no_such_type"]',
+    },
+    userDefinedTypes: {
+        setupQueries: USER_DEFINED_TYPES_SETUP_QUERIES,
+        tables: [UDT_ACCOUNTS_TABLE_NAME, UDT_INVOICES_TABLE_NAME],
+        enumDeclarations: [
+            'export type CurrencyCode = "EUR" | "USD";',
+            'export type PlanTier = "free" | "pro" | "enterprise";',
+            // The enum of another schema sharing a name is prefixed with its schema
+            'export type UdtBillingPlanTier = "monthly" | "yearly";',
+        ],
+        enumImports: {
+            [UDT_ACCOUNTS_TABLE_NAME]: ['CurrencyCode', 'PlanTier', 'UdtBillingPlanTier'],
+            [UDT_INVOICES_TABLE_NAME]: ['PlanTier'],
+        },
+        expected: [
+            {
+                table: UDT_ACCOUNTS_TABLE_NAME,
+                column: 'plan',
+                tsType: 'PlanTier',
+                nativeType: 'DataTypes.ENUM("free", "pro", "enterprise")',
+                decoratorType: "DataType.ENUM('free','pro','enterprise')",
+            },
+            {
+                table: UDT_ACCOUNTS_TABLE_NAME,
+                column: 'past_plans',
+                tsType: 'PlanTier[]',
+                nativeType: 'DataTypes.ARRAY(DataTypes.ENUM("free", "pro", "enterprise"))',
+                decoratorType: "DataType.ARRAY(DataType.ENUM('free','pro','enterprise'))",
+            },
+            {
+                table: UDT_ACCOUNTS_TABLE_NAME,
+                column: 'billing_plan',
+                tsType: 'UdtBillingPlanTier',
+                nativeType: 'DataTypes.ENUM("monthly", "yearly")',
+                decoratorType: "DataType.ENUM('monthly','yearly')",
+            },
+            {
+                table: UDT_ACCOUNTS_TABLE_NAME,
+                column: 'currency',
+                tsType: 'CurrencyCode',
+                nativeType: 'DataTypes.ENUM("EUR", "USD")',
+                decoratorType: "DataType.ENUM('EUR','USD')",
+            },
+            {
+                // A domain resolves to its underlying type
+                table: UDT_ACCOUNTS_TABLE_NAME,
+                column: 'amount',
+                tsType: 'number',
+                nativeType: 'DataTypes.INTEGER',
+                decoratorType: 'DataType.INTEGER',
+            },
+            {
+                table: UDT_ACCOUNTS_TABLE_NAME,
+                column: 'email',
+                tsType: 'string',
+                nativeType: 'DataTypes.CITEXT',
+                decoratorType: 'DataType.CITEXT',
+            },
+            {
+                table: UDT_INVOICES_TABLE_NAME,
+                column: 'plan',
+                tsType: 'PlanTier',
+                nativeType: 'DataTypes.ENUM("free", "pro", "enterprise")',
+                decoratorType: "DataType.ENUM('free','pro','enterprise')",
+            },
+        ],
+        row: {
+            plan: 'pro',
+            past_plans: ['free', 'enterprise'],
+            billing_plan: 'yearly',
+            currency: 'EUR',
+            amount: 5,
+            email: 'Alice@Example.com',
+        },
+        enumRemovingOverride: {
+            overrides: {
+                types: {
+                    [`${SCHEMA_NAME}.plan_tier`]: { tsType: 'string' },
+                    [`${SCHEMA_NAME}._plan_tier`]: { tsType: 'string[]' },
+                },
+            },
+            enumDeclarations: [
+                'export type CurrencyCode = "EUR" | "USD";',
+                'export type UdtBillingPlanTier = "monthly" | "yearly";',
+            ],
+            enumImports: {
+                [UDT_ACCOUNTS_TABLE_NAME]: ['CurrencyCode', 'UdtBillingPlanTier'],
+                [UDT_INVOICES_TABLE_NAME]: [],
+            },
+        },
     },
     associations: {
         leftTableOneToOne: PERSON_TABLE_NAME,

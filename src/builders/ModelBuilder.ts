@@ -35,6 +35,18 @@ import {
     tablesHaveJsonColumn,
     warnJsonSupportFileNameCollision,
 } from './jsonSupport.js';
+import {
+    assignSharedEnumTypeNames,
+    buildEnumColumnTypeNode,
+    buildEnumTypesImport,
+    ENUM_SUPPORT_FILE_NAME,
+    renderEnumSupportFile,
+    tablesHaveSharedEnumType,
+    warnEnumSupportFileNameCollision,
+} from './enumSupport.js';
+import type { IReservedIdentifiers } from './enumSupport.js';
+import { indexTablesByModelName } from './nativeAttributes.js';
+import { collectSequelizeImports } from './nativeAssociations.js';
 import { UNMAPPED_TS_TYPE_BY_FORMAT, warnUnmappedTypes } from './unmappedTypes.js';
 import { loadTypeOverrides } from './typeOverridesParser.js';
 import { applyTypeOverrides, warnUnmatchedTypeOverrides } from './typeOverrides.js';
@@ -44,9 +56,98 @@ export { resolveAssociationPropertyName } from './associationNaming.js';
 const foreignKeyDecorator = 'ForeignKey';
 
 /**
+ * Names every decorators model file imports from `sequelize-typescript`.
+ */
+const DECORATORS_BASE_IMPORTS = [
+    'Model',
+    'Table',
+    'Column',
+    'DataType',
+    'Index',
+    'Sequelize',
+    foreignKeyDecorator,
+] as const;
+
+/**
+ * Association decorators a decorators model file may import from `sequelize-typescript`.
+ */
+const ASSOCIATION_DECORATORS = ['BelongsTo', 'BelongsToMany', 'HasMany', 'HasOne'] as const;
+
+/**
+ * Global type names a generated model references.
+ */
+const REFERENCED_GLOBAL_TYPE_NAMES = ['Date'] as const;
+
+/**
+ * Leftmost identifier of an entity name, e.g. `ns` for `ns.Inner.Type`.
+ * @param {ts.EntityName} name
+ * @returns {ts.Identifier}
+ */
+const leftmostIdentifier = (name: ts.EntityName): ts.Identifier =>
+    ts.isIdentifier(name) ? name : leftmostIdentifier(name.left);
+
+/**
+ * Collect the identifiers a type node references by name: the leftmost
+ * identifier of every type reference and type query.
+ * @param {ts.Node} node
+ * @param {Set<string>} identifiers
+ * @returns {void}
+ */
+const collectReferencedIdentifiers = (node: ts.Node, identifiers: Set<string>): void => {
+    if (ts.isTypeReferenceNode(node)) {
+        identifiers.add(leftmostIdentifier(node.typeName).text);
+    }
+    else if (ts.isTypeQueryNode(node)) {
+        identifiers.add(leftmostIdentifier(node.exprName).text);
+    }
+
+    ts.forEachChild(node, child => collectReferencedIdentifiers(child, identifiers));
+};
+
+/**
+ * Collect the identifiers the enum shared type names must not take in either
+ * format: the generated model names, and every other name a model file declares
+ * (decorators attributes interfaces), imports (`sequelize`/`sequelize-typescript`
+ * names, the `Json` shared type) or references (global types, dialect type
+ * names, type override TypeScript types).
+ * @param {ITablesMetadata} tablesMetadata
+ * @param {Dialect} dialect
+ * @returns {IReservedIdentifiers}
+ */
+const collectReservedIdentifiers = (tablesMetadata: ITablesMetadata, dialect: Dialect): IReservedIdentifiers => {
+    const tables = Object.values(tablesMetadata);
+    const tablesByModel = indexTablesByModelName(tablesMetadata);
+    const otherIdentifiers = new Set<string>([
+        ...DECORATORS_BASE_IMPORTS,
+        ...ASSOCIATION_DECORATORS,
+        ...REFERENCED_GLOBAL_TYPE_NAMES,
+        JSON_TYPE_NAME,
+    ]);
+
+    for (const table of tables) {
+        otherIdentifiers.add(`${table.name}Attributes`);
+        collectSequelizeImports(table, tablesByModel).forEach(name => otherIdentifiers.add(name));
+
+        for (const column of Object.values(table.columns)) {
+            const jsType = dialect.mapDbTypeToJs(column.type);
+
+            if (jsType) {
+                otherIdentifiers.add(jsType.replace(/(\[\])+$/, ''));
+            }
+
+            if (column.typeOverride?.tsType) {
+                collectReferencedIdentifiers(column.typeOverride.tsType, otherIdentifiers);
+            }
+        }
+    }
+
+    return { modelNames: new Set(tables.map(table => table.name)), otherIdentifiers };
+};
+
+/**
  * Build the TypeScript type node of a column: a type override's TypeScript type,
- * the shared `Json` type for a JSON column, otherwise the dialect JS mapping, or
- * `any` for an unmapped type.
+ * the shared `Json` type for a JSON column, the enum shared type for a database
+ * enum column, otherwise the dialect JS mapping, or `any` for an unmapped type.
  * @param {IColumnMetadata} col
  * @param {Dialect} dialect
  * @returns {ts.TypeNode}
@@ -58,8 +159,12 @@ const buildColumnTypeNode = (col: IColumnMetadata, dialect: Dialect): ts.TypeNod
         return overriddenTsType;
     }
 
-    return col.isJson
-        ? createGenericTypeReference(JSON_TYPE_NAME, [])
+    if (col.isJson) {
+        return createGenericTypeReference(JSON_TYPE_NAME, []);
+    }
+
+    return col.enumType
+        ? buildEnumColumnTypeNode(col.enumType)
         : createTypeNodeFromName(dialect.mapDbTypeToJs(col.type) ?? UNMAPPED_TS_TYPE_BY_FORMAT.decorators);
 };
 
@@ -243,13 +348,7 @@ export class ModelBuilder extends Builder {
         // Named imports from sequelize-typescript
         generatedCode += nodeToString(generateNamedImports(
             [
-                'Model',
-                'Table',
-                'Column',
-                'DataType',
-                'Index',
-                'Sequelize',
-                foreignKeyDecorator,
+                ...DECORATORS_BASE_IMPORTS,
                 ...new Set(tableMetadata.associations?.map(a => a.associationName)),
             ],
             'sequelize-typescript'
@@ -286,6 +385,14 @@ export class ModelBuilder extends Builder {
         // Type-only import of the shared Json type for JSON/JSONB columns.
         if (tableHasJsonColumn(tableMetadata)) {
             generatedCode += nodeToString(buildJsonTypeImport());
+            generatedCode += '\n';
+        }
+
+        // Type-only import of the enum shared types the model uses.
+        const enumTypesImport = buildEnumTypesImport(tableMetadata);
+
+        if (enumTypesImport) {
+            generatedCode += nodeToString(enumTypesImport);
             generatedCode += '\n';
         }
 
@@ -393,7 +500,8 @@ export class ModelBuilder extends Builder {
     }
 
     /**
-     * Render the decorators output as one file per table plus the index barrel.
+     * Render the decorators output as one file per table, the shared type files the
+ * models use, and the index barrel.
      * @param {ITablesMetadata} tablesMetadata
      * @param {Dialect} dialect
      * @param {boolean | undefined} strict
@@ -412,6 +520,11 @@ export class ModelBuilder extends Builder {
         if (tablesHaveJsonColumn(tablesMetadata)) {
             warnJsonSupportFileNameCollision(tablesMetadata);
             files.push({ fileName: JSON_SUPPORT_FILE_NAME, content: renderJsonSupportFile() });
+        }
+
+        if (tablesHaveSharedEnumType(tablesMetadata)) {
+            warnEnumSupportFileNameCollision(tablesMetadata);
+            files.push({ fileName: ENUM_SUPPORT_FILE_NAME, content: renderEnumSupportFile(tablesMetadata) });
         }
 
         files.push({ fileName: 'index.ts', content: ModelBuilder.buildIndexExports(tablesMetadata) });
@@ -450,6 +563,11 @@ export class ModelBuilder extends Builder {
             tablesMetadata = application.tablesMetadata;
             warnUnmatchedTypeOverrides(application.unmatchedEntries);
         }
+
+        tablesMetadata = assignSharedEnumTypeNames(
+            tablesMetadata,
+            collectReservedIdentifiers(tablesMetadata, this.dialect)
+        );
 
         warnUnmappedTypes(tablesMetadata, this.dialect, format);
 

@@ -10,6 +10,12 @@ import {
     tablesHaveJsonColumn,
     warnJsonSupportFileNameCollision,
 } from './jsonSupport.js';
+import {
+    ENUM_SUPPORT_FILE_NAME,
+    renderEnumSupportFile,
+    tablesHaveSharedEnumType,
+    warnEnumSupportFileNameCollision,
+} from './enumSupport.js';
 
 /**
  * A rendered source file to write to the output directory.
@@ -21,7 +27,8 @@ export interface IGeneratedFile {
 
 /**
  * Render the complete set of native output files: one model file per table, the
- * `initModels.ts` wiring file and the `index.ts` barrel, in table order.
+ * shared type files the models use, the `initModels.ts` wiring file and the
+ * `index.ts` barrel, in table order.
  * @param {ITablesMetadata} tablesMetadata
  * @param {Dialect} dialect
  * @returns {IGeneratedFile[]}
@@ -37,6 +44,11 @@ export const renderNativeFiles = (tablesMetadata: ITablesMetadata, dialect: Dial
     if (tablesHaveJsonColumn(tablesMetadata)) {
         warnJsonSupportFileNameCollision(tablesMetadata);
         files.push({ fileName: JSON_SUPPORT_FILE_NAME, content: renderJsonSupportFile() });
+    }
+
+    if (tablesHaveSharedEnumType(tablesMetadata)) {
+        warnEnumSupportFileNameCollision(tablesMetadata);
+        files.push({ fileName: ENUM_SUPPORT_FILE_NAME, content: renderEnumSupportFile(tablesMetadata) });
     }
 
     files.push({ fileName: 'initModels.ts', content: renderInitModelsFile(tablesMetadata, tablesByModel) });

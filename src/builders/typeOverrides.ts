@@ -14,7 +14,9 @@ export interface ITypeOverridesApplication {
 /**
  * Collect the entries matching a column, most specific first: the
  * schema-qualified column key, the unqualified column key, the schema-qualified
- * type key, then the unqualified type key. Matching is case-insensitive.
+ * type key, then the unqualified type key. Matching is case-insensitive. The
+ * schema of a type key is the schema the enum type is defined in for a database
+ * enum column, and the table schema otherwise.
  * @param {ITableMetadata} table
  * @param {IColumnMetadata} column
  * @param {IParsedTypeOverrides} overrides
@@ -26,13 +28,14 @@ const findMatchingEntries = (
     overrides: IParsedTypeOverrides
 ): IParsedTypeOverride[] => {
     const schema = table.schema ? table.schema.toLowerCase() : undefined;
+    const typeSchema = column.enumType ? column.enumType.schema.toLowerCase() : schema;
     const columnKey = `${table.originName}.${column.originName}`.toLowerCase();
     const typeKey = column.type.toLowerCase();
 
     const candidates = [
         schema !== undefined ? overrides.columns.get(`${schema}.${columnKey}`) : undefined,
         overrides.columns.get(columnKey),
-        schema !== undefined ? overrides.types.get(`${schema}.${typeKey}`) : undefined,
+        typeSchema !== undefined ? overrides.types.get(`${typeSchema}.${typeKey}`) : undefined,
         overrides.types.get(typeKey),
     ];
 

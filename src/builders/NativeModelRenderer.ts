@@ -38,6 +38,7 @@ import {
 } from './nativeAssociations.js';
 import { resolveAssociationPropertyName } from './associationNaming.js';
 import { buildJsonTypeImport, JSON_TYPE_NAME, tableHasJsonColumn } from './jsonSupport.js';
+import { buildEnumColumnTypeNode, buildEnumTypesImport } from './enumSupport.js';
 
 const NATIVE_NAMESPACE = DATA_TYPE_NAMESPACES.native;
 
@@ -84,9 +85,10 @@ const buildDeclareField = (
 /**
  * Build the base TypeScript type node of a column, before nullability and brand
  * wrapping. A type override's TypeScript type wins; otherwise paranoid soft-delete
- * columns are always `Date`, JSON columns use the shared `Json` type, enum columns
- * become a string-literal union, and everything else maps through the dialect JS
- * mapping, or is `unknown` for an unmapped type.
+ * columns are always `Date`, JSON columns use the shared `Json` type, database
+ * enum columns use their enum shared type, other enum columns become a
+ * string-literal union, and everything else maps through the dialect JS mapping,
+ * or is `unknown` for an unmapped type.
  * @param {IColumnMetadata} column
  * @param {ITableMetadata} table
  * @param {Dialect} dialect
@@ -105,6 +107,10 @@ const buildBaseTypeNode = (column: IColumnMetadata, table: ITableMetadata, diale
 
     if (column.isJson) {
         return createGenericTypeReference(JSON_TYPE_NAME, []);
+    }
+
+    if (column.enumType) {
+        return buildEnumColumnTypeNode(column.enumType);
     }
 
     const { sequelizeType } = column;
@@ -551,7 +557,7 @@ export const buildModelClassDeclaration = (
 
 /**
  * Render one native model source file: the `sequelize` named import, the
- * cross-model `import type` declarations and the model class.
+ * cross-model and shared type `import type` declarations and the model class.
  * @param {ITableMetadata} table
  * @param {Dialect} dialect
  * @param {ReadonlyMap<string, ITableMetadata>} tablesByModel
@@ -572,6 +578,13 @@ export const renderNativeModelFile = (
 
     if (tableHasJsonColumn(table)) {
         code += nodeToString(buildJsonTypeImport());
+        code += '\n';
+    }
+
+    const enumTypesImport = buildEnumTypesImport(table);
+
+    if (enumTypesImport) {
+        code += nodeToString(enumTypesImport);
         code += '\n';
     }
 
