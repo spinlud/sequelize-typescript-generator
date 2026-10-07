@@ -112,8 +112,8 @@ Usage: stg -D <dialect> -d [database] -u [username] -x [password] -h [host] -p
 [clean] -g [logs] -F [format] --no-associations
 
 Options:
-  --help                      Show help                                [boolean]
-  --version                   Show version number                      [boolean]
+      --help                  Show help                                [boolean]
+      --version               Show version number                      [boolean]
   -h, --host                  Database IP/hostname                      [string]
   -p, --port                  Database port. Defaults:
                               - MySQL/MariaDB: 3306
@@ -138,9 +138,9 @@ Options:
                               - output-models                           [string]
   -c, --clean                 Clean output directory before running    [boolean]
   -m, --timestamps            Add default timestamps to tables         [boolean]
-  -P, --paranoid              Emit paranoid table options for tables
-                              with a deleted_at or deletedAt column.
-                              Requires --timestamps.                    [boolean]
+  -P, --paranoid              Emit paranoid table options for tables with a
+                              deleted_at or deletedAt column. Requires
+                              --timestamps.                            [boolean]
   -C, --case                  Transform tables and fields names
                               with one of the following cases:
                               - underscore
@@ -171,22 +171,21 @@ Options:
                                                                         [string]
   -f, --dialect-options-file  Dialect native options passed as json file path.
                                                                         [string]
-  -F, --format                Output format:
-                              - native: plain Sequelize classes with declare
-                                fields, Model.init and an initModels wiring
-                                file (default)
-                              - decorators: sequelize-typescript decorators
-                                (requires sequelize-typescript in the target
-                                project)
-                                              [string] [choices: "native",
-                                              "decorators"] [default: "native"]
   -R, --no-strict             Disable strict typescript class declaration
                               (decorators format only).                [boolean]
-  -V, --no-views              Disable view generation. Available for: MySQL and MariaDB.
-                                                                       [boolean]
-  --associations              Discover one-to-one and one-to-many associations
+  -F, --format                Output format:
+                              - native: plain Sequelize classes with declare
+                              fields, Model.init and an initModels wiring file
+                              (default)
+                              - decorators: sequelize-typescript decorators
+                              (requires sequelize-typescript in the target
+                              project)
+                  [string] [choices: "native", "decorators"] [default: "native"]
+  -V, --no-views              Disable views generation. Available for: MySQL and
+                              MariaDB.                                 [boolean]
+      --associations          Discover one-to-one and one-to-many associations
                               from foreign keys. Use --no-associations to
-                              disable.                   [boolean] [default: true]
+                              disable.                 [boolean] [default: true]
 ```
 
 Local usage example:
