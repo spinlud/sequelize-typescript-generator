@@ -164,15 +164,3 @@ export const caseTransformer = (
 
     return transformed;
 };
-
-/**
- * Unknown mapping warning
- * @param {string} dataType
- * @returns {string}
- */
-export const warnUnknownMappingForDataType = (dataType: string) => {
-    console.warn(`[Warning]`,
-        `Unknown data type mapping for type '${dataType}'. 
-        You should define the data type manually.     
-    `);
-};

@@ -48,6 +48,23 @@ export const isSequelizeDataTypeKey = (value: string): value is SequelizeDataTyp
     Object.prototype.hasOwnProperty.call(DataTypes, value);
 
 /**
+ * Type guard for a DataTypes key naming a concrete data type usable as a column
+ * type: a data type class derived from ABSTRACT. Dialect namespaces (`postgres`,
+ * `mysql`, ...) and ABSTRACT itself are rejected.
+ * @param {string} value
+ * @returns {boolean}
+ */
+export const isColumnDataTypeKey = (value: string): value is SequelizeDataTypeKey => {
+    if (!isSequelizeDataTypeKey(value)) {
+        return false;
+    }
+
+    const dataType = DataTypes[value];
+
+    return typeof dataType === 'function' && dataType.prototype instanceof DataTypes.ABSTRACT;
+};
+
+/**
  * Resolve the DataTypes key for a constructor. The first token of the constructor
  * key is used so that 'DOUBLE PRECISION' resolves to 'DOUBLE'. Returns undefined when
  * the first token is not a DataTypes member.
@@ -93,9 +110,25 @@ export const buildSequelizeDataType = (
 };
 
 /**
- * Render a single data type argument. Numbers render bare; strings render
- * single-quoted with internal single quotes doubled; a nested data type renders
- * as its own expression under the same namespace.
+ * Render a string as a single-quoted TypeScript string literal. Backslashes,
+ * single quotes and control characters are backslash-escaped; double quotes
+ * stay bare.
+ * @param {string} value
+ * @returns {string}
+ */
+const renderStringLiteral = (value: string): string => {
+    const escaped = JSON.stringify(value)
+        .slice(1, -1)
+        .replace(/\\"/g, '"')
+        .replace(/'/g, "\\'");
+
+    return `'${escaped}'`;
+};
+
+/**
+ * Render a single data type argument. Numbers render bare; strings render as
+ * single-quoted TypeScript string literals; a nested data type renders as its
+ * own expression under the same namespace.
  * @param {DataTypeArgument} arg
  * @param {DataTypeNamespace} namespace
  * @returns {string}
@@ -106,7 +139,7 @@ const renderDataTypeArgument = (arg: DataTypeArgument, namespace: DataTypeNamesp
     }
 
     if (typeof arg === 'string') {
-        return `'${arg.replace(/'/g, "''")}'`;
+        return renderStringLiteral(arg);
     }
 
     return renderDataTypeExpression(arg, namespace);

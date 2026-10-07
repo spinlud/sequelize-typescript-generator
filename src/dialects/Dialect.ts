@@ -10,6 +10,7 @@ import { applyAssociationsFile } from './associationsFileMerge.js';
 import { findParanoidColumn, resolveParanoidOption } from './paranoid.js';
 import type { ReferentialAction } from './foreignKeys.js';
 import type { ISequelizeDataType } from './dataTypes.js';
+import type { TypeNode } from 'typescript';
 
 export interface ITablesMetadata {
     [tableName: string]: ITableMetadata;
@@ -53,6 +54,50 @@ export interface IForeignKeyConstraintMetadata {
     isSourceColumnUnique: boolean; // Only meaningful for single-column constraints; false for composite ones
 }
 
+/**
+ * Type override applied to a column. Each side is set only when a matching type
+ * override entry sets it; an unset side keeps the type the generator derives.
+ */
+export interface IColumnTypeOverride {
+    /**
+     * TypeScript type replacing the generated one, before nullability wrapping.
+     */
+    tsType?: TypeNode;
+    /**
+     * Sequelize data type emitted in place of `sequelizeType`/`dataType`, which
+     * keep the generated data type the TypeScript type is derived from.
+     */
+    dataType?: ISequelizeDataType;
+}
+
+/**
+ * Database enum type a column is typed with: a Postgres user-defined enum, for a
+ * scalar column or an array column.
+ */
+export interface IColumnEnumType {
+    /**
+     * Schema the enum type is defined in, which may differ from the table schema.
+     */
+    schema: string;
+    /**
+     * Database name of the enum type, e.g. `plan_tier`.
+     */
+    name: string;
+    /**
+     * Enum labels in database sort order.
+     */
+    labels: string[];
+    /**
+     * Set when the column holds an array of the enum.
+     */
+    isArray: boolean;
+    /**
+     * Identifier of the shared enum type the column is typed with, assigned by
+     * the model builder once the shared type names of the run are resolved.
+     */
+    sharedTypeName?: string;
+}
+
 export interface IColumnMetadata {
     name: string; // Model field name
     originName: string; // Database column name
@@ -68,6 +113,15 @@ export interface IColumnMetadata {
     indices?: IIndexMetadata[],
     comment?: string;
     defaultValue?: any;
+    /**
+     * Set when the column is typed with a database enum type; drives the shared
+     * enum type the column is typed with.
+     */
+    enumType?: IColumnEnumType;
+    /**
+     * Set when at least one type override entry matches the column.
+     */
+    typeOverride?: IColumnTypeOverride;
 }
 
 export interface IIndexMetadata {
@@ -124,11 +178,12 @@ export abstract class Dialect {
     public abstract mapDbTypeToSequelize(dbType: string): AbstractDataTypeConstructor;
 
     /**
-     * Map database data type to javascript data type
+     * Map database data type to javascript data type, or undefined when the
+     * dialect has no mapping for it (an unmapped type)
      * @param {string} dbType
-     * @returns {string
+     * @returns {string | undefined}
      */
-    public abstract mapDbTypeToJs(dbType: string): string;
+    public abstract mapDbTypeToJs(dbType: string): string | undefined;
 
     /**
      * Map database default values to Sequelize type (e.g. uuid() => DataType.UUIDV4).

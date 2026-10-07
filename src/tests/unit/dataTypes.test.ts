@@ -1,6 +1,7 @@
 import { DataTypes } from 'sequelize';
 import {
     isSequelizeDataTypeKey,
+    isColumnDataTypeKey,
     resolveSequelizeDataTypeKey,
     buildSequelizeDataType,
     renderDataTypeExpression,
@@ -17,6 +18,23 @@ describe('data types mapper', () => {
             expect(isSequelizeDataTypeKey('DOUBLE')).toBe(true);
             expect(isSequelizeDataTypeKey('NOT_A_TYPE')).toBe(false);
         });
+    });
+
+    describe('isColumnDataTypeKey', () => {
+        it.each([
+            'ARRAY', 'BIGINT', 'BLOB', 'BOOLEAN', 'CHAR', 'CITEXT', 'DATE', 'DATEONLY', 'DECIMAL', 'DOUBLE',
+            'ENUM', 'FLOAT', 'GEOGRAPHY', 'GEOMETRY', 'INTEGER', 'JSON', 'JSONB', 'MEDIUMINT', 'NUMBER',
+            'RANGE', 'REAL', 'SMALLINT', 'STRING', 'TIME', 'TINYINT', 'UUID', 'VIRTUAL',
+        ])('accepts the data type %s', key => {
+            expect(isColumnDataTypeKey(key)).toBe(true);
+        });
+
+        it.each(['ABSTRACT', 'postgres', 'mysql', 'mariadb', 'sqlite', 'mssql', 'oracle', 'db2', 'snowflake', 'NOT_A_TYPE'])(
+            'rejects %s',
+            key => {
+                expect(isColumnDataTypeKey(key)).toBe(false);
+            }
+        );
     });
 
     describe('resolveSequelizeDataTypeKey', () => {
@@ -60,6 +78,12 @@ describe('data types mapper', () => {
         it('renders ENUM values single-quoted in the native namespace', () => {
             const dataType: ISequelizeDataType = { key: 'ENUM', args: ['AA', 'BB'] };
             expect(renderDataTypeExpression(dataType, DATA_TYPE_NAMESPACES.native)).toBe("DataTypes.ENUM('AA','BB')");
+        });
+
+        it('escapes string arguments as TypeScript string literals', () => {
+            const dataType: ISequelizeDataType = { key: 'ENUM', args: ["it's", 'a\\b', 'say "hi"', 'x\ny'] };
+            expect(renderDataTypeExpression(dataType, DATA_TYPE_NAMESPACES.decorators))
+                .toBe(`DataType.ENUM('it\\'s','a\\\\b','say "hi"','x\\ny')`);
         });
 
         it('renders mixed string and numeric arguments', () => {

@@ -310,6 +310,37 @@ const testMetadata: ITestMetadata = {
             scalar: 42,
         },
     },
+    typeOverrides: {
+        table: DATA_TYPES_TABLE_NAME,
+        overrides: {
+            types: {
+                // MySQL matches type keys against the column's DATA_TYPE
+                text: { tsType: 'Uppercase<string>' },
+                no_such_type: { tsType: 'string' },
+            },
+            columns: {
+                [`${DATA_TYPES_TABLE_NAME}.f_varchar`]: {
+                    tsType: 'import("sequelize").Identifier',
+                    dataType: 'DataTypes.STRING(80)',
+                },
+                [`${DATA_TYPES_TABLE_NAME}.f_enum`]: { tsType: 'Lowercase<string> | "AA" | "BB"' },
+                [`${DATA_TYPES_TABLE_NAME.toUpperCase()}.F_INT`]: { dataType: 'SMALLINT' },
+            },
+        },
+        expected: [
+            {
+                column: 'f_varchar',
+                tsType: 'import("sequelize").Identifier',
+                nativeType: 'DataTypes.STRING(80)',
+                decoratorType: 'DataType.STRING(80)',
+            },
+            { column: 'f_text', tsType: 'Uppercase<string>' },
+            { column: 'f_enum', tsType: 'Lowercase<string> | "AA" | "BB"' },
+            { column: 'f_int', tsType: 'number', nativeType: 'DataTypes.SMALLINT', decoratorType: 'DataType.SMALLINT' },
+        ],
+        row: { f_varchar: 'override', f_text: 'UPPER', f_enum: 'BB', f_int: 42 },
+        unmatchedEntry: 'types["no_such_type"]',
+    },
     associations: {
         leftTableOneToOne: PERSON_TABLE_NAME,
         rightTableOneToOne: PASSPORT_TABLE_NAME,

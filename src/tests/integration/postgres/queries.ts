@@ -331,3 +331,42 @@ export const ARRAY_TYPES_TABLE_CREATES = [
         );
     `,
 ];
+
+export const UDT_SECONDARY_SCHEMA_NAME = 'udt_billing';
+export const UDT_ACCOUNTS_TABLE_NAME = 'udt_accounts';
+export const UDT_INVOICES_TABLE_NAME = 'udt_invoices';
+// Enum and domain types survive table drops, so every type, the secondary schema
+// and the tables are dropped before being recreated.
+export const USER_DEFINED_TYPES_SETUP_QUERIES = [
+    `DROP TABLE IF EXISTS ${SCHEMA_NAME}.${UDT_INVOICES_TABLE_NAME} CASCADE`,
+    `DROP TABLE IF EXISTS ${SCHEMA_NAME}.${UDT_ACCOUNTS_TABLE_NAME} CASCADE`,
+    `DROP SCHEMA IF EXISTS ${UDT_SECONDARY_SCHEMA_NAME} CASCADE`,
+    `DROP TYPE IF EXISTS ${SCHEMA_NAME}.plan_tier CASCADE`,
+    `DROP DOMAIN IF EXISTS ${SCHEMA_NAME}.positive_amount CASCADE`,
+    `CREATE EXTENSION IF NOT EXISTS citext`,
+    `CREATE SCHEMA ${UDT_SECONDARY_SCHEMA_NAME}`,
+    `CREATE TYPE ${SCHEMA_NAME}.plan_tier AS ENUM ('free', 'pro', 'enterprise')`,
+    // Same name as the enum of the generated schema: resolved by schema.
+    `CREATE TYPE ${UDT_SECONDARY_SCHEMA_NAME}.plan_tier AS ENUM ('monthly', 'yearly')`,
+    `CREATE TYPE ${UDT_SECONDARY_SCHEMA_NAME}.currency_code AS ENUM ('EUR', 'USD')`,
+    `CREATE DOMAIN ${SCHEMA_NAME}.positive_amount AS integer CHECK (VALUE > 0)`,
+    `
+        CREATE TABLE ${SCHEMA_NAME}.${UDT_ACCOUNTS_TABLE_NAME}
+        (
+            id              serial                                      not null    primary key,
+            plan            ${SCHEMA_NAME}.plan_tier                    not null,
+            past_plans      ${SCHEMA_NAME}.plan_tier[],
+            billing_plan    ${UDT_SECONDARY_SCHEMA_NAME}.plan_tier,
+            currency        ${UDT_SECONDARY_SCHEMA_NAME}.currency_code,
+            amount          ${SCHEMA_NAME}.positive_amount,
+            email           citext
+        )
+    `,
+    `
+        CREATE TABLE ${SCHEMA_NAME}.${UDT_INVOICES_TABLE_NAME}
+        (
+            id              serial                                      not null    primary key,
+            plan            ${SCHEMA_NAME}.plan_tier                    not null
+        )
+    `,
+];

@@ -1,13 +1,20 @@
 import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize, DataTypes } from 'sequelize';
 import { IConfig } from '../config/index.js';
-import { IColumnMetadata, IIndexMetadata, IForeignKeyConstraintMetadata, Dialect, ITable } from './Dialect.js';
-import { warnUnknownMappingForDataType } from './utils.js';
+import {
+    IColumnEnumType,
+    IColumnMetadata,
+    IIndexMetadata,
+    IForeignKeyConstraintMetadata,
+    Dialect,
+    ITable,
+} from './Dialect.js';
 import {
     buildSequelizeDataType,
     renderDataTypeExpression,
     DATA_TYPE_NAMESPACES,
     DataTypeArgument,
+    ISequelizeDataType,
 } from './dataTypes.js';
 import {
     groupForeignKeyRows,
@@ -71,6 +78,17 @@ interface IColumnMetadataPostgres {
     description: string | null;
 }
 
+interface IEnumLabelRow {
+    type_name: string;
+    label: string;
+}
+
+/**
+ * Labels of the enum types defined in one schema, by type name, in database
+ * sort order.
+ */
+type EnumLabelsByTypeName = ReadonlyMap<string, string[]>;
+
 interface IIndexMetadataPostgres {
     index_name: string;
     index_type: string;
@@ -92,6 +110,7 @@ const sequelizeDataTypesMap: { [key: string]: AbstractDataTypeConstructor } = {
     varchar: DataTypes.STRING,
     bpchar: DataTypes.STRING,
     text: DataTypes.STRING,
+    citext: DataTypes.CITEXT,
     bytea: DataTypes.BLOB,
     timestamp: DataTypes.DATE,
     timestamptz: DataTypes.DATE,
@@ -150,6 +169,7 @@ const jsDataTypesMap: { [key: string]: string } = {
     varchar: 'string',
     bpchar: 'string',
     text: 'string',
+    citext: 'string',
     bytea: 'Uint8Array',
     timestamp: 'Date',
     timestamptz: 'Date',
@@ -185,8 +205,94 @@ const jsDataTypesMap: { [key: string]: string } = {
  */
 export class DialectPostgres extends Dialect {
 
+    /**
+     * Enum labels per schema, cached for the lifetime of a connection so a run
+     * queries the catalogs once per schema.
+     */
+    private readonly enumLabelsByConnection = new WeakMap<Sequelize, Map<string, Promise<EnumLabelsByTypeName>>>();
+
     constructor() {
         super('postgres');
+    }
+
+    /**
+     * Query the labels of every enum type defined in a schema, in database sort order.
+     * @param {Sequelize} connection
+     * @param {string} schema
+     * @returns {Promise<EnumLabelsByTypeName>}
+     */
+    private async queryEnumLabels(connection: Sequelize, schema: string): Promise<EnumLabelsByTypeName> {
+        const rows = await connection.query<IEnumLabelRow>(
+            `
+                SELECT
+                    t.typname     AS type_name,
+                    e.enumlabel   AS label
+                FROM pg_catalog.pg_type t
+                JOIN pg_catalog.pg_enum e ON e.enumtypid = t.oid
+                JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+                WHERE n.nspname = $1
+                ORDER BY t.typname, e.enumsortorder;
+            `,
+            {
+                type: QueryTypes.SELECT,
+                raw: true,
+                bind: [schema],
+            }
+        );
+
+        const labelsByTypeName = new Map<string, string[]>();
+
+        for (const { type_name, label } of rows) {
+            const labels = labelsByTypeName.get(type_name) ?? [];
+            labels.push(label);
+            labelsByTypeName.set(type_name, labels);
+        }
+
+        return labelsByTypeName;
+    }
+
+    /**
+     * Fetch the enum labels of a schema, querying the catalogs only on the first
+     * request for that schema on the connection.
+     * @param {Sequelize} connection
+     * @param {string} schema
+     * @returns {Promise<EnumLabelsByTypeName>}
+     */
+    private fetchEnumLabels(connection: Sequelize, schema: string): Promise<EnumLabelsByTypeName> {
+        const labelsBySchema = this.enumLabelsByConnection.get(connection) ?? new Map<string, Promise<EnumLabelsByTypeName>>();
+        this.enumLabelsByConnection.set(connection, labelsBySchema);
+
+        const cached = labelsBySchema.get(schema);
+
+        if (cached) {
+            return cached;
+        }
+
+        const pending = this.queryEnumLabels(connection, schema);
+        labelsBySchema.set(schema, pending);
+
+        return pending;
+    }
+
+    /**
+     * Resolve the database enum type of a column whose element type has no
+     * mapping: the enum named after the element type in the column's UDT schema,
+     * or undefined when no such enum exists.
+     * @param {Sequelize} connection
+     * @param {string} udtSchema
+     * @param {string} elementTypeName
+     * @param {boolean} isArray
+     * @returns {Promise<IColumnEnumType | undefined>}
+     */
+    private async resolveEnumType(
+        connection: Sequelize,
+        udtSchema: string,
+        elementTypeName: string,
+        isArray: boolean
+    ): Promise<IColumnEnumType | undefined> {
+        const labels = (await this.fetchEnumLabels(connection, udtSchema)).get(elementTypeName);
+
+        return labels ? { schema: udtSchema, name: elementTypeName, labels, isArray } : undefined;
     }
 
     /**
@@ -203,9 +309,9 @@ export class DialectPostgres extends Dialect {
      * element JS type suffixed with `[]`; an array whose element has no scalar
      * mapping degrades to `unknown[]`.
      * @param {string} dbType
-     * @returns {string}
+     * @returns {string | undefined}
      */
-    public mapDbTypeToJs(dbType: string): string {
+    public mapDbTypeToJs(dbType: string): string | undefined {
         if (isPostgresArrayType(dbType)) {
             const elementJsType = jsDataTypesMap[stripPostgresArrayPrefix(dbType)];
 
@@ -335,12 +441,11 @@ export class DialectPostgres extends Dialect {
 
             const elementConstructor = this.mapDbTypeToSequelize(elementTypeName);
 
-            // Unknown data type. An array whose element has no scalar mapping is
-            // reported once and degrades gracefully: no `type` is emitted and the
-            // TypeScript type falls back to `unknown[]`.
-            if (!elementConstructor) {
-                warnUnknownMappingForDataType(column.udt_name);
-            }
+            // An unmapped element type, absent from the type map, may be a
+            // user-defined enum, looked up in the schema the type is defined in.
+            const enumType = elementConstructor === undefined
+                ? await this.resolveEnumType(connection, column.udt_schema, elementTypeName, isArray)
+                : undefined;
 
             // Data type arguments (precision or length)
             let dataTypeArgs: Array<DataTypeArgument | null | undefined> = [];
@@ -366,7 +471,7 @@ export class DialectPostgres extends Dialect {
 
             const elementType = elementConstructor
                 ? buildSequelizeDataType(elementConstructor, dataTypeArgs)
-                : undefined;
+                : enumType && ({ key: 'ENUM', args: [...enumType.labels] } satisfies ISequelizeDataType);
 
             const sequelizeType = elementType && isArray
                 ? buildSequelizeDataType(DataTypes.ARRAY, [elementType])
@@ -382,6 +487,7 @@ export class DialectPostgres extends Dialect {
                     dataType: renderDataTypeExpression(sequelizeType, DATA_TYPE_NAMESPACES.decorators),
                 },
                 ...!isArray && (elementTypeName === 'json' || elementTypeName === 'jsonb') && { isJson: true },
+                ...enumType && { enumType },
                 allowNull: column.is_nullable === 'YES' && !column.is_primary,
                 primaryKey: column.is_primary,
                 autoIncrement: column.is_sequence,

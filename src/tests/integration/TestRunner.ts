@@ -16,6 +16,7 @@ import { getTransformer } from '../../dialects/utils.js';
 import { createDialect } from '../../dialects/createDialect.js';
 import { ModelBuilder } from '../../builders/index.js';
 import { TransformCases, TransformTarget, TransformFn } from '../../config/IConfig.js';
+import type { ITypeOverrides } from '../../config/IConfig.js';
 import { compileGeneratedModels } from './compileGeneratedModels.js';
 import { FORMATS, Format } from './formats.js';
 import { ESLINT_MIGRATION_GUIDE_URL } from '../../lint/Linter.js';
@@ -677,11 +678,12 @@ export class TestRunner {
                             columnName
                         );
 
-                        expect(dialect.mapDbTypeToJs(nativeType)).toBeDefined();
+                        const mappedJsType = dialect.mapDbTypeToJs(nativeType);
+                        expect(mappedJsType).toBeDefined();
 
                         const receivedValueType = getObjectType(receivedValue);
                         console.log(typeName, typeValue, receivedValue, receivedValueType);
-                        const expectedValueType = dialect.mapDbTypeToJs(nativeType).toLowerCase();
+                        const expectedValueType = (mappedJsType ?? '').toLowerCase();
 
                         if (receivedValueType === 'array') {
                             expect(expectedValueType.includes(receivedValueType)).toBe(true);
@@ -763,8 +765,8 @@ export class TestRunner {
                             }
                         });
 
-                        it('does not warn about unknown data type mappings', () => {
-                            expect(warnMessages.some(message => message.includes('Unknown data type mapping')))
+                        it('does not warn about unmapped types', () => {
+                            expect(warnMessages.some(message => message.includes('Unmapped type')))
                                 .toBe(false);
                         });
 
@@ -882,6 +884,317 @@ export class TestRunner {
                                 expect(reloaded).not.toBeNull();
                                 expect(reloaded!.toJSON()[column]).toEqual(value);
                             }
+                        });
+                    });
+                }
+
+                if (testMetadata.typeOverrides) {
+                    const typeOverrides = testMetadata.typeOverrides;
+
+                    describe('Type overrides', () => {
+                        // A dedicated output dir keeps this generation out of the module cache
+                        // the other blocks populate, so native's initModels reflects it.
+                        const typeOverridesOutDir = path.join(
+                            process.cwd(), 'src/tests/integration/output-models', `${format}-type-overrides`
+                        );
+                        let connection: Sequelize | undefined;
+                        let generatedModel = '';
+                        const warnMessages: string[] = [];
+
+                        beforeAll(async () => {
+                            connection = new Sequelize({ ...sequelizeOptions });
+                            await connection.authenticate();
+                            await initTestDatabase(testMetadata, connection);
+
+                            const config: IConfig = {
+                                connection: sequelizeOptions,
+                                metadata: {
+                                    ...testMetadata.schema && { schema: testMetadata.schema.name },
+                                    typeOverrides: typeOverrides.overrides,
+                                },
+                                output: {
+                                    outDir: typeOverridesOutDir,
+                                    clean: true,
+                                }
+                            };
+
+                            const warnSpy = jest.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => {
+                                warnMessages.push(args.map(arg => String(arg)).join(' '));
+                            });
+
+                            try {
+                                await buildModels(config);
+                            }
+                            finally {
+                                warnSpy.mockRestore();
+                            }
+
+                            generatedModel = await fs.readFile(
+                                path.join(typeOverridesOutDir, `${typeOverrides.table}.ts`), 'utf8'
+                            );
+
+                            await registerGeneratedModels(requireConnection(connection), typeOverridesOutDir, format);
+                        });
+
+                        afterAll(async () => {
+                            connection && await connection.close();
+                        });
+
+                        it('emits the overridden TypeScript type and data type expression per column', () => {
+                            const escape = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+                            for (const expected of typeOverrides.expected) {
+                                expect(generatedModel).toMatch(
+                                    new RegExp(`${expected.column}[?!]?:[^\\n]*${escape(expected.tsType)}`)
+                                );
+
+                                const typeExpression = format === 'decorators'
+                                    ? expected.decoratorType
+                                    : expected.nativeType;
+
+                                if (typeExpression) {
+                                    // Native: the `type` option of the column's init entry. Decorators:
+                                    // the `type` option of the `@Column` decorator above the field.
+                                    const pattern = format === 'decorators'
+                                        ? `type: ${escape(typeExpression)}[^@]*?\\n\\s*${expected.column}[?!]?:`
+                                        : `\\b${expected.column}: \\{\\s*type: ${escape(typeExpression)}[,\\s]`;
+
+                                    expect(generatedModel).toMatch(new RegExp(pattern));
+                                }
+                            }
+                        });
+
+                        it('type-checks the generated output under strict mode', async () => {
+                            const diagnostics = await compileGeneratedModels(typeOverridesOutDir, format);
+
+                            expect(diagnostics.map(diagnostic =>
+                                ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'))).toEqual([]);
+                        });
+
+                        it('warns about the entries that matched no column', () => {
+                            const unmatched = warnMessages.filter(message => message.includes('matched no column'));
+
+                            expect(unmatched).toHaveLength(1);
+                            expect(unmatched[0]).toContain(typeOverrides.unmatchedEntry);
+                        });
+
+                        it('does not warn about unmapped types for overridden columns', () => {
+                            for (const expected of typeOverrides.expected) {
+                                expect(warnMessages.some(message =>
+                                    message.includes('Unmapped type') &&
+                                    message.includes(`${typeOverrides.table}.${expected.column}:`)
+                                )).toBe(false);
+                            }
+                        });
+
+                        it('round-trips a row through the overridden columns', async () => {
+                            const model = requireConnection(connection).model(typeOverrides.table);
+                            const created = await model.create(typeOverrides.row);
+                            const reloaded = await model.findByPk(created.get('id'));
+
+                            expect(reloaded).not.toBeNull();
+
+                            const stored = reloaded?.toJSON() ?? {};
+
+                            for (const [column, value] of Object.entries(typeOverrides.row)) {
+                                expect(stored[column]).toEqual(value);
+                            }
+                        });
+                    });
+                }
+
+                if (testMetadata.userDefinedTypes) {
+                    const userDefinedTypes = testMetadata.userDefinedTypes;
+
+                    describe('User-defined types', () => {
+                        // Dedicated output dirs keep these generations out of the module cache
+                        // the other blocks populate, so native's initModels reflects them.
+                        const userDefinedTypesOutDir = path.join(
+                            process.cwd(), 'src/tests/integration/output-models', `${format}-user-defined-types`
+                        );
+                        const enumRemovingOverrideOutDir = path.join(
+                            process.cwd(), 'src/tests/integration/output-models', `${format}-user-defined-types-override`
+                        );
+                        const escape = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        let connection: Sequelize | undefined;
+                        const generatedModels: Record<string, string> = {};
+                        let enumsFile = '';
+                        const warnMessages: string[] = [];
+
+                        /**
+                         * Generate the user-defined types tables into the given output dir.
+                         * @param {string} outDir
+                         * @param {ITypeOverrides | undefined} typeOverrides
+                         * @returns {Promise<void>}
+                         */
+                        const buildUserDefinedTypesModels = async (
+                            outDir: string,
+                            typeOverrides?: ITypeOverrides
+                        ): Promise<void> => {
+                            await buildModels({
+                                connection: sequelizeOptions,
+                                metadata: {
+                                    ...testMetadata.schema && { schema: testMetadata.schema.name },
+                                    tables: userDefinedTypes.tables,
+                                    ...typeOverrides && { typeOverrides },
+                                },
+                                output: {
+                                    outDir,
+                                    clean: true,
+                                }
+                            });
+                        };
+
+                        /**
+                         * `export type` lines of a generated enums file, in file order.
+                         * @param {string} content
+                         * @returns {string[]}
+                         */
+                        const enumDeclarations = (content: string): string[] =>
+                            content.split('\n').filter(line => line.startsWith('export type '));
+
+                        /**
+                         * Assert the enum shared types each model file imports.
+                         * @param {string} outDir
+                         * @param {Record<string, string[]>} enumImports
+                         * @returns {Promise<void>}
+                         */
+                        const expectEnumImports = async (
+                            outDir: string,
+                            enumImports: Record<string, string[]>
+                        ): Promise<void> => {
+                            for (const [table, typeNames] of Object.entries(enumImports)) {
+                                const model = await fs.readFile(path.join(outDir, `${table}.ts`), 'utf8');
+
+                                if (typeNames.length > 0) {
+                                    expect(model).toMatch(new RegExp(
+                                        `import type \\{\\s*${typeNames.join(',\\s*')}\\s*\\} from "\\./enums";`
+                                    ));
+                                }
+                                else {
+                                    expect(model).not.toContain('./enums');
+                                }
+                            }
+                        };
+
+                        beforeAll(async () => {
+                            const setupConnection = new Sequelize({ ...sequelizeOptions });
+
+                            try {
+                                await initTestDatabase(testMetadata, setupConnection);
+
+                                for (const setupQuery of userDefinedTypes.setupQueries) {
+                                    await setupConnection.query(setupQuery);
+                                }
+                            }
+                            finally {
+                                await setupConnection.close();
+                            }
+
+                            // Sequelize reads the enum type OIDs once per instance, so models are
+                            // registered on an instance created after the enum types exist.
+                            connection = new Sequelize({ ...sequelizeOptions });
+                            await connection.authenticate();
+
+                            const warnSpy = jest.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => {
+                                warnMessages.push(args.map(arg => String(arg)).join(' '));
+                            });
+
+                            try {
+                                await buildUserDefinedTypesModels(userDefinedTypesOutDir);
+                            }
+                            finally {
+                                warnSpy.mockRestore();
+                            }
+
+                            for (const table of userDefinedTypes.tables) {
+                                generatedModels[table] = await fs.readFile(
+                                    path.join(userDefinedTypesOutDir, `${table}.ts`), 'utf8'
+                                );
+                            }
+
+                            enumsFile = await fs.readFile(path.join(userDefinedTypesOutDir, 'enums.ts'), 'utf8');
+
+                            await registerGeneratedModels(requireConnection(connection), userDefinedTypesOutDir, format);
+                        });
+
+                        afterAll(async () => {
+                            connection && await connection.close();
+                        });
+
+                        it('emits one shared type per database enum in enums.ts', () => {
+                            expect(enumDeclarations(enumsFile)).toEqual(userDefinedTypes.enumDeclarations);
+                        });
+
+                        it('type-only imports the enum shared types each model uses', async () => {
+                            await expectEnumImports(userDefinedTypesOutDir, userDefinedTypes.enumImports);
+                        });
+
+                        it('emits the TypeScript type and data type expression per column', () => {
+                            for (const expected of userDefinedTypes.expected) {
+                                const generatedModel = generatedModels[expected.table];
+
+                                expect(generatedModel).toMatch(
+                                    new RegExp(`\\b${expected.column}[?!]?: ${escape(expected.tsType)}[ ;]`)
+                                );
+
+                                const typeExpression = format === 'decorators'
+                                    ? expected.decoratorType
+                                    : expected.nativeType;
+
+                                // Native: the `type` option of the column's init entry. Decorators:
+                                // the `type` option of the `@Column` decorator above the field.
+                                const pattern = format === 'decorators'
+                                    ? `type: ${escape(typeExpression)}[^@]*?\\n\\s*${expected.column}[?!]?:`
+                                    : `\\b${expected.column}: \\{\\s*type: ${escape(typeExpression)}[,\\s]`;
+
+                                expect(generatedModel).toMatch(new RegExp(pattern));
+                            }
+                        });
+
+                        it('type-checks the generated output under strict mode', async () => {
+                            const diagnostics = await compileGeneratedModels(userDefinedTypesOutDir, format);
+
+                            expect(diagnostics.map(diagnostic =>
+                                ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'))).toEqual([]);
+                        });
+
+                        it('does not warn about unmapped types', () => {
+                            expect(warnMessages.filter(message => message.includes('Unmapped type'))).toEqual([]);
+                        });
+
+                        it('round-trips enum, enum array, domain and citext values', async () => {
+                            const [table] = userDefinedTypes.tables;
+                            const model = requireConnection(connection).model(table);
+                            const created = await model.create(userDefinedTypes.row);
+                            const reloaded = await model.findByPk(created.get('id'));
+
+                            expect(reloaded).not.toBeNull();
+
+                            const stored = reloaded?.toJSON() ?? {};
+
+                            for (const [column, value] of Object.entries(userDefinedTypes.row)) {
+                                expect(stored[column]).toEqual(value);
+                            }
+                        });
+
+                        it('drops the shared type of an enum whose TypeScript type a type override replaces', async () => {
+                            const { overrides, enumDeclarations: expectedDeclarations, enumImports } =
+                                userDefinedTypes.enumRemovingOverride;
+
+                            await buildUserDefinedTypesModels(enumRemovingOverrideOutDir, overrides);
+
+                            const overriddenEnumsFile = await fs.readFile(
+                                path.join(enumRemovingOverrideOutDir, 'enums.ts'), 'utf8'
+                            );
+
+                            expect(enumDeclarations(overriddenEnumsFile)).toEqual(expectedDeclarations);
+                            await expectEnumImports(enumRemovingOverrideOutDir, enumImports);
+
+                            const diagnostics = await compileGeneratedModels(enumRemovingOverrideOutDir, format);
+
+                            expect(diagnostics.map(diagnostic =>
+                                ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'))).toEqual([]);
                         });
                     });
                 }

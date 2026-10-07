@@ -341,6 +341,10 @@ export const generateObjectLiteralDecorator = (
     const _createPropertyAssignment = (propName: string, propValue: any): ts.PropertyAssignment => {
         let expression: ts.Expression;
 
+        if (isTsExpression(propValue)) {
+            return ts.factory.createPropertyAssignment(propName, propValue);
+        }
+
         switch (typeof propValue) {
             case 'number':
                 expression = ts.factory.createNumericLiteral(propValue);

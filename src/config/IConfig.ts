@@ -26,6 +26,28 @@ export const TransformCases = new Set<TransformCase>([
     'CONST'
 ]);
 
+/**
+ * A type override entry: the TypeScript type, the Sequelize data type, or both.
+ * `tsType` is any TypeScript type expression, e.g. `{ x: number }` or
+ * `import('pkg').Type`; `dataType` is a Sequelize data type expression with an
+ * optional `DataTypes.`/`DataType.` prefix, e.g. `STRING(255)` or
+ * `ARRAY(ENUM('a', 'b'))`. A side left unset keeps the generated type.
+ */
+export interface ITypeOverride {
+    tsType?: string;
+    dataType?: string;
+}
+
+/**
+ * Shape of the type overrides file. `types` keys are database type names, optionally
+ * schema-qualified (`<type>` or `<schema>.<type>`); `columns` keys are
+ * `<table>.<column>` or `<schema>.<table>.<column>`. Keys match case-insensitively.
+ */
+export interface ITypeOverrides {
+    types?: Record<string, ITypeOverride>;
+    columns?: Record<string, ITypeOverride>;
+}
+
 export interface IConfigMetadata {
     tables?: string[];
     skipTables?: string[];
@@ -35,6 +57,8 @@ export interface IConfigMetadata {
     case?: TransformCase | TransformMap | TransformFn;
     associationsFile?: string;
     associations?: boolean; // Discover associations from foreign keys; undefined means enabled
+    typeOverridesFile?: string; // Path to a JSON type overrides file; exclusive with typeOverrides
+    typeOverrides?: ITypeOverrides; // Type overrides in the type overrides file shape; exclusive with typeOverridesFile
     noViews?: boolean;
 }
 

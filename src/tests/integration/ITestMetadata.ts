@@ -1,6 +1,7 @@
 import { Dialect } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { IForeignKeyConstraintMetadata } from '../../dialects/Dialect.js';
+import type { ITypeOverrides } from '../../config/IConfig.js';
 
 interface ITestTable {
     name: string;
@@ -81,6 +82,47 @@ export interface ITestMetadata {
             object: Record<string, unknown>;
             array: unknown[];
             scalar: string | number | boolean;
+        };
+    },
+    // Type overrides. Drives a dedicated test block that builds with the given
+    // overrides and asserts the emitted TypeScript type and data type expression
+    // per column, strict type-checks the output, round-trips a row through the
+    // overridden columns, and asserts the warning for an entry matching no column.
+    typeOverrides?: {
+        table: string; // Table whose generated model file is read and round-tripped
+        overrides: ITypeOverrides;
+        expected: {
+            column: string; // Database column name, e.g. 'f_varchar'
+            tsType: string; // Generated TypeScript type text, e.g. 'import("sequelize").Identifier'
+            nativeType?: string; // Native init-options expression, e.g. 'DataTypes.STRING(80)'
+            decoratorType?: string; // Decorators expression, e.g. 'DataType.STRING(80)'
+        }[];
+        row: Record<string, string | number>; // Values round-tripped through the overridden columns
+        unmatchedEntry: string; // Entry expected in the unmatched-entries warning, e.g. 'types["no_such_type"]'
+    },
+    // User-defined types (Postgres only). Drives a dedicated test block that
+    // provisions the types and tables, generates only the given tables, and
+    // asserts the shared enum types file, the type-only imports, the emitted
+    // TypeScript type and data type expression per column, strict type-checking,
+    // the absence of unmapped-type warnings and a round trip of a row; then
+    // regenerates with a type override removing an enum's shared type.
+    userDefinedTypes?: {
+        setupQueries: string[]; // Idempotent: drop and recreate types, domains, schemas and tables
+        tables: string[]; // Generated tables; the first one is round-tripped
+        enumDeclarations: string[]; // Expected `export type` lines of enums.ts, in file order
+        enumImports: Record<string, string[]>; // Enum shared types each model file imports, per table
+        expected: {
+            table: string; // Table whose generated model file is read
+            column: string; // Database column name, e.g. 'plan'
+            tsType: string; // Generated TypeScript type before nullability, e.g. 'PlanTier[]'
+            nativeType: string; // Native init-options expression, e.g. 'DataTypes.CITEXT'
+            decoratorType: string; // Decorators expression, e.g. 'DataType.CITEXT'
+        }[];
+        row: Record<string, string | number | string[]>; // Values round-tripped through the first table
+        enumRemovingOverride: {
+            overrides: ITypeOverrides; // Replaces the TypeScript type of every column of one enum
+            enumDeclarations: string[]; // Expected `export type` lines of enums.ts, in file order
+            enumImports: Record<string, string[]>; // Enum shared types each model file imports, per table
         };
     },
     associations: {

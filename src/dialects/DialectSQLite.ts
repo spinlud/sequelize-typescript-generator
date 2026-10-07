@@ -2,7 +2,6 @@ import { QueryTypes, AbstractDataTypeConstructor, IndexMethod } from 'sequelize'
 import { Sequelize, DataTypes } from 'sequelize';
 import { IConfig } from '../config/index.js';
 import { IColumnMetadata, Dialect, IIndexMetadata, IForeignKeyConstraintMetadata, ITable } from './Dialect.js';
-import { warnUnknownMappingForDataType } from './utils.js';
 import {
     buildSequelizeDataType,
     renderDataTypeExpression,
@@ -115,9 +114,9 @@ export class DialectSQLite extends Dialect {
     /**
      * Map database data type to javascript data type
      * @param {string} dbType
-     * @returns {string
+     * @returns {string | undefined}
      */
-    public mapDbTypeToJs(dbType: string): string {
+    public mapDbTypeToJs(dbType: string): string | undefined {
         // Affinity rules from https://www.sqlite.org/datatype3.html
         const dbTypeUpper = dbType.toUpperCase();
 
@@ -197,11 +196,6 @@ export class DialectSQLite extends Dialect {
         ) as IColumnMetadataSQLite[];
 
         for (const column of columns) {
-            // Unknown data type
-            if (!this.mapDbTypeToSequelize(column.type)) {
-                warnUnknownMappingForDataType(column.type);
-            }
-
             const sequelizeConstructor = this.mapDbTypeToSequelize(column.type);
 
             const sequelizeType = sequelizeConstructor
