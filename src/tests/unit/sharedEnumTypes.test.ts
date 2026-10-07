@@ -227,6 +227,31 @@ const formatDiagnostics = (diagnostics: readonly ts.Diagnostic[]): string[] =>
     diagnostics.map(diagnostic => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'));
 
 /**
+ * String argument values of every `ENUM(...)` data type call in the given
+ * source, in source order, as the TypeScript parser reads them.
+ * @param {string} content
+ * @returns {string[][]}
+ */
+const enumDataTypeLabels = (content: string): string[][] => {
+    const sourceFile = ts.createSourceFile('model.ts', content, ts.ScriptTarget.Latest, true);
+    const labels: string[][] = [];
+
+    const visit = (node: ts.Node): void => {
+        if (ts.isCallExpression(node)
+            && ts.isPropertyAccessExpression(node.expression)
+            && node.expression.name.text === 'ENUM') {
+            labels.push(node.arguments.filter(ts.isStringLiteral).map(argument => argument.text));
+        }
+
+        ts.forEachChild(node, visit);
+    };
+
+    visit(sourceFile);
+
+    return labels;
+};
+
+/**
  * Shared type declarations of the enums file, in file order.
  * @param {string} content
  * @returns {string[]}
@@ -287,6 +312,15 @@ describe.each(FORMATS_UNDER_TEST)('shared enum types (format: %s)', (format: For
 
         expect(Object.keys(result.files)).not.toContain(ENUMS_FILE_NAME);
         expect(result.files['notes.ts']).not.toContain('./enums');
+    });
+
+    it('emits valid TypeScript that preserves enum labels with quotes, backslashes and newlines', async () => {
+        const labels = ["it's", 'back\\slash', 'say "hi"', 'line\nbreak'];
+        const reference = enumType('public', 'tricky_label', labels);
+        const result = await build(format, [buildTable('labels', [buildIdColumn(), buildEnumColumn('label', reference)])]);
+
+        expect(enumDataTypeLabels(result.files['labels.ts'])).toEqual([labels]);
+        expect(formatDiagnostics(await compileGeneratedModels(result.outDir, format))).toEqual([]);
     });
 
     describe('type overrides', () => {

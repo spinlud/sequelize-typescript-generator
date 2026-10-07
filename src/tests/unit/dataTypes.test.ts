@@ -62,6 +62,12 @@ describe('data types mapper', () => {
             expect(renderDataTypeExpression(dataType, DATA_TYPE_NAMESPACES.native)).toBe("DataTypes.ENUM('AA','BB')");
         });
 
+        it('escapes string arguments as TypeScript string literals', () => {
+            const dataType: ISequelizeDataType = { key: 'ENUM', args: ["it's", 'a\\b', 'say "hi"', 'x\ny'] };
+            expect(renderDataTypeExpression(dataType, DATA_TYPE_NAMESPACES.decorators))
+                .toBe(`DataType.ENUM('it\\'s','a\\\\b','say "hi"','x\\ny')`);
+        });
+
         it('renders mixed string and numeric arguments', () => {
             const dataType: ISequelizeDataType = { key: 'STRING', args: [255] };
             expect(renderDataTypeExpression(dataType, DATA_TYPE_NAMESPACES.decorators)).toBe('DataType.STRING(255)');
