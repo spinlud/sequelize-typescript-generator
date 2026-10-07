@@ -290,6 +290,35 @@ const testMetadata: ITestMetadata = {
             ['varbinary', Buffer.from('1 or 0')],
         ]
     },
+    typeOverrides: {
+        table: DATA_TYPES_TABLE_NAME,
+        overrides: {
+            types: {
+                // SQL Server matches type keys against the column's DATA_TYPE
+                'dbo.nvarchar': { tsType: 'Uppercase<string>' },
+                no_such_type: { tsType: 'string' },
+            },
+            columns: {
+                [`${DATA_TYPES_TABLE_NAME}.f_varchar`]: {
+                    tsType: 'import("sequelize").Identifier',
+                    dataType: 'DataTypes.STRING(80)',
+                },
+                [`${DATA_TYPES_TABLE_NAME.toUpperCase()}.F_INT`]: { dataType: 'SMALLINT' },
+            },
+        },
+        expected: [
+            {
+                column: 'f_varchar',
+                tsType: 'import("sequelize").Identifier',
+                nativeType: 'DataTypes.STRING(80)',
+                decoratorType: 'DataType.STRING(80)',
+            },
+            { column: 'f_nvarchar', tsType: 'Uppercase<string>' },
+            { column: 'f_int', tsType: 'number', nativeType: 'DataTypes.SMALLINT', decoratorType: 'DataType.SMALLINT' },
+        ],
+        row: { f_varchar: 'override', f_nvarchar: 'UPPER', f_int: 42 },
+        unmatchedEntry: 'types["no_such_type"]',
+    },
     associations: {
         leftTableOneToOne: PERSON_TABLE_NAME,
         rightTableOneToOne: PASSPORT_TABLE_NAME,

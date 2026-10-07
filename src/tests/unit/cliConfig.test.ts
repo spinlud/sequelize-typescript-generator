@@ -1,4 +1,5 @@
-import { aliasesMap, buildConfig } from '../../bin/utils.js';
+import yargs from 'yargs';
+import { aliasesMap, buildConfig, TYPE_OVERRIDES_FILE_FLAG, typeOverridesFileOption } from '../../bin/utils.js';
 
 describe('buildConfig', () => {
     const baseArgv = {
@@ -92,5 +93,24 @@ describe('buildConfig', () => {
         const config = buildConfig(baseArgv);
 
         expect(config.metadata?.noViews).toBe(false);
+    });
+
+    it.each([
+        ['-y', `-${TYPE_OVERRIDES_FILE_FLAG}`],
+        ['--type-overrides-file', `--${aliasesMap.TYPE_OVERRIDES_FILE}`],
+    ])('maps %s into metadata.typeOverridesFile', (_name, flag) => {
+        const argv = yargs([flag, 'overrides.json'])
+            .option(TYPE_OVERRIDES_FILE_FLAG, typeOverridesFileOption)
+            .parseSync();
+
+        const config = buildConfig({ ...baseArgv, ...argv });
+
+        expect(config.metadata?.typeOverridesFile).toBe('overrides.json');
+    });
+
+    it('leaves metadata.typeOverridesFile absent when the flag is not provided', () => {
+        const config = buildConfig(baseArgv);
+
+        expect(config.metadata && 'typeOverridesFile' in config.metadata).toBe(false);
     });
 });

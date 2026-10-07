@@ -1,6 +1,7 @@
 import path from 'path';
 import fs from 'fs';
 import { Dialect as DialectType } from 'sequelize';
+import type { Options } from 'yargs';
 import { Dialect } from '../dialects/Dialect.js';
 import { createDialect } from '../dialects/createDialect.js';
 
@@ -38,6 +39,7 @@ export const aliasesMap = {
     SSL: 'ssl',
     PROTOCOL: 'protocol',
     ASSOCIATIONS_FILE: 'associations-file',
+    TYPE_OVERRIDES_FILE: 'type-overrides-file',
     ASSOCIATIONS: 'associations',
     ENABLE_SEQUELIZE_LOGS: 'logs',
     DIALECT_OPTIONS: 'dialect-options',
@@ -46,6 +48,22 @@ export const aliasesMap = {
     DISABLE_VIEWS: 'no-views',
     FORMAT: 'format',
 };
+
+/**
+ * Short flag of the type overrides file option.
+ */
+export const TYPE_OVERRIDES_FILE_FLAG = 'y';
+
+/**
+ * Definition of the type overrides file option.
+ */
+export const typeOverridesFileOption = {
+    alias: aliasesMap.TYPE_OVERRIDES_FILE,
+    string: true,
+    describe: `Type overrides file path: a JSON file declaring the TypeScript type and/or the Sequelize ` +
+        `data type of database types ("types") or single columns ("columns"). Overrides always win over ` +
+        `the generated types.`,
+} satisfies Options;
 
 /**
  * Diplay error message and exit
@@ -177,6 +195,7 @@ export const buildConfig = (argv: ArgvType): IConfig => {
             paranoid: !!argv[aliasesMap.PARANOID],
             ...argv[aliasesMap.CASE] && { case: parseCase(argv[aliasesMap.CASE]) },
             ...argv[aliasesMap.ASSOCIATIONS_FILE] && { associationsFile: argv[aliasesMap.ASSOCIATIONS_FILE] as string },
+            ...argv[aliasesMap.TYPE_OVERRIDES_FILE] && { typeOverridesFile: String(argv[aliasesMap.TYPE_OVERRIDES_FILE]) },
             ...(argv[aliasesMap.ASSOCIATIONS] === false && { associations: false }),
             noViews: !!argv[aliasesMap.DISABLE_VIEWS] || argv['views'] === false,
         },
@@ -276,6 +295,16 @@ export const validateArgs = (argv: ArgvType): void => {
         }
         catch(err) {
             error(`Argument -a [associations-file] '${argv[aliasesMap.ASSOCIATIONS_FILE]}' is not a valid path`);
+        }
+    }
+
+    // Validate type overrides file
+    if (argv[aliasesMap.TYPE_OVERRIDES_FILE]) {
+        try {
+            fs.accessSync(argv[aliasesMap.TYPE_OVERRIDES_FILE]);
+        }
+        catch(err) {
+            error(`Argument -y [type-overrides-file] '${argv[aliasesMap.TYPE_OVERRIDES_FILE]}' is not a valid path`);
         }
     }
 

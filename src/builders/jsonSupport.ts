@@ -1,5 +1,5 @@
 import * as ts from 'typescript';
-import type { ITableMetadata, ITablesMetadata } from '../dialects/Dialect.js';
+import type { IColumnMetadata, ITableMetadata, ITablesMetadata } from '../dialects/Dialect.js';
 import { generateTypeOnlyImport, nodeToString } from './utils.js';
 
 /**
@@ -78,15 +78,24 @@ export const buildJsonTypeImport = (): ts.ImportDeclaration =>
     generateTypeOnlyImport([JSON_TYPE_NAME], JSON_SUPPORT_MODULE_SPECIFIER);
 
 /**
- * Report whether a table has at least one JSON/JSONB column.
+ * Report whether a column is typed with the shared `Json` type: a JSON/JSONB
+ * column whose TypeScript type no type override replaces.
+ * @param {IColumnMetadata} column
+ * @returns {boolean}
+ */
+export const columnUsesJsonType = (column: IColumnMetadata): boolean =>
+    column.isJson === true && column.typeOverride?.tsType === undefined;
+
+/**
+ * Report whether a table has at least one column typed with the shared `Json` type.
  * @param {ITableMetadata} table
  * @returns {boolean}
  */
 export const tableHasJsonColumn = (table: ITableMetadata): boolean =>
-    Object.values(table.columns).some(column => column.isJson === true);
+    Object.values(table.columns).some(columnUsesJsonType);
 
 /**
- * Report whether any table has at least one JSON/JSONB column.
+ * Report whether any table has at least one column typed with the shared `Json` type.
  * @param {ITablesMetadata} tablesMetadata
  * @returns {boolean}
  */

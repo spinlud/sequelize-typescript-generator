@@ -10,6 +10,7 @@ import { applyAssociationsFile } from './associationsFileMerge.js';
 import { findParanoidColumn, resolveParanoidOption } from './paranoid.js';
 import type { ReferentialAction } from './foreignKeys.js';
 import type { ISequelizeDataType } from './dataTypes.js';
+import type { TypeNode } from 'typescript';
 
 export interface ITablesMetadata {
     [tableName: string]: ITableMetadata;
@@ -53,6 +54,22 @@ export interface IForeignKeyConstraintMetadata {
     isSourceColumnUnique: boolean; // Only meaningful for single-column constraints; false for composite ones
 }
 
+/**
+ * Type override applied to a column. Each side is set only when a matching type
+ * override entry sets it; an unset side keeps the type the generator derives.
+ */
+export interface IColumnTypeOverride {
+    /**
+     * TypeScript type replacing the generated one, before nullability wrapping.
+     */
+    tsType?: TypeNode;
+    /**
+     * Sequelize data type emitted in place of `sequelizeType`/`dataType`, which
+     * keep the generated data type the TypeScript type is derived from.
+     */
+    dataType?: ISequelizeDataType;
+}
+
 export interface IColumnMetadata {
     name: string; // Model field name
     originName: string; // Database column name
@@ -68,6 +85,10 @@ export interface IColumnMetadata {
     indices?: IIndexMetadata[],
     comment?: string;
     defaultValue?: any;
+    /**
+     * Set when at least one type override entry matches the column.
+     */
+    typeOverride?: IColumnTypeOverride;
 }
 
 export interface IIndexMetadata {

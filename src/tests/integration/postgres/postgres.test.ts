@@ -380,6 +380,35 @@ const testMetadata: ITestMetadata = {
             scalar: 42,
         },
     },
+    typeOverrides: {
+        table: DATA_TYPES_TABLE_NAME,
+        overrides: {
+            types: {
+                // Postgres matches type keys against the column's UDT name
+                [`${SCHEMA_NAME}.text`]: { tsType: 'Uppercase<string>' },
+                no_such_type: { tsType: 'string' },
+            },
+            columns: {
+                [`${SCHEMA_NAME}.${DATA_TYPES_TABLE_NAME}.f_varchar`]: {
+                    tsType: 'import("sequelize").Identifier',
+                    dataType: 'DataTypes.STRING(80)',
+                },
+                [`${DATA_TYPES_TABLE_NAME.toUpperCase()}.F_INTEGER`]: { dataType: 'SMALLINT' },
+            },
+        },
+        expected: [
+            {
+                column: 'f_varchar',
+                tsType: 'import("sequelize").Identifier',
+                nativeType: 'DataTypes.STRING(80)',
+                decoratorType: 'DataType.STRING(80)',
+            },
+            { column: 'f_text', tsType: 'Uppercase<string>' },
+            { column: 'f_integer', tsType: 'number', nativeType: 'DataTypes.SMALLINT', decoratorType: 'DataType.SMALLINT' },
+        ],
+        row: { f_varchar: 'override', f_text: 'UPPER', f_integer: 42 },
+        unmatchedEntry: 'types["no_such_type"]',
+    },
     associations: {
         leftTableOneToOne: PERSON_TABLE_NAME,
         rightTableOneToOne: PASSPORT_TABLE_NAME,

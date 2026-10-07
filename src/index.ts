@@ -4,6 +4,7 @@ export type {
     ITablesMetadata,
     ITableMetadata,
     IColumnMetadata,
+    IColumnTypeOverride,
     IIndexMetadata,
     ITable,
     IColumnForeignKeyMetadata,
@@ -24,6 +25,8 @@ export type {
     TransformCase,
     TransformMap,
     TransformFn,
+    ITypeOverride,
+    ITypeOverrides,
 } from './config/IConfig.js';
 
 export { FORMATS, DEFAULT_FORMAT, isFormat } from './config/format.js';

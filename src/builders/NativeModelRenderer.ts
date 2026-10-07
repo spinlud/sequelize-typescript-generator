@@ -83,15 +83,22 @@ const buildDeclareField = (
 
 /**
  * Build the base TypeScript type node of a column, before nullability and brand
- * wrapping. Paranoid soft-delete columns are always `Date`; enum columns become a
- * string-literal union; everything else maps through the dialect JS mapping,
- * or is `unknown` for an unmapped type.
+ * wrapping. A type override's TypeScript type wins; otherwise paranoid soft-delete
+ * columns are always `Date`, JSON columns use the shared `Json` type, enum columns
+ * become a string-literal union, and everything else maps through the dialect JS
+ * mapping, or is `unknown` for an unmapped type.
  * @param {IColumnMetadata} column
  * @param {ITableMetadata} table
  * @param {Dialect} dialect
  * @returns {ts.TypeNode}
  */
 const buildBaseTypeNode = (column: IColumnMetadata, table: ITableMetadata, dialect: Dialect): ts.TypeNode => {
+    const overriddenTsType = column.typeOverride?.tsType;
+
+    if (overriddenTsType) {
+        return overriddenTsType;
+    }
+
     if (isParanoidColumn(column, table)) {
         return createTypeNodeFromName('Date');
     }
@@ -115,8 +122,9 @@ const buildBaseTypeNode = (column: IColumnMetadata, table: ITableMetadata, diale
 
 /**
  * Build the declared type node of a column attribute. Foreign keys to generated
- * models are branded with `ForeignKey<Target["key"]>`; other columns are wrapped
- * with `CreationOptional` and `| null` according to their attribute kind.
+ * models are branded with `ForeignKey<Target["key"]>`, or with the type override's
+ * TypeScript type when one is set; other columns are wrapped with
+ * `CreationOptional` and `| null` according to their attribute kind.
  * @param {IColumnMetadata} column
  * @param {ITableMetadata} table
  * @param {Dialect} dialect
@@ -138,9 +146,9 @@ export const buildAttributeTypeNode = (
         const targetAttribute = target
             ? resolveForeignKeyTargetAttribute(column.foreignKey, target)
             : undefined;
-        const referenced = targetAttribute
+        const referenced = column.typeOverride?.tsType ?? (targetAttribute
             ? createIndexedAccessTypeNode(column.foreignKey.targetModel, targetAttribute)
-            : ts.factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword);
+            : ts.factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword));
         const inner = kind === 'foreignKeyNullable' ? buildNullableTypeNode(referenced) : referenced;
 
         return createGenericTypeReference('ForeignKey', [inner]);
@@ -286,11 +294,15 @@ export const buildColumnInitOptions = (
 
     for (const key of COLUMN_OPTION_KEYS) {
         switch (key) {
-            case 'type':
-                if (column.sequelizeType) {
-                    options.type = buildDataTypeExpression(column.sequelizeType, NATIVE_NAMESPACE);
+            case 'type': {
+                const dataType = column.typeOverride?.dataType ?? column.sequelizeType;
+
+                if (dataType) {
+                    options.type = buildDataTypeExpression(dataType, NATIVE_NAMESPACE);
                 }
+
                 break;
+            }
             case 'primaryKey':
                 if (column.primaryKey) {
                     options.primaryKey = true;

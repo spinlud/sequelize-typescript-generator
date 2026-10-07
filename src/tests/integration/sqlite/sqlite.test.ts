@@ -213,6 +213,35 @@ export const testMetadata: ITestMetadata = {
             ['varchar', 'Hello world'],
         ],
     },
+    typeOverrides: {
+        table: DATA_TYPES_TABLE_NAME,
+        overrides: {
+            types: {
+                // SQLite matches type keys against the declared column type
+                text: { tsType: 'Uppercase<string>' },
+                no_such_type: { tsType: 'string' },
+            },
+            columns: {
+                [`${DATA_TYPES_TABLE_NAME}.f_varchar`]: {
+                    tsType: 'import("sequelize").Identifier',
+                    dataType: 'DataTypes.STRING(80)',
+                },
+                [`${DATA_TYPES_TABLE_NAME.toUpperCase()}.F_INT`]: { dataType: 'BIGINT' },
+            },
+        },
+        expected: [
+            {
+                column: 'f_varchar',
+                tsType: 'import("sequelize").Identifier',
+                nativeType: 'DataTypes.STRING(80)',
+                decoratorType: 'DataType.STRING(80)',
+            },
+            { column: 'f_text', tsType: 'Uppercase<string>' },
+            { column: 'f_int', tsType: 'number', nativeType: 'DataTypes.BIGINT', decoratorType: 'DataType.BIGINT' },
+        ],
+        row: { f_varchar: 'override', f_text: 'UPPER', f_int: 42 },
+        unmatchedEntry: 'types["no_such_type"]',
+    },
     associations: {
         leftTableOneToOne: PERSON_TABLE_NAME,
         rightTableOneToOne: PASSPORT_TABLE_NAME,

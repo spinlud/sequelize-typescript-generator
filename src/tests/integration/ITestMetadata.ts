@@ -1,6 +1,7 @@
 import { Dialect } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { IForeignKeyConstraintMetadata } from '../../dialects/Dialect.js';
+import type { ITypeOverrides } from '../../config/IConfig.js';
 
 interface ITestTable {
     name: string;
@@ -82,6 +83,22 @@ export interface ITestMetadata {
             array: unknown[];
             scalar: string | number | boolean;
         };
+    },
+    // Type overrides. Drives a dedicated test block that builds with the given
+    // overrides and asserts the emitted TypeScript type and data type expression
+    // per column, strict type-checks the output, round-trips a row through the
+    // overridden columns, and asserts the warning for an entry matching no column.
+    typeOverrides?: {
+        table: string; // Table whose generated model file is read and round-tripped
+        overrides: ITypeOverrides;
+        expected: {
+            column: string; // Database column name, e.g. 'f_varchar'
+            tsType: string; // Generated TypeScript type text, e.g. 'import("sequelize").Identifier'
+            nativeType?: string; // Native init-options expression, e.g. 'DataTypes.STRING(80)'
+            decoratorType?: string; // Decorators expression, e.g. 'DataType.STRING(80)'
+        }[];
+        row: Record<string, string | number>; // Values round-tripped through the overridden columns
+        unmatchedEntry: string; // Entry expected in the unmatched-entries warning, e.g. 'types["no_such_type"]'
     },
     associations: {
         leftTableOneToOne: string; // Left table 1:1 relation

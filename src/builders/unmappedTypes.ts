@@ -19,13 +19,15 @@ export interface IUnmappedColumn {
 }
 
 /**
- * Report whether a column has an unmapped type: it is not a JSON column, and the
- * dialect maps its database type to no TypeScript type or to no Sequelize data type.
+ * Report whether a column has an unmapped type: no type override matches it, it
+ * is not a JSON column, and the dialect maps its database type to no TypeScript
+ * type or to no Sequelize data type.
  * @param {IColumnMetadata} column
  * @param {Dialect} dialect
  * @returns {boolean}
  */
 export const isUnmappedColumn = (column: IColumnMetadata, dialect: Dialect): boolean =>
+    column.typeOverride === undefined &&
     !column.isJson && (dialect.mapDbTypeToJs(column.type) === undefined || column.sequelizeType === undefined);
 
 /**

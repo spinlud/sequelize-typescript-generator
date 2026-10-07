@@ -887,6 +887,121 @@ export class TestRunner {
                     });
                 }
 
+                if (testMetadata.typeOverrides) {
+                    const typeOverrides = testMetadata.typeOverrides;
+
+                    describe('Type overrides', () => {
+                        // A dedicated output dir keeps this generation out of the module cache
+                        // the other blocks populate, so native's initModels reflects it.
+                        const typeOverridesOutDir = path.join(
+                            process.cwd(), 'src/tests/integration/output-models', `${format}-type-overrides`
+                        );
+                        let connection: Sequelize | undefined;
+                        let generatedModel = '';
+                        const warnMessages: string[] = [];
+
+                        beforeAll(async () => {
+                            connection = new Sequelize({ ...sequelizeOptions });
+                            await connection.authenticate();
+                            await initTestDatabase(testMetadata, connection);
+
+                            const config: IConfig = {
+                                connection: sequelizeOptions,
+                                metadata: {
+                                    ...testMetadata.schema && { schema: testMetadata.schema.name },
+                                    typeOverrides: typeOverrides.overrides,
+                                },
+                                output: {
+                                    outDir: typeOverridesOutDir,
+                                    clean: true,
+                                }
+                            };
+
+                            const warnSpy = jest.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => {
+                                warnMessages.push(args.map(arg => String(arg)).join(' '));
+                            });
+
+                            try {
+                                await buildModels(config);
+                            }
+                            finally {
+                                warnSpy.mockRestore();
+                            }
+
+                            generatedModel = await fs.readFile(
+                                path.join(typeOverridesOutDir, `${typeOverrides.table}.ts`), 'utf8'
+                            );
+
+                            await registerGeneratedModels(requireConnection(connection), typeOverridesOutDir, format);
+                        });
+
+                        afterAll(async () => {
+                            connection && await connection.close();
+                        });
+
+                        it('emits the overridden TypeScript type and data type expression per column', () => {
+                            const escape = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+                            for (const expected of typeOverrides.expected) {
+                                expect(generatedModel).toMatch(
+                                    new RegExp(`${expected.column}[?!]?:[^\\n]*${escape(expected.tsType)}`)
+                                );
+
+                                const typeExpression = format === 'decorators'
+                                    ? expected.decoratorType
+                                    : expected.nativeType;
+
+                                if (typeExpression) {
+                                    // Native: the `type` option of the column's init entry. Decorators:
+                                    // the `type` option of the `@Column` decorator above the field.
+                                    const pattern = format === 'decorators'
+                                        ? `type: ${escape(typeExpression)}[^@]*?\\n\\s*${expected.column}[?!]?:`
+                                        : `\\b${expected.column}: \\{\\s*type: ${escape(typeExpression)}[,\\s]`;
+
+                                    expect(generatedModel).toMatch(new RegExp(pattern));
+                                }
+                            }
+                        });
+
+                        it('type-checks the generated output under strict mode', async () => {
+                            const diagnostics = await compileGeneratedModels(typeOverridesOutDir, format);
+
+                            expect(diagnostics.map(diagnostic =>
+                                ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'))).toEqual([]);
+                        });
+
+                        it('warns about the entries that matched no column', () => {
+                            const unmatched = warnMessages.filter(message => message.includes('matched no column'));
+
+                            expect(unmatched).toHaveLength(1);
+                            expect(unmatched[0]).toContain(typeOverrides.unmatchedEntry);
+                        });
+
+                        it('does not warn about unmapped types for overridden columns', () => {
+                            for (const expected of typeOverrides.expected) {
+                                expect(warnMessages.some(message =>
+                                    message.includes('Unmapped type') &&
+                                    message.includes(`${typeOverrides.table}.${expected.column}:`)
+                                )).toBe(false);
+                            }
+                        });
+
+                        it('round-trips a row through the overridden columns', async () => {
+                            const model = requireConnection(connection).model(typeOverrides.table);
+                            const created = await model.create(typeOverrides.row);
+                            const reloaded = await model.findByPk(created.get('id'));
+
+                            expect(reloaded).not.toBeNull();
+
+                            const stored = reloaded?.toJSON() ?? {};
+
+                            for (const [column, value] of Object.entries(typeOverrides.row)) {
+                                expect(stored[column]).toEqual(value);
+                            }
+                        });
+                    });
+                }
+
                 describe('Associations', () => {
                     let connection: Sequelize | undefined;
 

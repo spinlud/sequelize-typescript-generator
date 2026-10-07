@@ -9,6 +9,7 @@ import { IConfig } from '../config/index.js';
 import { resolveFormat, shouldNoticeIgnoredStrict, STRICT_IGNORED_NOTICE } from '../config/format.js';
 import {IColumnMetadata, ITableMetadata, IIndexMetadata, Dialect, ITablesMetadata} from '../dialects/Dialect.js';
 import { IAssociationMetadata } from '../dialects/AssociationsParser.js';
+import { DATA_TYPE_NAMESPACES } from '../dialects/dataTypes.js';
 import { isErrnoException } from '../utils/errors.js';
 import { Builder } from './Builder.js';
 import { resolveAssociationPropertyName } from './associationNaming.js';
@@ -16,6 +17,7 @@ import { IGeneratedFile, renderNativeFiles, writeGeneratedFiles } from './genera
 import { warnWhenDecoratorsDependencyIsMissing } from './decoratorsDependency.js';
 import {
     attachColumnCommentJsDoc,
+    buildDataTypeExpression,
     nodeToString,
     createGenericTypeReference,
     createTypeNodeFromName,
@@ -34,22 +36,54 @@ import {
     warnJsonSupportFileNameCollision,
 } from './jsonSupport.js';
 import { UNMAPPED_TS_TYPE_BY_FORMAT, warnUnmappedTypes } from './unmappedTypes.js';
+import { loadTypeOverrides } from './typeOverridesParser.js';
+import { applyTypeOverrides, warnUnmatchedTypeOverrides } from './typeOverrides.js';
 
 export { resolveAssociationPropertyName } from './associationNaming.js';
 
 const foreignKeyDecorator = 'ForeignKey';
 
 /**
- * Build the TypeScript type node of a column: the shared `Json` type for a JSON
- * column, otherwise the dialect JS mapping, or `any` for an unmapped type.
+ * Build the TypeScript type node of a column: a type override's TypeScript type,
+ * the shared `Json` type for a JSON column, otherwise the dialect JS mapping, or
+ * `any` for an unmapped type.
  * @param {IColumnMetadata} col
  * @param {Dialect} dialect
  * @returns {ts.TypeNode}
  */
-const buildColumnTypeNode = (col: IColumnMetadata, dialect: Dialect): ts.TypeNode =>
-    col.isJson
+const buildColumnTypeNode = (col: IColumnMetadata, dialect: Dialect): ts.TypeNode => {
+    const overriddenTsType = col.typeOverride?.tsType;
+
+    if (overriddenTsType) {
+        return overriddenTsType;
+    }
+
+    return col.isJson
         ? createGenericTypeReference(JSON_TYPE_NAME, [])
         : createTypeNodeFromName(dialect.mapDbTypeToJs(col.type) ?? UNMAPPED_TS_TYPE_BY_FORMAT.decorators);
+};
+
+/**
+ * `@Column` decorator options. The `type` option is either the rendered data type
+ * expression text or, for a type override's data type, a compiler expression.
+ */
+type ColumnDecoratorProps = Omit<Partial<ModelAttributeColumnOptions>, 'type'> & {
+    type?: string | ts.Expression;
+};
+
+/**
+ * Build the `type` option of the `@Column` decorator: a type override's data type
+ * is built as a compiler expression, otherwise the rendered data type expression.
+ * @param {IColumnMetadata} col
+ * @returns {string | ts.Expression | undefined}
+ */
+const buildColumnDecoratorType = (col: IColumnMetadata): string | ts.Expression | undefined => {
+    const overriddenDataType = col.typeOverride?.dataType;
+
+    return overriddenDataType
+        ? buildDataTypeExpression(overriddenDataType, DATA_TYPE_NAMESPACES.decorators)
+        : col.dataType;
+};
 
 /**
  * Build the `@Table` decorator options for a table. The `hasTrigger` flag is
@@ -141,13 +175,14 @@ export class ModelBuilder extends Builder {
      */
     private static buildColumnPropertyDecl(col: IColumnMetadata, dialect: Dialect): ts.PropertyDeclaration {
 
-        const buildColumnDecoratorProps = (col: IColumnMetadata): Partial<ModelAttributeColumnOptions> => {
-            const props: Partial<ModelAttributeColumnOptions> = {
+        const buildColumnDecoratorProps = (col: IColumnMetadata): ColumnDecoratorProps => {
+            const columnType = buildColumnDecoratorType(col);
+            const props: ColumnDecoratorProps = {
                 ...col.originName && col.name !== col.originName && { field: col.originName },
                 ...col.primaryKey && { primaryKey: col.primaryKey },
                 ...col.autoIncrement && { autoIncrement: col.autoIncrement },
                 ...col.allowNull && { allowNull: col.allowNull },
-                ...col.dataType && { type: col.dataType },
+                ...columnType && { type: columnType },
                 ...col.comment && { comment: col.comment },
                 ...col.defaultValue !== undefined && { defaultValue: dialect.mapDefaultValueToSequelize(col.defaultValue) },
             };
@@ -400,12 +435,20 @@ export class ModelBuilder extends Builder {
             console.warn(STRICT_IGNORED_NOTICE);
         }
 
+        const typeOverrides = await loadTypeOverrides(this.config.metadata);
+
         console.log(`Fetching metadata from source`);
-        const tablesMetadata = await this.dialect.buildTablesMetadata(this.config);
+        let tablesMetadata = await this.dialect.buildTablesMetadata(this.config);
 
         if (Object.keys(tablesMetadata).length === 0) {
             console.warn(`Couldn't find any table for database ${this.config.connection.database} and provided filters`);
             return;
+        }
+
+        if (typeOverrides) {
+            const application = applyTypeOverrides(tablesMetadata, typeOverrides);
+            tablesMetadata = application.tablesMetadata;
+            warnUnmatchedTypeOverrides(application.unmatchedEntries);
         }
 
         warnUnmappedTypes(tablesMetadata, this.dialect, format);

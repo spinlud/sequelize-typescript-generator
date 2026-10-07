@@ -9,6 +9,8 @@ import {
     validateArgs,
     buildConfig,
     buildDialect,
+    TYPE_OVERRIDES_FILE_FLAG,
+    typeOverridesFileOption,
 } from './utils.js';
 import { FORMATS, DEFAULT_FORMAT } from '../config/format.js';
 
@@ -19,7 +21,7 @@ process.on('unhandledRejection', (reason, promise) => {
 
 export const cli = async (): Promise<void> => {
     let usage = `Usage: stg -D <dialect> -d [database] -u [username] -x [password] `;
-    usage += `-h [host] -p [port] -o [out-dir] -s [schema] -a [associations-file]`;
+    usage += `-h [host] -p [port] -o [out-dir] -s [schema] -a [associations-file] -y [type-overrides-file] `;
     usage += `-t [tables] -T [skip-tables] -V [no-views] -i [indices] -P [paranoid] -C [case] -S [storage] -L [lint-file] `;
     usage += `-l [ssl] -r [protocol] -n [dialect-options] -c [clean] -g [logs] -F [format] --no-associations`;
 
@@ -129,7 +131,7 @@ export const cli = async (): Promise<void> => {
             alias: aliasesMap.ASSOCIATIONS_FILE,
             string: true,
             describe: `Associations file path`,
-        }).option('g', {
+        }).option(TYPE_OVERRIDES_FILE_FLAG, typeOverridesFileOption).option('g', {
             alias: aliasesMap.ENABLE_SEQUELIZE_LOGS,
             boolean: true,
             describe: `Enable Sequelize logs`,
