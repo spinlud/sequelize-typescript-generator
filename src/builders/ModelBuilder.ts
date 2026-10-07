@@ -33,6 +33,7 @@ import {
     tablesHaveJsonColumn,
     warnJsonSupportFileNameCollision,
 } from './jsonSupport.js';
+import { UNMAPPED_TS_TYPE_BY_FORMAT, warnUnmappedTypes } from './unmappedTypes.js';
 
 export { resolveAssociationPropertyName } from './associationNaming.js';
 
@@ -40,7 +41,7 @@ const foreignKeyDecorator = 'ForeignKey';
 
 /**
  * Build the TypeScript type node of a column: the shared `Json` type for a JSON
- * column, otherwise the dialect JS mapping.
+ * column, otherwise the dialect JS mapping, or `any` for an unmapped type.
  * @param {IColumnMetadata} col
  * @param {Dialect} dialect
  * @returns {ts.TypeNode}
@@ -48,7 +49,7 @@ const foreignKeyDecorator = 'ForeignKey';
 const buildColumnTypeNode = (col: IColumnMetadata, dialect: Dialect): ts.TypeNode =>
     col.isJson
         ? createGenericTypeReference(JSON_TYPE_NAME, [])
-        : createTypeNodeFromName(dialect.mapDbTypeToJs(col.type) ?? 'any');
+        : createTypeNodeFromName(dialect.mapDbTypeToJs(col.type) ?? UNMAPPED_TS_TYPE_BY_FORMAT.decorators);
 
 /**
  * Build the `@Table` decorator options for a table. The `hasTrigger` flag is
@@ -406,6 +407,8 @@ export class ModelBuilder extends Builder {
             console.warn(`Couldn't find any table for database ${this.config.connection.database} and provided filters`);
             return;
         }
+
+        warnUnmappedTypes(tablesMetadata, this.dialect, format);
 
         // Check if output dir exists
         try {

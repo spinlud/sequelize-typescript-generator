@@ -2,7 +2,6 @@ import { QueryTypes, AbstractDataTypeConstructor, IndexMethod } from 'sequelize'
 import { Sequelize, DataTypes } from 'sequelize';
 import { IConfig } from '../config/index.js';
 import { IColumnMetadata, Dialect, IIndexMetadata, IForeignKeyConstraintMetadata, ITable } from './Dialect.js';
-import { warnUnknownMappingForDataType } from './utils.js';
 import {
     buildSequelizeDataType,
     renderDataTypeExpression,
@@ -176,9 +175,9 @@ export class DialectMariaDB extends Dialect {
     /**
      * Map database data type to javascript data type
      * @param {string} dbType
-     * @returns {string
+     * @returns {string | undefined}
      */
-    public mapDbTypeToJs(dbType: string): string {
+    public mapDbTypeToJs(dbType: string): string | undefined {
         return jsDataTypesMap[dbType];
     }
 
@@ -277,11 +276,6 @@ export class DialectMariaDB extends Dialect {
         ) as IColumnMetadataMariaDB[];
 
         for (const column of columns) {
-            // Unknown data type
-            if (!this.mapDbTypeToSequelize(column.DATA_TYPE)) {
-                warnUnknownMappingForDataType(column.DATA_TYPE);
-            }
-
             const sequelizeConstructor = this.mapDbTypeToSequelize(column.DATA_TYPE);
 
             // Data type arguments (precision, length or ENUM values)

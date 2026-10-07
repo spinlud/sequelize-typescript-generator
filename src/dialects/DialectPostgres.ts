@@ -2,7 +2,6 @@ import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize, DataTypes } from 'sequelize';
 import { IConfig } from '../config/index.js';
 import { IColumnMetadata, IIndexMetadata, IForeignKeyConstraintMetadata, Dialect, ITable } from './Dialect.js';
-import { warnUnknownMappingForDataType } from './utils.js';
 import {
     buildSequelizeDataType,
     renderDataTypeExpression,
@@ -203,9 +202,9 @@ export class DialectPostgres extends Dialect {
      * element JS type suffixed with `[]`; an array whose element has no scalar
      * mapping degrades to `unknown[]`.
      * @param {string} dbType
-     * @returns {string}
+     * @returns {string | undefined}
      */
-    public mapDbTypeToJs(dbType: string): string {
+    public mapDbTypeToJs(dbType: string): string | undefined {
         if (isPostgresArrayType(dbType)) {
             const elementJsType = jsDataTypesMap[stripPostgresArrayPrefix(dbType)];
 
@@ -334,13 +333,6 @@ export class DialectPostgres extends Dialect {
             const elementTypeName = isArray ? stripPostgresArrayPrefix(column.udt_name) : column.udt_name;
 
             const elementConstructor = this.mapDbTypeToSequelize(elementTypeName);
-
-            // Unknown data type. An array whose element has no scalar mapping is
-            // reported once and degrades gracefully: no `type` is emitted and the
-            // TypeScript type falls back to `unknown[]`.
-            if (!elementConstructor) {
-                warnUnknownMappingForDataType(column.udt_name);
-            }
 
             // Data type arguments (precision or length)
             let dataTypeArgs: Array<DataTypeArgument | null | undefined> = [];

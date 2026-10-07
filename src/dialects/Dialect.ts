@@ -124,11 +124,12 @@ export abstract class Dialect {
     public abstract mapDbTypeToSequelize(dbType: string): AbstractDataTypeConstructor;
 
     /**
-     * Map database data type to javascript data type
+     * Map database data type to javascript data type, or undefined when the
+     * dialect has no mapping for it (an unmapped type)
      * @param {string} dbType
-     * @returns {string
+     * @returns {string | undefined}
      */
-    public abstract mapDbTypeToJs(dbType: string): string;
+    public abstract mapDbTypeToJs(dbType: string): string | undefined;
 
     /**
      * Map database default values to Sequelize type (e.g. uuid() => DataType.UUIDV4).

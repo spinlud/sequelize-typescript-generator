@@ -677,11 +677,12 @@ export class TestRunner {
                             columnName
                         );
 
-                        expect(dialect.mapDbTypeToJs(nativeType)).toBeDefined();
+                        const mappedJsType = dialect.mapDbTypeToJs(nativeType);
+                        expect(mappedJsType).toBeDefined();
 
                         const receivedValueType = getObjectType(receivedValue);
                         console.log(typeName, typeValue, receivedValue, receivedValueType);
-                        const expectedValueType = dialect.mapDbTypeToJs(nativeType).toLowerCase();
+                        const expectedValueType = (mappedJsType ?? '').toLowerCase();
 
                         if (receivedValueType === 'array') {
                             expect(expectedValueType.includes(receivedValueType)).toBe(true);
@@ -763,8 +764,8 @@ export class TestRunner {
                             }
                         });
 
-                        it('does not warn about unknown data type mappings', () => {
-                            expect(warnMessages.some(message => message.includes('Unknown data type mapping')))
+                        it('does not warn about unmapped types', () => {
+                            expect(warnMessages.some(message => message.includes('Unmapped type')))
                                 .toBe(false);
                         });
 

@@ -2,7 +2,6 @@ import { QueryTypes, AbstractDataTypeConstructor } from 'sequelize';
 import { Sequelize, DataTypes } from 'sequelize';
 import { IConfig } from '../config/index.js';
 import { IColumnMetadata, IIndexMetadata, IForeignKeyConstraintMetadata, Dialect, ITable } from './Dialect.js';
-import { warnUnknownMappingForDataType } from './utils.js';
 import {
     buildSequelizeDataType,
     renderDataTypeExpression,
@@ -158,9 +157,9 @@ export class DialectMSSQL extends Dialect {
     /**
      * Map database data type to javascript data type
      * @param {string} dbType
-     * @returns {string
+     * @returns {string | undefined}
      */
-    public mapDbTypeToJs(dbType: string): string {
+    public mapDbTypeToJs(dbType: string): string | undefined {
         return jsDataTypesMap[dbType];
     }
 
@@ -266,11 +265,6 @@ export class DialectMSSQL extends Dialect {
         ) as IColumnMetadataMSSQL[];
 
         for (const column of columns) {
-            // Unknown data type
-            if (!this.mapDbTypeToSequelize(column.DATA_TYPE)) {
-                warnUnknownMappingForDataType(column.DATA_TYPE);
-            }
-
             const sequelizeConstructor = this.mapDbTypeToSequelize(column.DATA_TYPE);
 
             // Data type arguments (precision or length)

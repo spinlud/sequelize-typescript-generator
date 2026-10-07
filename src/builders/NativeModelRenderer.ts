@@ -16,6 +16,7 @@ import {
     PropertyValue,
 } from './utils.js';
 import { buildDefaultValueExpression, parseDefaultValue } from './defaultValues.js';
+import { UNMAPPED_TS_TYPE_BY_FORMAT } from './unmappedTypes.js';
 import {
     classifyAttribute,
     collectTableIndexes,
@@ -83,7 +84,8 @@ const buildDeclareField = (
 /**
  * Build the base TypeScript type node of a column, before nullability and brand
  * wrapping. Paranoid soft-delete columns are always `Date`; enum columns become a
- * string-literal union; everything else maps through the dialect JS mapping.
+ * string-literal union; everything else maps through the dialect JS mapping,
+ * or is `unknown` for an unmapped type.
  * @param {IColumnMetadata} column
  * @param {ITableMetadata} table
  * @param {Dialect} dialect
@@ -108,7 +110,7 @@ const buildBaseTypeNode = (column: IColumnMetadata, table: ITableMetadata, diale
         );
     }
 
-    return createTypeNodeFromName(dialect.mapDbTypeToJs(column.type));
+    return createTypeNodeFromName(dialect.mapDbTypeToJs(column.type) ?? UNMAPPED_TS_TYPE_BY_FORMAT.native);
 };
 
 /**

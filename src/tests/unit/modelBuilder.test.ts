@@ -1,4 +1,6 @@
 import path from 'path';
+import * as ts from 'typescript';
+import { jest } from '@jest/globals';
 import os from 'os';
 import { promises as fs } from 'fs';
 import { ModelBuilder } from '../../builders/ModelBuilder.js';
@@ -6,6 +8,8 @@ import { DialectSQLite } from '../../dialects/DialectSQLite.js';
 import type { IConfig } from '../../config/index.js';
 import type { IColumnMetadata, ITableMetadata, ITablesMetadata } from '../../dialects/Dialect.js';
 import type { ISequelizeDataType } from '../../dialects/dataTypes.js';
+import type { Format } from '../../config/format.js';
+import { compileGeneratedModels } from '../integration/compileGeneratedModels.js';
 
 const dataType = (key: ISequelizeDataType['key'], ...args: ISequelizeDataType['args']): ISequelizeDataType => ({ key, args });
 
@@ -141,6 +145,125 @@ describe('ModelBuilder.build dispatch', () => {
         }
         finally {
             console.warn = originalWarn;
+            await fs.rm(outDir, { recursive: true, force: true });
+        }
+    });
+});
+
+const UNMAPPED_DB_TYPE = 'plan_tier';
+
+/**
+ * SQLite dialect stub that additionally has no TypeScript type mapping for
+ * `UNMAPPED_DB_TYPE`, as a dialect does for a database type it does not know.
+ */
+class UnmappedTypeStubDialect extends StubDialect {
+    public mapDbTypeToJs(dbType: string): string | undefined {
+        return dbType === UNMAPPED_DB_TYPE ? undefined : super.mapDbTypeToJs(dbType);
+    }
+}
+
+const profiles = buildTable('profiles', [
+    buildColumn({ name: 'profile_id', type: 'integer', sequelizeType: dataType('INTEGER'), primaryKey: true, autoIncrement: true }),
+    buildColumn({ name: 'tier', type: UNMAPPED_DB_TYPE }),
+], { schema: 'public' });
+
+// Same column with a Sequelize data type, so the native `Model.init` options are complete
+const profilesWithDataType = buildTable('profiles', [
+    buildColumn({ name: 'profile_id', type: 'integer', sequelizeType: dataType('INTEGER'), primaryKey: true, autoIncrement: true }),
+    buildColumn({ name: 'tier', type: UNMAPPED_DB_TYPE, sequelizeType: dataType('STRING') }),
+], { schema: 'public' });
+
+const UNMAPPED_WARNING_PREFIX = `[WARNING] Unmapped type '${UNMAPPED_DB_TYPE}' for column public.profiles.tier`;
+const TYPE_OVERRIDES_HINT = 'Declare a type override with --type-overrides-file to set its type.';
+
+/**
+ * Create a scratch output directory inside the project, so the generated
+ * models resolve the project's `sequelize` dependencies when type-checked.
+ * @returns {Promise<string>}
+ */
+const createProjectTempDir = async (): Promise<string> => {
+    const parent = path.join(process.cwd(), 'tmp');
+    await fs.mkdir(parent, { recursive: true });
+
+    return fs.mkdtemp(path.join(parent, 'stg-unmapped-'));
+};
+
+/**
+ * Build the given `profiles` table in the given format, capturing the warnings.
+ * @param {Format} format
+ * @param {ITableMetadata} table
+ * @returns {Promise<{ outDir: string, content: string, warnings: string[] }>}
+ */
+const buildUnmappedTypeModel = async (
+    format: Format,
+    table: ITableMetadata = profiles
+): Promise<{ outDir: string, content: string, warnings: string[] }> => {
+    const outDir = await createProjectTempDir();
+    const warnings: string[] = [];
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => {
+        warnings.push(args.map(arg => String(arg)).join(' '));
+    });
+
+    try {
+        const builder = new ModelBuilder(buildConfig(outDir, format), new UnmappedTypeStubDialect({ profiles: table }));
+        await builder.build();
+    }
+    finally {
+        warnSpy.mockRestore();
+    }
+
+    const content = await fs.readFile(path.join(outDir, 'profiles.ts'), 'utf8');
+
+    return { outDir, content, warnings };
+};
+
+describe('ModelBuilder.build unmapped types', () => {
+    it('types an unmapped column as unknown in the native format and warns naming the column', async () => {
+        const { outDir, content, warnings } = await buildUnmappedTypeModel('native');
+
+        try {
+            expect(content).toContain('declare tier: unknown;');
+            expect(warnings).toContain(`${UNMAPPED_WARNING_PREFIX}: typed as 'unknown'. ${TYPE_OVERRIDES_HINT}`);
+        }
+        finally {
+            await fs.rm(outDir, { recursive: true, force: true });
+        }
+    });
+
+    it('emits native output that strict-type-checks for a column typed as unknown', async () => {
+        const { outDir, content, warnings } = await buildUnmappedTypeModel('native', profilesWithDataType);
+
+        try {
+            expect(content).toContain('declare tier: unknown;');
+            expect(warnings).toContain(`${UNMAPPED_WARNING_PREFIX}: typed as 'unknown'. ${TYPE_OVERRIDES_HINT}`);
+
+            const diagnostics = await compileGeneratedModels(outDir, 'native');
+            expect(diagnostics.map(diagnostic => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'))).toEqual([]);
+        }
+        finally {
+            await fs.rm(outDir, { recursive: true, force: true });
+        }
+    });
+
+    it('keeps an unmapped column typed as any in the decorators format and warns naming the column', async () => {
+        const { outDir, content, warnings } = await buildUnmappedTypeModel('decorators');
+
+        try {
+            expect(content).toMatch(/tier!?: any;/);
+            expect(warnings).toContain(`${UNMAPPED_WARNING_PREFIX}: typed as 'any'. ${TYPE_OVERRIDES_HINT}`);
+        }
+        finally {
+            await fs.rm(outDir, { recursive: true, force: true });
+        }
+    });
+
+    it('does not warn about mapped columns', async () => {
+        const { outDir, warnings } = await buildUnmappedTypeModel('native');
+
+        try {
+            expect(warnings.filter(warning => warning.includes('Unmapped type'))).toHaveLength(1);
+        }
+        finally {
             await fs.rm(outDir, { recursive: true, force: true });
         }
     });
