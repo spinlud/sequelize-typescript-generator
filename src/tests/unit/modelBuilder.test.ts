@@ -176,16 +176,22 @@ const profilesWithDataType = buildTable('profiles', [
 const UNMAPPED_WARNING_PREFIX = `[WARNING] Unmapped type '${UNMAPPED_DB_TYPE}' for column public.profiles.tier`;
 const TYPE_OVERRIDES_HINT = 'Declare a type override with --type-overrides-file to set its type.';
 
+const unmappedTempDirs: string[] = [];
+
 /**
  * Create a scratch output directory inside the project, so the generated
  * models resolve the project's `sequelize` dependencies when type-checked.
+ * The directory is removed after each test.
  * @returns {Promise<string>}
  */
 const createProjectTempDir = async (): Promise<string> => {
     const parent = path.join(process.cwd(), 'tmp');
     await fs.mkdir(parent, { recursive: true });
 
-    return fs.mkdtemp(path.join(parent, 'stg-unmapped-'));
+    const dir = await fs.mkdtemp(path.join(parent, 'stg-unmapped-'));
+    unmappedTempDirs.push(dir);
+
+    return dir;
 };
 
 /**
@@ -218,53 +224,39 @@ const buildUnmappedTypeModel = async (
 };
 
 describe('ModelBuilder.build unmapped types', () => {
-    it('types an unmapped column as unknown in the native format and warns naming the column', async () => {
-        const { outDir, content, warnings } = await buildUnmappedTypeModel('native');
+    afterEach(async () => {
+        for (const dir of unmappedTempDirs.splice(0)) {
+            await fs.rm(dir, { recursive: true, force: true });
+        }
+    });
 
-        try {
-            expect(content).toContain('declare tier: unknown;');
-            expect(warnings).toContain(`${UNMAPPED_WARNING_PREFIX}: typed as 'unknown'. ${TYPE_OVERRIDES_HINT}`);
-        }
-        finally {
-            await fs.rm(outDir, { recursive: true, force: true });
-        }
+    it('types an unmapped column as unknown in the native format and warns naming the column', async () => {
+        const { content, warnings } = await buildUnmappedTypeModel('native');
+
+        expect(content).toContain('declare tier: unknown;');
+        expect(warnings).toContain(`${UNMAPPED_WARNING_PREFIX}: typed as 'unknown'. ${TYPE_OVERRIDES_HINT}`);
     });
 
     it('emits native output that strict-type-checks for a column typed as unknown', async () => {
         const { outDir, content, warnings } = await buildUnmappedTypeModel('native', profilesWithDataType);
 
-        try {
-            expect(content).toContain('declare tier: unknown;');
-            expect(warnings).toContain(`${UNMAPPED_WARNING_PREFIX}: typed as 'unknown'. ${TYPE_OVERRIDES_HINT}`);
+        expect(content).toContain('declare tier: unknown;');
+        expect(warnings).toContain(`${UNMAPPED_WARNING_PREFIX}: typed as 'unknown'. ${TYPE_OVERRIDES_HINT}`);
 
-            const diagnostics = await compileGeneratedModels(outDir, 'native');
-            expect(diagnostics.map(diagnostic => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'))).toEqual([]);
-        }
-        finally {
-            await fs.rm(outDir, { recursive: true, force: true });
-        }
+        const diagnostics = await compileGeneratedModels(outDir, 'native');
+        expect(diagnostics.map(diagnostic => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'))).toEqual([]);
     });
 
     it('keeps an unmapped column typed as any in the decorators format and warns naming the column', async () => {
-        const { outDir, content, warnings } = await buildUnmappedTypeModel('decorators');
+        const { content, warnings } = await buildUnmappedTypeModel('decorators');
 
-        try {
-            expect(content).toMatch(/tier!?: any;/);
-            expect(warnings).toContain(`${UNMAPPED_WARNING_PREFIX}: typed as 'any'. ${TYPE_OVERRIDES_HINT}`);
-        }
-        finally {
-            await fs.rm(outDir, { recursive: true, force: true });
-        }
+        expect(content).toMatch(/tier!?: any;/);
+        expect(warnings).toContain(`${UNMAPPED_WARNING_PREFIX}: typed as 'any'. ${TYPE_OVERRIDES_HINT}`);
     });
 
     it('does not warn about mapped columns', async () => {
-        const { outDir, warnings } = await buildUnmappedTypeModel('native');
+        const { warnings } = await buildUnmappedTypeModel('native');
 
-        try {
-            expect(warnings.filter(warning => warning.includes('Unmapped type'))).toHaveLength(1);
-        }
-        finally {
-            await fs.rm(outDir, { recursive: true, force: true });
-        }
+        expect(warnings.filter(warning => warning.includes('Unmapped type'))).toHaveLength(1);
     });
 });

@@ -102,8 +102,8 @@ const createProjectTempDir = async (): Promise<string> => {
 
 const tempDirs: string[] = [];
 
-afterAll(async () => {
-    for (const dir of tempDirs) {
+afterEach(async () => {
+    for (const dir of tempDirs.splice(0)) {
         await fs.rm(dir, { recursive: true, force: true });
     }
 });
