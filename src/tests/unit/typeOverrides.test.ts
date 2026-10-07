@@ -510,6 +510,10 @@ const VALIDATION_CASES: Array<[string, unknown, RegExp]> = [
     ['a dataType with a template literal', { types: { varchar: { dataType: 'ENUM(`a`)' } } }, /types\["varchar"\]\.dataType/],
     ['a dataType with an unknown key', { types: { varchar: { dataType: 'VARCHAR2(10)' } } }, /types\["varchar"\]\.dataType.*unknown data type "VARCHAR2"/],
     ['a dataType with an unknown nested key', { types: { varchar: { dataType: 'ARRAY(FOO)' } } }, /types\["varchar"\]\.dataType.*unknown data type "FOO"/],
+    ['a dataType naming a dialect namespace', { types: { varchar: { dataType: 'postgres' } } }, /types\["varchar"\]\.dataType.*unknown data type "postgres"/],
+    ['a dataType naming a prefixed dialect namespace', { types: { varchar: { dataType: 'DataTypes.mysql' } } }, /types\["varchar"\]\.dataType.*unknown data type "mysql"/],
+    ['a dataType naming the abstract base type', { types: { varchar: { dataType: 'ABSTRACT' } } }, /types\["varchar"\]\.dataType.*unknown data type "ABSTRACT"/],
+    ['a dataType with a nested dialect namespace', { types: { varchar: { dataType: 'ARRAY(postgres)' } } }, /types\["varchar"\]\.dataType.*unknown data type "postgres"/],
 ];
 
 describe('type overrides validation', () => {

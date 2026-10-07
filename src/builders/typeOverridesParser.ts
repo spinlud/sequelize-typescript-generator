@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import * as ts from 'typescript';
 import type { IConfigMetadata } from '../config/IConfig.js';
-import { isSequelizeDataTypeKey } from '../dialects/dataTypes.js';
+import { isColumnDataTypeKey } from '../dialects/dataTypes.js';
 import type { DataTypeArgument, ISequelizeDataType } from '../dialects/dataTypes.js';
 
 /**
@@ -186,7 +186,7 @@ const convertDataTypeExpression = (
         throw fail('only data type identifiers, calls, and string or number literals are allowed');
     }
 
-    if (!isSequelizeDataTypeKey(name)) {
+    if (!isColumnDataTypeKey(name)) {
         throw fail(`unknown data type ${JSON.stringify(name)}`);
     }
 

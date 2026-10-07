@@ -48,6 +48,23 @@ export const isSequelizeDataTypeKey = (value: string): value is SequelizeDataTyp
     Object.prototype.hasOwnProperty.call(DataTypes, value);
 
 /**
+ * Type guard for a DataTypes key naming a concrete data type usable as a column
+ * type: a data type class derived from ABSTRACT. Dialect namespaces (`postgres`,
+ * `mysql`, ...) and ABSTRACT itself are rejected.
+ * @param {string} value
+ * @returns {boolean}
+ */
+export const isColumnDataTypeKey = (value: string): value is SequelizeDataTypeKey => {
+    if (!isSequelizeDataTypeKey(value)) {
+        return false;
+    }
+
+    const dataType = DataTypes[value];
+
+    return typeof dataType === 'function' && dataType.prototype instanceof DataTypes.ABSTRACT;
+};
+
+/**
  * Resolve the DataTypes key for a constructor. The first token of the constructor
  * key is used so that 'DOUBLE PRECISION' resolves to 'DOUBLE'. Returns undefined when
  * the first token is not a DataTypes member.

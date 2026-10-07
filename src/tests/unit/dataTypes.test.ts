@@ -1,6 +1,7 @@
 import { DataTypes } from 'sequelize';
 import {
     isSequelizeDataTypeKey,
+    isColumnDataTypeKey,
     resolveSequelizeDataTypeKey,
     buildSequelizeDataType,
     renderDataTypeExpression,
@@ -17,6 +18,23 @@ describe('data types mapper', () => {
             expect(isSequelizeDataTypeKey('DOUBLE')).toBe(true);
             expect(isSequelizeDataTypeKey('NOT_A_TYPE')).toBe(false);
         });
+    });
+
+    describe('isColumnDataTypeKey', () => {
+        it.each([
+            'ARRAY', 'BIGINT', 'BLOB', 'BOOLEAN', 'CHAR', 'CITEXT', 'DATE', 'DATEONLY', 'DECIMAL', 'DOUBLE',
+            'ENUM', 'FLOAT', 'GEOGRAPHY', 'GEOMETRY', 'INTEGER', 'JSON', 'JSONB', 'MEDIUMINT', 'NUMBER',
+            'RANGE', 'REAL', 'SMALLINT', 'STRING', 'TIME', 'TINYINT', 'UUID', 'VIRTUAL',
+        ])('accepts the data type %s', key => {
+            expect(isColumnDataTypeKey(key)).toBe(true);
+        });
+
+        it.each(['ABSTRACT', 'postgres', 'mysql', 'mariadb', 'sqlite', 'mssql', 'oracle', 'db2', 'snowflake', 'NOT_A_TYPE'])(
+            'rejects %s',
+            key => {
+                expect(isColumnDataTypeKey(key)).toBe(false);
+            }
+        );
     });
 
     describe('resolveSequelizeDataTypeKey', () => {
