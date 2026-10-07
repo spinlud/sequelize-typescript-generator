@@ -44,6 +44,28 @@ _Avoid_: Typed mode
 The naming convention applied to model names and column names: underscore, camel, upper, lower, pascal, or const.
 _Avoid_: Casing, naming style
 
+### Types
+
+**User-defined type**:
+A Postgres type created in the database rather than built in: an enum, a domain, a composite type, or a type added by an extension.
+_Avoid_: Custom type, custom column
+
+**Unmapped type**:
+A column type the dialect cannot translate into a TypeScript type and a Sequelize data type, reported with a warning when metadata is fetched.
+_Avoid_: Unknown type, unsupported type
+
+**Shared type**:
+A TypeScript type the generator emits once into its own file and that models import, such as `Json` or the type for a Postgres enum.
+_Avoid_: Alias, helper type
+
+**Type override**:
+A user-supplied entry that sets the TypeScript type, the Sequelize data type, or both, for every column of one database type or for a single column; it takes precedence over anything the generator derives.
+_Avoid_: Type mapping, custom type
+
+**Type overrides file**:
+The JSON file a user supplies to declare type overrides.
+_Avoid_: Types file, mapping file
+
 ### Associations
 
 **Association**:

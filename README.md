@@ -27,6 +27,17 @@
         * [One to One](#one-to-one)
         * [One to Many](#one-to-many)
         * [Many to Many](#many-to-many)
+* [Type overrides](#type-overrides)
+    * [Type overrides file](#type-overrides-file)
+    * [Matching and precedence](#matching-and-precedence)
+    * [Type keys per dialect](#type-keys-per-dialect)
+    * [Validation and warnings](#validation-and-warnings)
+    * [Unmapped types](#unmapped-types)
+* [Postgres user-defined types](#postgres-user-defined-types)
+    * [Enums](#enums)
+    * [Enum type names](#enum-type-names)
+    * [Domains, citext and other types](#domains-citext-and-other-types)
+    * [Caveats](#caveats)
 * [Lint](#lint)
 
 <!-- toc stop -->
@@ -95,9 +106,10 @@ stg --help
 
 ```shell
 Usage: stg -D <dialect> -d [database] -u [username] -x [password] -h [host] -p
-[port] -o [out-dir] -s [schema] -a [associations-file]-t [tables] -T
-[skip-tables] -i [indices] -C [case] -S [storage] -L [lint-file] -l [ssl] -r
-[protocol] -c [clean] -F [format] --no-associations
+[port] -o [out-dir] -s [schema] -a [associations-file] -y [type-overrides-file]
+-t [tables] -T [skip-tables] -V [no-views] -i [indices] -P [paranoid] -C [case]
+-S [storage] -L [lint-file] -l [ssl] -r [protocol] -n [dialect-options] -c
+[clean] -g [logs] -F [format] --no-associations
 
 Options:
   --help                      Show help                                [boolean]
@@ -149,6 +161,11 @@ Options:
   -r, --protocol              Protocol used: Default:
                               - tcp                                     [string]
   -a, --associations-file     Associations file path                    [string]
+  -y, --type-overrides-file   Type overrides file path: a JSON file declaring
+                              the TypeScript type and/or the Sequelize data type
+                              of database types ("types") or single columns
+                              ("columns"). Overrides always win over the
+                              generated types.                          [string]
   -g, --logs                  Enable Sequelize logs                    [boolean]
   -n, --dialect-options       Dialect native options passed as json string.
                                                                         [string]
@@ -1423,6 +1440,244 @@ export class authors_books extends Model<authors_booksAttributes, authors_booksA
 
 }
 ```
+
+## Type overrides
+A type override sets the TypeScript type, the Sequelize data type, or both, of every column of a
+database type or of a single column. Use it for types the generator cannot map (extension types such
+as `tsvector`, `vector` or `ltree`) or for columns you want typed differently. Overrides work in every
+dialect and both output formats, and always win over what the generator derives.
+
+### Type overrides file
+Type overrides live in a JSON file passed with `-y` / `--type-overrides-file`:
+
+```shell
+npx stg -D postgres -d myDatabase -u myUsername -x myPassword --type-overrides-file type-overrides.json
+```
+
+The file has two optional sections; any other top-level key is an error:
+
+- `types`: keyed by `<type>` or `<schema>.<type>`; the entry applies to every column of that database type.
+- `columns`: keyed by `<table>.<column>` or `<schema>.<table>.<column>`; the entry applies to one column.
+  Table and column are the database names, not the [transformed](#transform-case) ones.
+
+Each entry sets `tsType`, `dataType` or both:
+
+- `tsType`: any TypeScript type expression, including unions, object types and `import('pkg').Type`.
+  It is emitted as written; no import statements are generated, so use an `import()` type for
+  external types.
+- `dataType`: a Sequelize data type expression, such as `"TSVECTOR"`, `"STRING(80)"` or
+  `"ARRAY(ENUM('a', 'b'))"`, with an optional `DataTypes.` / `DataType.` prefix. Only data type
+  identifiers, calls, and string or number literal arguments are allowed, and every data type must
+  exist in Sequelize `DataTypes`. It is emitted with the namespace of the output format
+  (`DataTypes.` for native, `DataType.` for decorators).
+
+A side you do not set keeps what the generator would have produced, so a partial override changes only
+the part that is wrong. Neither side is derived from the other.
+
+```json
+{
+    "types": {
+        "tsvector": { "tsType": "string", "dataType": "TSVECTOR" },
+        "geometry": { "tsType": "import('geojson').Geometry" }
+    },
+    "columns": {
+        "public.places.settings": { "tsType": "{ theme: 'light' | 'dark'; beta?: boolean }" }
+    }
+}
+```
+
+Here `tsvector` (unmapped by the generator) gets both sides, `geometry` keeps its generated `GEOMETRY`
+data type, and `settings` (a `jsonb` column) keeps its `JSONB` data type with a precise TypeScript type
+in place of `Json`. In the native format the `places` model becomes:
+
+```ts
+export class places extends Model<InferAttributes<places>, InferCreationAttributes<places>> {
+
+	// ...
+
+	declare location: import("geojson").Geometry | null;
+
+	declare search: string | null;
+
+	declare settings: {
+		theme: "light" | "dark";
+		beta?: boolean;
+	} | null;
+
+	static initModel(sequelize: Sequelize): typeof places {
+		places.init({
+			// ...
+			location: {
+				type: DataTypes.GEOMETRY,
+				allowNull: true
+			},
+			search: {
+				type: DataTypes.TSVECTOR,
+				allowNull: true
+			},
+			settings: {
+				type: DataTypes.JSONB,
+				allowNull: true
+			}
+		}, {
+			// ...
+		});
+		return places;
+	}
+
+}
+```
+
+Nullability is still applied to an overridden TypeScript type (`| null` in the native format, an
+optional property in the decorators format).
+
+Programmatically, set either `metadata.typeOverridesFile` (a file path) or `metadata.typeOverrides`
+(an object of the same shape); setting both is a validation error. The `ITypeOverride` and
+`ITypeOverrides` types are exported from the package:
+
+```ts
+import { IConfig, ITypeOverrides } from 'sequelize-typescript-generator';
+
+const typeOverrides: ITypeOverrides = {
+    types: {
+        tsvector: { tsType: 'string', dataType: 'TSVECTOR' },
+    },
+    columns: {
+        'users.status': { tsType: "'active' | 'banned'" },
+    },
+};
+
+const config: IConfig = {
+    // ...
+    metadata: {
+        typeOverrides,
+    },
+};
+```
+
+### Matching and precedence
+Keys match case-insensitively, like the table filters; two keys of a section that differ only by case
+are a validation error. When several entries match a column, the most specific wins:
+
+1. `<schema>.<table>.<column>`
+2. `<table>.<column>`
+3. `<schema>.<type>`
+4. `<type>`
+
+So a column override beats a type override, a schema-qualified key beats an unqualified one, and any
+override beats the generator. `tsType` and `dataType` are resolved independently: each comes from the
+most specific matching entry that sets it, and falls back to the generator when none does.
+
+### Type keys per dialect
+A type key matches the raw database type name the dialect reports for the column:
+
+| Dialect | Type name matched | Schema segment |
+| --- | --- | --- |
+| Postgres | `udt_name`, e.g. `int4`, `varchar`, `tsvector` or an enum name; array types are prefixed with `_` (`_int4`, `_plan_tier`); a domain reports its underlying type | The table schema; for an enum column, the schema the enum is defined in |
+| MySQL / MariaDB | `DATA_TYPE`, e.g. `varchar`, `int` | `connection.schema`, normally unset, so schema-qualified keys do not match |
+| MSSQL | `DATA_TYPE`, e.g. `nvarchar`, `int` | The table schema, e.g. `dbo` |
+| SQLite | The full declared type, e.g. `VARCHAR(80)` | None; use unqualified keys |
+
+The schema segment of a column key follows the same rule as the table schema in the table above.
+
+### Validation and warnings
+Type overrides are read and validated when generation starts, for both the CLI and programmatic usage.
+The CLI also fails fast if the `-y` path does not exist. Any of the following is a `[ValidationError]`
+naming the offending entry, and stops generation:
+
+- the file cannot be read or is not valid JSON;
+- the root is not an object, or has a section other than `types` and `columns`;
+- a section or an entry is not an object, or an entry has a field other than `tsType` and `dataType`;
+- an entry sets neither `tsType` nor `dataType`, or sets one to a non-string;
+- a key is malformed (wrong number of segments or an empty segment) or duplicates another key of the
+  section case-insensitively;
+- `tsType` is not a valid TypeScript type;
+- `dataType` does not parse, uses a disallowed expression, or names an unknown Sequelize data type;
+- both `typeOverridesFile` and `typeOverrides` are set.
+
+Entries that matched no column are listed in a single warning, so typos are noticed even when table
+filters legitimately exclude the tables they target:
+
+```
+[WARNING] Type overrides matched no column: columns["plcaes.name"]. Check them for typos; table filters may exclude the tables they target.
+```
+
+### Unmapped types
+A column whose database type the dialect cannot map is typed `unknown` in the native format and `any`
+in the decorators format, and generation continues. A warning names the column as
+`schema.table.column` and the type it received:
+
+```
+[WARNING] Unmapped type 'tsvector' for column public.places.search: typed as 'unknown'. Declare a type override with --type-overrides-file to set its type.
+```
+
+Fix it with a type override; columns covered by an override get no unmapped-type warning. In the
+native format an unmapped column has no `type` in `Model.init`, so set a `dataType` as well as a
+`tsType`.
+
+## Postgres user-defined types
+
+### Enums
+The Postgres dialect detects enum types, including enums defined in another schema than the table.
+Each enum becomes a shared type named after it, collected in a generated `enums.ts` used by both
+output formats:
+
+```ts
+export type PlanTier = "free" | "pro" | "enterprise";
+```
+
+Models import the shared types they use with a type-only import (`import type { PlanTier } from "./enums";`)
+and type enum columns with them. The data type is `ENUM` with the database labels in database order,
+and enum arrays are typed as arrays of the shared type with an `ARRAY` of `ENUM` data type:
+
+```ts
+declare plan: PlanTier;
+
+declare previous_plans: PlanTier[] | null;
+
+// in Model.init
+plan: {
+	type: DataTypes.ENUM("free", "pro", "enterprise"),
+	allowNull: false
+},
+previous_plans: {
+	type: DataTypes.ARRAY(DataTypes.ENUM("free", "pro", "enterprise")),
+	allowNull: true
+}
+```
+
+An enum used by several tables produces a single shared type. `enums.ts` is generated only when at
+least one generated column uses an enum shared type: a [type override](#type-overrides) whose `tsType`
+replaces an enum on every column removes that enum from `enums.ts`. MySQL and MariaDB enums are typed as
+before (an inline union in the native format, `string` in the decorators format).
+
+### Enum type names
+The shared type name is the Pascal case of the database type name (`plan_tier` → `PlanTier`); a name
+that does not start with a valid identifier character is prefixed with `Enum`. Clashes rename only the
+clashing enums, with a warning for each renamed one:
+
+- when enums of the same name exist in several schemas, an enum from a schema none of the generated
+  tables belong to is prefixed with its Pascal-cased schema (`auth.plan_tier` → `AuthPlanTier`);
+- a name equal to a generated model name, or to any other identifier a model file declares or imports,
+  gets an `Enum` suffix (`PlanTierEnum`);
+- names still equal after that are ordered by schema then type name: the first keeps the name, the
+  next ones get `2`, `3`, and so on.
+
+A warning is also printed if a model would be written to `enums.ts` itself.
+
+### Domains, citext and other types
+- Domain columns are typed as their underlying type.
+- `citext` columns are typed `string` with the `CITEXT` data type.
+- Composite types and extension types outside the type map (`vector`, `ltree`, `tsvector`, `hstore`,
+  range types, ...) remain [unmapped types](#unmapped-types); declare a [type override](#type-overrides)
+  for them.
+
+### Caveats
+- Sequelize v6 cannot name the enum type of an attribute, so `sync()` creates its own
+  `enum_<table>_<column>` types instead of reusing your named database enums. The generated models
+  target existing databases; manage the schema's enum types with migrations rather than `sync()`.
+- Sequelize reads the enum type OIDs once per `Sequelize` instance. If enum types are created after the
+  instance connected, enum array values come back as raw strings until a new instance is created.
 
 ## Lint
 By default each generated model will be linted with a predefined ESLint flat config to improve readability:
