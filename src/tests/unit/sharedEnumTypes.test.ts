@@ -505,6 +505,45 @@ describe.each(FORMATS_UNDER_TEST)('shared enum types (format: %s)', (format: For
         });
     });
 
+    describe('index barrel', () => {
+        const initModelsExport = format === 'native' ? ['export * from "./initModels";'] : [];
+
+        it('type-only re-exports the enums and Json shared type files', async () => {
+            const result = await build(format, [
+                buildAccountsTable(),
+                buildTable('events', [
+                    buildIdColumn(),
+                    buildColumn({ name: 'payload', type: 'jsonb', sequelizeType: dataType('JSONB'), isJson: true }),
+                ]),
+            ]);
+
+            expect(result.files['index.ts'].split('\n')).toEqual([
+                'export * from "./accounts";',
+                'export * from "./events";',
+                'export type * from "./jsonType";',
+                'export type * from "./enums";',
+                ...initModelsExport,
+            ]);
+            expect(formatDiagnostics(await compileGeneratedModels(result.outDir, format))).toEqual([]);
+        });
+
+        it('re-exports no shared type file that is not emitted', async () => {
+            const result = await build(format, [buildNotesTable()]);
+
+            expect(result.files['index.ts'].split('\n')).toEqual([
+                'export * from "./notes";',
+                ...initModelsExport,
+            ]);
+        });
+
+        it('re-exports the enums file alone when no column uses the Json type', async () => {
+            const result = await build(format, [buildInvoicesTable()]);
+
+            expect(result.files['index.ts']).toContain('export type * from "./enums";');
+            expect(result.files['index.ts']).not.toContain('./jsonType');
+        });
+    });
+
     it('warns when a model file would overwrite the enums file', async () => {
         const result = await build(format, [
             buildTable('enums', [buildIdColumn(), buildEnumColumn('plan', PLAN_TIER)]),

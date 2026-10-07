@@ -302,6 +302,22 @@ export function initModels(sequelize: Sequelize) {
 export type Models = ReturnType<typeof initModels>;
 ```
 
+The `index.ts` barrel re-exports every model file and `initModels`, plus the shared type files emitted
+next to the models whenever they are generated: `jsonType.ts` (the `Json` type of JSON columns) and
+`enums.ts` (the [enum](#enums) shared types). Shared type files are re-exported type-only, so the barrel
+stays safe under `isolatedModules` and `verbatimModuleSyntax`:
+
+```ts
+export * from "./races";
+export * from "./units";
+// ... other models
+export type * from "./jsonType";
+export type * from "./enums";
+export * from "./initModels";
+```
+
+The decorators format emits the same barrel without the `initModels` re-export.
+
 Wire the models against a `Sequelize` instance and use them straight away:
 
 ```ts
@@ -1626,7 +1642,7 @@ export type PlanTier = "free" | "pro" | "enterprise";
 ```
 
 Models import the shared types they use with a type-only import (`import type { PlanTier } from "./enums";`)
-and type enum columns with them. The data type is `ENUM` with the database labels in database order,
+and type enum columns with them; the `index.ts` barrel re-exports them (`export type * from "./enums";`). The data type is `ENUM` with the database labels in database order,
 and enum arrays are typed as arrays of the shared type with an `ARRAY` of `ENUM` data type:
 
 ```ts

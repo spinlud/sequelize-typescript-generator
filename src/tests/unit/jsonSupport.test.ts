@@ -102,6 +102,15 @@ describe('renderNativeFiles JSON support file', () => {
         expect(model?.content).toContain('payload: Json | null');
     });
 
+    it('type-only re-exports the support file from the barrel only when it is emitted', () => {
+        const withJson = renderNativeFiles({ documents: jsonTable }, dialect).find(file => file.fileName === 'index.ts');
+        const withoutJson = renderNativeFiles({ races: plainTable }, dialect).find(file => file.fileName === 'index.ts');
+
+        expect(withJson?.content).toContain('export type * from "./jsonType";');
+        expect(withJson?.content).not.toContain('./enums');
+        expect(withoutJson?.content).not.toContain('./jsonType');
+    });
+
     it('omits the support file when no table has a JSON column', () => {
         const files = renderNativeFiles({ races: plainTable }, dialect);
 

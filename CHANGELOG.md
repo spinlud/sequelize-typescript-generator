@@ -2,6 +2,12 @@
 
 ---
 
+### 13.2.1
+#### Minor changes and bug fixes:
+* The generated `index.ts` barrel type-only re-exports the shared type files emitted next to the models (`jsonType.ts` with the `Json` type, `enums.ts` with the Postgres enum shared types), so types used on model fields are reachable from the barrel. Each file is re-exported only when it is generated, in both output formats.
+
+---
+
 ### Unreleased
 #### Minor changes and bug fixes:
 * MySQL `BIGINT` columns are now generated with the `string` JS/TS type (was `number`) to avoid precision loss and match the MariaDB and MSSQL dialects.

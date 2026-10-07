@@ -46,6 +46,7 @@ import {
 } from './enumSupport.js';
 import type { IReservedIdentifiers } from './enumSupport.js';
 import { indexTablesByModelName } from './nativeAttributes.js';
+import { buildSharedTypesIndexExports } from './sharedTypesIndexExports.js';
 import { collectSequelizeImports } from './nativeAssociations.js';
 import { UNMAPPED_TS_TYPE_BY_FORMAT, warnUnmappedTypes } from './unmappedTypes.js';
 import { loadTypeOverrides } from './typeOverridesParser.js';
@@ -489,13 +490,17 @@ export class ModelBuilder extends Builder {
     }
 
     /**
-     * Build main index file
+     * Build main index file: every model file, then the shared type files the
+     * models use (type-only)
      * @param {ITableMetadata[]} tablesMetadata
      * @returns {string}
      */
     private static buildIndexExports(tablesMetadata: ITablesMetadata): string {
-        return Object.values(tablesMetadata)
-            .map(t =>  nodeToString(generateIndexExport(t.name)))
+        return [
+            ...Object.values(tablesMetadata).map(t => generateIndexExport(t.name)),
+            ...buildSharedTypesIndexExports(tablesMetadata),
+        ]
+            .map(exportDeclaration => nodeToString(exportDeclaration))
             .join('\n');
     }
 

@@ -11,6 +11,7 @@ import {
     INativeAssociationWiring,
     resolveAssociationWiring,
 } from './nativeAssociations.js';
+import { buildSharedTypesIndexExports } from './sharedTypesIndexExports.js';
 
 /**
  * Build the `<model>.initModel(sequelize);` statement wiring a model into the
@@ -183,12 +184,17 @@ export const renderInitModelsFile = (
 };
 
 /**
- * Render the `index.ts` barrel re-exporting every model file and the wiring file.
+ * Render the `index.ts` barrel re-exporting every model file, the shared type
+ * files the models use (type-only) and the wiring file.
  * @param {ITablesMetadata} tablesMetadata
  * @returns {string}
  */
 export const renderNativeIndexFile = (tablesMetadata: ITablesMetadata): string => {
-    const exportNames = [...Object.values(tablesMetadata).map(table => table.name), 'initModels'];
+    const exports = [
+        ...Object.values(tablesMetadata).map(table => generateIndexExport(table.name)),
+        ...buildSharedTypesIndexExports(tablesMetadata),
+        generateIndexExport('initModels'),
+    ];
 
-    return exportNames.map(name => nodeToString(generateIndexExport(name))).join('\n');
+    return exports.map(exportDeclaration => nodeToString(exportDeclaration)).join('\n');
 };
