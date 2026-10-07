@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import * as ts from 'typescript';
-import type { IConfigMetadata } from '../config/IConfig.js';
+import type { IConfigMetadata, ITypeOverride, ITypeOverrides } from '../config/IConfig.js';
 import { isColumnDataTypeKey } from '../dialects/dataTypes.js';
 import type { DataTypeArgument, ISequelizeDataType } from '../dialects/dataTypes.js';
 
@@ -12,11 +12,11 @@ export const VALIDATION_ERROR_PREFIX = '[ValidationError]';
 /**
  * Section of the type overrides file an entry belongs to.
  */
-export type TypeOverrideSection = 'types' | 'columns';
+export type TypeOverrideSection = keyof ITypeOverrides;
 
 const TYPE_OVERRIDE_SECTIONS: readonly TypeOverrideSection[] = ['types', 'columns'];
 
-const TYPE_OVERRIDE_FIELDS: readonly string[] = ['tsType', 'dataType'];
+const TYPE_OVERRIDE_FIELDS = ['tsType', 'dataType'] as const satisfies readonly (keyof ITypeOverride)[];
 
 /**
  * Allowed number of dot-separated key segments per section: `<type>` or
@@ -276,7 +276,7 @@ const parseEntry = (section: TypeOverrideSection, key: string, entry: unknown): 
         throw validationError(`${label} must be an object`);
     }
 
-    const unknownField = Object.keys(entry).find(field => !TYPE_OVERRIDE_FIELDS.includes(field));
+    const unknownField = Object.keys(entry).find(field => !TYPE_OVERRIDE_FIELDS.some(knownField => knownField === field));
 
     if (unknownField !== undefined) {
         throw validationError(`${label} has an unknown field ${JSON.stringify(unknownField)}: expected tsType or dataType`);

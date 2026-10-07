@@ -40,12 +40,9 @@ const FIRST_NUMERIC_SUFFIX = 2;
  * A database enum used by at least one generated column, with the identifier of
  * its shared type.
  */
-export interface ISharedEnumType {
-    schema: string;
-    name: string;
-    labels: string[];
+export type ISharedEnumType = Pick<IColumnEnumType, 'schema' | 'name' | 'labels'> & {
     typeName: string;
-}
+};
 
 /**
  * Unique key of a database enum type: its schema and name.
@@ -137,7 +134,7 @@ export const toPascalCaseIdentifier = (name: string): string => {
  */
 export interface IReservedIdentifiers {
     modelNames: ReadonlySet<string>;
-    otherIdentifiers: ReadonlySet<string>;
+    nonModelIdentifiers: ReadonlySet<string>;
 }
 
 /**
@@ -170,26 +167,26 @@ const resolveSharedEnumTypeNames = (
     tableSchemas: ReadonlySet<string>,
     reserved: IReservedIdentifiers
 ): { names: Map<string, string>; clashes: IEnumNameClash[] } => {
-    const baseNames = new Map(enumTypes.map(enumType =>
-        [buildEnumTypeKey(enumType), toPascalCaseIdentifier(enumType.name)]));
+    const namedEnumTypes = enumTypes.map(enumType => ({
+        enumType,
+        baseName: toPascalCaseIdentifier(enumType.name),
+    }));
     const schemasByBaseName = new Map<string, Set<string>>();
 
-    for (const enumType of enumTypes) {
-        const baseName = baseNames.get(buildEnumTypeKey(enumType)) ?? '';
+    for (const { enumType, baseName } of namedEnumTypes) {
         const schemas = schemasByBaseName.get(baseName) ?? new Set<string>();
         schemas.add(enumType.schema);
         schemasByBaseName.set(baseName, schemas);
     }
 
-    const candidates = enumTypes.map(enumType => {
-        const baseName = baseNames.get(buildEnumTypeKey(enumType)) ?? '';
+    const candidates = namedEnumTypes.map(({ enumType, baseName }) => {
         const isForeignSchemaClash = !tableSchemas.has(enumType.schema) &&
             (schemasByBaseName.get(baseName)?.size ?? 0) > 1;
         const schemaQualified = isForeignSchemaClash
             ? `${toPascalCaseIdentifier(enumType.schema)}${baseName}`
             : baseName;
         const isModelName = reserved.modelNames.has(schemaQualified);
-        const isReserved = isModelName || reserved.otherIdentifiers.has(schemaQualified);
+        const isReserved = isModelName || reserved.nonModelIdentifiers.has(schemaQualified);
 
         return {
             enumType,
@@ -203,7 +200,7 @@ const resolveSharedEnumTypeNames = (
         };
     });
 
-    const taken = new Set<string>([...reserved.modelNames, ...reserved.otherIdentifiers]);
+    const taken = new Set<string>([...reserved.modelNames, ...reserved.nonModelIdentifiers]);
     const typeNames = new Map<string, string>();
 
     // The first enum in order keeps a candidate name; the others sharing it are
@@ -437,7 +434,7 @@ export const warnEnumSupportFileNameCollision = (tablesMetadata: ITablesMetadata
         console.warn(
             '[WARNING]',
             `Model '${collision}' collides with the shared enum support file '${ENUM_SUPPORT_FILE_NAME}'; ` +
-            `the generated model and the enum types file would overwrite each other.`
+            `the generated model and the enum support file would overwrite each other.`
         );
     }
 };

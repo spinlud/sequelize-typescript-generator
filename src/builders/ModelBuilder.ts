@@ -117,7 +117,7 @@ const collectReferencedIdentifiers = (node: ts.Node, identifiers: Set<string>): 
 const collectReservedIdentifiers = (tablesMetadata: ITablesMetadata, dialect: Dialect): IReservedIdentifiers => {
     const tables = Object.values(tablesMetadata);
     const tablesByModel = indexTablesByModelName(tablesMetadata);
-    const otherIdentifiers = new Set<string>([
+    const nonModelIdentifiers = new Set<string>([
         ...DECORATORS_BASE_IMPORTS,
         ...ASSOCIATION_DECORATORS,
         ...REFERENCED_GLOBAL_TYPE_NAMES,
@@ -125,23 +125,23 @@ const collectReservedIdentifiers = (tablesMetadata: ITablesMetadata, dialect: Di
     ]);
 
     for (const table of tables) {
-        otherIdentifiers.add(`${table.name}Attributes`);
-        collectSequelizeImports(table, tablesByModel).forEach(name => otherIdentifiers.add(name));
+        nonModelIdentifiers.add(`${table.name}Attributes`);
+        collectSequelizeImports(table, tablesByModel).forEach(name => nonModelIdentifiers.add(name));
 
         for (const column of Object.values(table.columns)) {
             const jsType = dialect.mapDbTypeToJs(column.type);
 
             if (jsType) {
-                otherIdentifiers.add(jsType.replace(/(\[\])+$/, ''));
+                nonModelIdentifiers.add(jsType.replace(/(\[\])+$/, ''));
             }
 
             if (column.typeOverride?.tsType) {
-                collectReferencedIdentifiers(column.typeOverride.tsType, otherIdentifiers);
+                collectReferencedIdentifiers(column.typeOverride.tsType, nonModelIdentifiers);
             }
         }
     }
 
-    return { modelNames: new Set(tables.map(table => table.name)), otherIdentifiers };
+    return { modelNames: new Set(tables.map(table => table.name)), nonModelIdentifiers };
 };
 
 /**
@@ -501,7 +501,7 @@ export class ModelBuilder extends Builder {
 
     /**
      * Render the decorators output as one file per table, the shared type files the
- * models use, and the index barrel.
+     * models use, and the index barrel.
      * @param {ITablesMetadata} tablesMetadata
      * @param {Dialect} dialect
      * @param {boolean | undefined} strict
